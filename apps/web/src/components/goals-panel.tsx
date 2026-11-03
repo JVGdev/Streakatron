@@ -34,16 +34,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useOpenSheet } from '@/hooks/use-open-task';
 import { useStructureActions } from '@/lib/actions';
-import { countdown } from '@/lib/days';
+import { countdown, formatMinutes } from '@/lib/days';
 import type { Goal, Task } from '@/lib/queries';
 import { cn } from '@/lib/utils';
-
-const formatMinutes = (m: number) => {
-  const h = Math.floor(m / 60);
-  const rest = m % 60;
-  return h ? (rest ? `${h} h ${rest} min` : `${h} h`) : `${rest} min`;
-};
 
 export function GoalsPanel({
   projectId,
@@ -115,6 +110,7 @@ function GoalRow({
   onEdit: () => void;
 }) {
   const actions = useStructureActions();
+  const openSheet = useOpenSheet();
   const done = tasks.filter((t) => t.completedAt).length;
   const setStatus = (status: GoalStatus) => void actions.updateGoal(goal, { status });
   const Icon = goal.kind === 'commitment' ? Timer : Target;
@@ -134,7 +130,7 @@ function GoalRow({
               'text-left text-sm font-medium hover:underline',
               goal.status === 'achieved' && 'line-through',
             )}
-            onClick={onEdit}
+            onClick={() => openSheet('goal', goal.id)}
           >
             {goal.title}
           </button>
@@ -200,7 +196,7 @@ function GoalRow({
   );
 }
 
-function GoalForm({
+export function GoalForm({
   projectId,
   goal,
   onDone,

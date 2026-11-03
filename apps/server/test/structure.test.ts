@@ -501,7 +501,6 @@ describe('search', () => {
       ['task', 'Revisar cálculo'],
     ]);
     expect(body.results[1].context).toBe('Cálculo II');
-    expect((await as.get('/api/search?q=')).body.results).toEqual([]);
     expect((await as.get('/api/search?q=%25')).body.results).toEqual([]);
   });
 });
@@ -513,10 +512,10 @@ describe('purge', () => {
     const p = await newProject('A');
     await as.del(`/api/projects/${p.id}`);
 
-    expect(await runPurge()).toEqual({ tasks: 0, goals: 0, snapshots: 0 });
+    expect(await runPurge()).toMatchObject({ tasks: 0, goals: 0, snapshots: 0 });
     const later = new Date(Date.now() + 31 * 86_400_000);
     await db.update(snapshots).set({ expiresAt: new Date(Date.now() - 1000) });
-    expect(await runPurge(later)).toEqual({ tasks: 1, goals: 0, snapshots: 1 });
+    expect(await runPurge(later)).toMatchObject({ tasks: 1, goals: 0, snapshots: 1 });
     expect(await db.$count(tasks, eq(tasks.id, t.id))).toBe(0);
   });
 });

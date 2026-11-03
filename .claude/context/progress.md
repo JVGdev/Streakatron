@@ -2,17 +2,17 @@
 
 ## Status
 
-- **Current phase:** Phases 0 and 1 done → **Phase 2 (Linking system) next**.
-- **Code:** monorepo with server, web and shared packages; 121 tests passing. **Repository:** https://github.com/JVGdev/streaktron (private, `main`).
+- **Current phase:** Phases 0–2 done (Phase 2 on branch `phase-2-linking`, not committed yet) → **Phase 3 (Today + gamification core = MVP) next**.
+- **Code:** monorepo with server, web and shared packages; 137 tests passing. **Repository:** https://github.com/JVGdev/streaktron (private, `main`).
 - **Running over Tailscale:** the Docker app is served at `https://hills.tail99ef4d.ts.net:8443` (port 8443, because the root of that address serves Quire on :8788; never replace it). Verified from the laptop over HTTPS (page, sign-in with a Secure cookie, `/me`); not yet opened from the phone.
-- **Open questions:** deferred by the user (plan.md §13). Pending confirmation: the loot-box timing for make quests (decisions.md D16).
+- **Open questions:** deferred by the user (plan.md §13). Pending confirmation: the loot-box timing for make quests (D16); D19–D23 are Claude's choices to confirm when convenient.
+- **The Docker app on :8443 still runs Phase 1.** Rebuilding it (`docker compose up -d --build`) applies migrations `0003_links` and `0004_search` to the real database on start (new table, generated search columns; no data changes).
 
 ## Next steps
 
-1. The user tries Phase 1 on real data (a semester + side projects), on the laptop and the phone, against its acceptance: model areas → projects → goals → tasks, move cards across a board, capture to the inbox in under 5 seconds.
-2. The user confirms or changes D19 (deleting) and D20 (board and next-action rules), both Claude's choices.
-3. Phase 2 (plan.md §9): TipTap editor, mentions, Postgres full-text search (replacing Phase 1's title search), backlinks.
-4. Then Phase 3 to reach the MVP and start dogfooding.
+1. The user tries Phases 1–2 on real data, on the laptop and the phone (after rebuilding the Docker app), against their acceptance.
+2. The user confirms or changes D19–D23 (Claude's choices).
+3. Phase 3 (plan.md §9) to reach the MVP and start dogfooding.
 
 ---
 
@@ -52,3 +52,18 @@
 - **Checked in a real browser:** a headless Chromium smoke run (Playwright from the scratchpad, not added to the project) against `pnpm dev` with the seed account. Signed in, created an area and a project, added cards, dragged one to Doing (it became the next action), completed one, autosaved a description and checked it survived a reload, added a subtask, captured with C, searched with Ctrl K, hit the active-limit dialog and parked one, used the list view, deleted a project and restored it from Settings, and loaded the phone layout. No console errors except the expected 409. That run found one bug, now fixed: Enter right after typing in the palette did nothing, because the capture item waited on a deferred value.
 - **Decisions:** D19 (deleting) and D20 (board and next-action rules), both Claude's choices.
 - **Not yet:** write responses carry no `game` block (nothing to report before Phase 3). Projects can't be reordered within an area (areas can). Done tasks aren't paginated.
+
+### 2026-11-03 — Phase 2 (Linking system)
+- **`observations.txt`:** "one reroll per quest per day" was already in plan.md §5 and the Phase 3 list; nothing to merge.
+- **Shared:** `rich/mentions.ts`: linkable kinds (area, project, goal, task), `mentionsOf(doc, titleOf?)` (each target once, with the line it's in, mentions read with current titles when given), `snippetAround`. Schemas: `linkableId`, `resolveQuerySchema` (≤ 100 ids), search `types`.
+- **Database:** `0003_links` (generated) and `0004_search` (custom): an IMMUTABLE `f_unaccent` wrapper, generated `search_vector` columns (title A, description B, `simple` config) with GIN indexes, trigram indexes on unaccented titles. The search columns aren't in the Drizzle schema; raw SQL uses them.
+- **Server:** `services/links.ts` (`writeLinks` in the same transaction as every description write: tasks, goals, projects, areas; `purgeOrphanLinks` in the purge job; snapshot restore rebuilds links). `services/entities.ts`: one SQL union of every linkable thing, used by `resolveEntities`, `backlinks` (404 for ids that aren't yours) and search. Search rewritten (D23). New routes: `GET /api/entities/resolve`, `GET /api/entities/:id/backlinks`, `GET /api/goals/:id`. Goal and area updates now run in transactions.
+- **Web:** `RichEditor` (TipTap 3.32 StarterKit + Placeholder + Mention with `@` and `[[` suggestions; picker mounted inside the open sheet/dialog so the modal doesn't swallow its clicks; recent items on an empty query; the entity itself left out). `MentionChip` (node view: live title and icon, closed/broken states, hover preview, click opens). `lib/entities.ts` (batched resolve, backlinks query, `refreshEntities` after writes). `Backlinks` panel. Goal and area sheets (`?goal=`, `?area=`) and `useOpenSheet`/`useOpenEntity`; the palette opens goals and areas in them and shows the line a description match was found in. Project description edited in place on the details tab. `sheet-parts.tsx` (save state, title field) shared by the three sheets.
+- **Bugs found and fixed on the way:**
+  - Escape in the picker closed the whole sheet: Radix catches Escape on the document before the editor. Sheets and dialogs now ignore Escape while a picker is open (`lib/picker.ts`).
+  - Data loss (latent since Phase 1): task views from writes leave out the document, so the cached task detail kept the old description after an autosave. Reopening the task in the same session started the editor from that, and typing would have saved over the newer text. The save now updates the cached detail, and every sheet's editor waits for freshly fetched data (D22).
+  - The project edit dialog rebuilt the description from plain text on every save (it would have wiped mentions); it no longer edits existing descriptions.
+- **Tests (137):** shared mention extraction and snippets; 11 API tests (acceptance flow, link rewriting, every source kind, self-mentions, soft-deleted sources, snapshot rebuild and orphan purge, scoping, validation, search ranking/typos/kinds/recent).
+- **Checked in a real browser:** headless Chromium (Playwright from the scratchpad) against a production build on :3101 with a throwaway `streaktron_e2e` database (the Docker app and real data untouched; dropped afterwards). It ran the acceptance flow (mention a goal, rename it, the chip and the backlink line follow, delete it, broken chip), `[[`, hover preview, reload, palette description search, project and area descriptions with mentions, and the phone layout (the picker stays on screen). No console errors.
+- **Decisions:** D21 (mentions and links), D22 (goal and area sheets, editors start fresh), D23 (search). All Claude's choices.
+- **Not yet:** creating an entity from the picker, and refreshing stored mention labels on rename (both in plan.md §12).

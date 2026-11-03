@@ -15,10 +15,14 @@ import {
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { z } from 'zod';
+import type { RichDoc } from '@streaktron/shared/rich';
+import { Backlinks } from '@/components/backlinks';
 import { Board } from '@/components/board';
 import { EntityIcon } from '@/components/entity-icon';
 import { GoalsPanel } from '@/components/goals-panel';
 import { QuickAdd } from '@/components/quick-add';
+import { RichEditor } from '@/components/rich-editor';
+import { SaveState } from '@/components/sheet-parts';
 import { TaskListControls, TaskListView } from '@/components/task-list-view';
 import {
   AlertDialog,
@@ -43,6 +47,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useOpenTask } from '@/hooks/use-open-task';
 import { useStructureActions } from '@/lib/actions';
 import { ApiError } from '@/lib/api';
+import { useAutosave } from '@/lib/autosave';
 import { countdown, formatDayShort } from '@/lib/days';
 import { STATUS_LABEL } from '@/lib/look';
 import { useProjectStatus } from '@/lib/project-status';
@@ -174,9 +179,9 @@ function ProjectPage() {
       )}
 
       {view === 'overview' && (
-        <div className="grid gap-8 lg:grid-cols-[1fr_18rem]">
+        <div className="grid gap-8 lg:grid-cols-[1fr_22rem]">
           <GoalsPanel projectId={projectId} goals={page.goals} tasks={tasks} today={today} />
-          <Details project={project} today={today} />
+          <Details key={project.id} project={project} today={today} />
         </div>
       )}
     </div>
@@ -358,14 +363,34 @@ function Details({ project, today }: { project: Project; today: string }) {
           {project.counts.open} open · {project.counts.done} done
         </dd>
       </dl>
-      <div>
-        <h3 className="mb-1 text-muted-foreground">Description</h3>
-        {project.descriptionText ? (
-          <p className="whitespace-pre-wrap">{project.descriptionText}</p>
-        ) : (
-          <p className="text-muted-foreground">None yet.</p>
-        )}
-      </div>
+      <ProjectDescription project={project} />
+      <Backlinks id={project.id} />
     </aside>
+  );
+}
+
+/** The description, edited in place and saved as you type. */
+function ProjectDescription({ project }: { project: Project }) {
+  const actions = useStructureActions();
+  const [description, setDescription] = useState<RichDoc | null>(project.description);
+  const save = useAutosave(
+    description,
+    (v) => actions.saveProject(project.id, { description: v }),
+    { what: 'the description' },
+  );
+  return (
+    <div className="grid gap-1.5">
+      <div className="flex items-baseline justify-between">
+        <h3 className="text-muted-foreground">Description</h3>
+        {save.status !== 'saved' && <SaveState status={save.status} />}
+      </div>
+      <RichEditor
+        aria-label="Project description"
+        value={project.description}
+        onChange={setDescription}
+        selfId={project.id}
+        placeholder="What is this project for? What does done look like? Type @ to link things."
+      />
+    </div>
   );
 }

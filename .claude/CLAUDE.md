@@ -4,7 +4,7 @@ Streaktron is a web app that helps people stay consistent with studies and perso
 
 ## Current status
 
-- **Phase:** Phases 0 (Foundation) and 1 (Structure & views) done 2026-11-03; **next up is Phase 2 (Linking system)**.
+- **Phase:** Phases 0 (Foundation), 1 (Structure & views) and 2 (Linking system) done 2026-11-03; **next up is Phase 3 (Today + gamification core = MVP)**.
 - **Run it:** `pnpm db:up && pnpm dev` (README has setup, scripts, Tailscale and backups).
 - **Repository:** https://github.com/JVGdev/streaktron (private), branch `main`.
 - Detailed status and session history: `.claude/context/progress.md`.
@@ -54,5 +54,6 @@ Read the relevant context file before working on an area; read `plan.md` section
 - Schema changes: edit `apps/server/src/db/schema`, then `pnpm db:generate`. Hand-written SQL goes in a `drizzle-kit generate --custom` migration, never into generated ones.
 - TypeScript stays on 6.0 until typescript-eslint supports TS 7 (it needs the old JS API).
 - Pure structure rules (board, next action, transitions) live in `packages/shared/structure`; rich text is TipTap JSON + `*_text` (`packages/shared/rich`).
+- Rich text is edited only through `RichEditor`; every description write calls `writeLinks` in the same transaction. Sheets start their editors from freshly fetched data only.
 - Every service lookup is scoped by `user_id`; another account's ids answer 404.
 - Commit or push only when the user asks.

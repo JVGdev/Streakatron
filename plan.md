@@ -380,7 +380,7 @@ Dev setup: `docker compose up -d db` for Postgres, then `pnpm dev` starts the Ho
 
 ## 7. Data model (initial)
 
-Postgres. All tables include `id` (prefixed ULID, `text`), `user_id` (FK to the auth user), `created_at`, `updated_at` (`timestamptz`); soft delete via `deleted_at` where noted. `rich` = TipTap JSON (`jsonb`) + derived `*_text` column (with a `tsvector` index). References are FK columns with explicit `ON DELETE` (usually `SET NULL`).
+Postgres. All tables include `id` (prefixed ULID, `text`), `user_id` (FK to the auth user), `created_at`, `updated_at` (`timestamptz`); soft delete via `deleted_at` where noted. `rich` = TipTap JSON (`jsonb`) + derived `*_text` column. Areas, projects, goals and tasks have a generated `search_vector` (title weight A, description B) with a GIN index, and a trigram index on the title (D23, migration `0004_search`). References are FK columns with explicit `ON DELETE` (usually `SET NULL`).
 
 | Table | Key columns |
 |---|---|
@@ -403,7 +403,7 @@ Postgres. All tables include `id` (prefixed ULID, `text`), `user_id` (FK to the 
 | `room_placements` | `inventory_item_id` (unique), `room_id` (default room for now), `surface` (floor/wall_left/wall_right/on_item), `x`, `y`, `rotation`, `parent_placement_id?` |
 | `achievements` | `key`, `earned_at`, `kind` (medal/prize), `params` (jsonb) — unique (`user_id`, `key`) |
 | `showcase` | `achievement_id`, `slot` — which medals/prizes are displayed on the wardrobe |
-| `links` | `source_id`, `source_field`, `target_id` — index on `target_id` for backlinks |
+| `links` | `source_id`, `source_field`, `target_id` — no FKs (any kind on either side); unique (`source_id`, `source_field`, `target_id`), index (`user_id`, `target_id`) for backlinks (D21) |
 | `countdown_pins` | `target_id` (event / task / goal / project with a date) — or reuse `is_countdown` where the entity has it |
 | `snapshots` | `kind` (project/area), `entity_id`, `title`, `data` (jsonb: the rows that went with it), `expires_at` |
 | *(social phase)* `friendships` | `user_a`, `user_b`, `status` (pending/accepted/blocked), `created_at` |
@@ -427,8 +427,9 @@ JSON over Hono with Zod validation; typed client via Hono RPC. Write responses i
 - `GET /api/calendar?from&to` — events (expanded recurrences), due/scheduled tasks, focus sessions
 - `GET /api/game/state` — XP, level, streaks, freezes, weekly progress
 - `GET /api/quests?period=today|week` · `POST /api/quests/:id/reroll`
-- `GET /api/search?q&types` — palette + link picker
-- `GET /api/entities/:id/backlinks` · `GET /api/entities/resolve?ids=` (titles for mention chips)
+- `GET /api/goals/:id` — the goal sheet
+- `GET /api/search?q&types&limit` — palette + link picker; an empty `q` lists recently changed open things
+- `GET /api/entities/:id/backlinks` (lines read with current titles) · `GET /api/entities/resolve?ids=` (≤ 100; titles and state for mention chips; unknown ids left out)
 - `GET /api/stats/heatmap?from&to` · `GET /api/stats/focus?groupBy=project|area&from&to` · `GET /api/stats/quests`
 - `POST /api/reviews/:weekStart/complete`
 - `GET /api/loot` (unopened count + history) · `POST /api/loot/:id/open` · `POST /api/loot/open-all`
@@ -474,13 +475,13 @@ Each phase ends with a usable app. **Phase 3 completion = MVP = start using it d
 **Acceptance:** You can model a real semester + side projects: areas → projects → goals → tasks, move tasks across a board, capture tasks to the inbox in < 5 seconds.
 
 ### Phase 2 — Linking system
-- [ ] TipTap editor component (shared) for all rich-text fields; JSON + plain-text storage
-- [ ] Mention extension with `@` and `[[` triggers; fuzzy picker across all entity types
-- [ ] Postgres search: `tsvector` columns + `unaccent`, `pg_trgm` for fuzzy titles
-- [ ] Mention chips resolve live titles (batched `resolve` endpoint, cached); broken-link state
-- [ ] Link extraction into `links` table on save
-- [ ] Backlinks panel on every entity page
-- [ ] Hover preview / click-to-navigate for chips
+- [x] TipTap editor component (shared) for all rich-text fields; JSON + plain-text storage
+- [x] Mention extension with `@` and `[[` triggers; fuzzy picker across all entity types
+- [x] Postgres search: `tsvector` columns + `unaccent`, `pg_trgm` for fuzzy titles
+- [x] Mention chips resolve live titles (batched `resolve` endpoint, cached); broken-link state
+- [x] Link extraction into `links` table on save
+- [x] Backlinks panel on every entity page (goals and areas got detail sheets for it, D22)
+- [x] Hover preview / click-to-navigate for chips
 
 **Acceptance:** Mention a goal inside a task description; rename the goal and the chip updates; the goal's backlinks panel lists the task; deleting the goal shows a broken chip.
 
@@ -625,6 +626,8 @@ Quire (`~/Documentos/quire`) is the user's earlier project: a worldbuilding and 
 ## 12. Backlog / ideas (not scheduled)
 
 - Mentions inside titles (single-line TipTap editor, plain-text fallback for compact views)
+- Create from the mention picker ("New task “X”" when nothing matches; Quire has it)
+- Mention labels in stored text: `description_text` keeps the label a mention had when inserted, so search still finds the old name and palette snippets show it (chips and backlinks already read current titles)
 - "Names not linked yet": plain-text mentions of an entity's title suggested as links (Quire has this)
 - Typed relations (blocks / blocked by, contributes to) — explicitly out of scope per D4
 - Links with behavioral effects (e.g. goal progress from linked tasks)

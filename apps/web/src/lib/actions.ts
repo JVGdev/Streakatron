@@ -26,7 +26,8 @@ import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { toast } from 'sonner';
 import { api, call } from './api';
-import type { Area, BoardColumn, Goal, Project, ProjectPage, Task } from './queries';
+import type { Area, BoardColumn, Goal, Project, ProjectPage, Task, TaskDetail } from './queries';
+import { refreshEntities } from './entities';
 import { attempt, report } from './report';
 import { cachedTask, dropTasks, mergeTasks, refreshAfterTaskWrite } from './task-cache';
 
@@ -105,6 +106,16 @@ export function taskActions(qc: QueryClient) {
     save: async (id: string, patch: TaskPatch) => {
       const updated = await call(api.tasks[':id'].$patch({ param: { id }, json: patch }));
       mergeTasks(qc, updated);
+      // Task views leave the document out; the cached detail must have what was saved, or the
+      // sheet opened again would start from the old text.
+      if (patch.description !== undefined) {
+        qc.setQueryData<TaskDetail>(['tasks', 'detail', id], (old) =>
+          old
+            ? { ...old, description: (patch.description ?? null) as TaskDetail['description'] }
+            : old,
+        );
+      }
+      refreshEntities(qc);
       return updated;
     },
 
@@ -196,6 +207,7 @@ export function useTaskActions() {
 // --- Areas, projects, goals ------------------------------------------------------------------
 
 const refreshStructure = (qc: QueryClient, projectId?: string) => {
+  refreshEntities(qc);
   void qc.invalidateQueries({ queryKey: ['areas'] });
   void qc.invalidateQueries({ queryKey: ['projects'] });
   if (projectId) void qc.invalidateQueries({ queryKey: ['project', projectId] });
@@ -215,8 +227,17 @@ export function structureActions(qc: QueryClient) {
       attempt(async () => {
         const area = await call(api.areas[':id'].$patch({ param: { id }, json: patch }));
         qc.setQueryData<Area[]>(['areas'], (old) => old?.map((a) => (a.id === id ? area : a)));
+        refreshEntities(qc);
         return area;
       }),
+
+    /** Autosave's sender for an area's title and description: throws. */
+    saveArea: async (id: string, patch: AreaPatch) => {
+      const area = await call(api.areas[':id'].$patch({ param: { id }, json: patch }));
+      qc.setQueryData<Area[]>(['areas'], (old) => old?.map((a) => (a.id === id ? area : a)));
+      refreshEntities(qc);
+      return area;
+    },
 
     reorderAreas: (ids: string[]) => {
       const before = qc.getQueryData<Area[]>(['areas']);
@@ -266,6 +287,17 @@ export function structureActions(qc: QueryClient) {
         refreshStructure(qc, id);
         return project;
       }),
+
+    /** Autosave's sender for a project's description: throws. */
+    saveProject: async (id: string, patch: ProjectPatch) => {
+      const project = await call(api.projects[':id'].$patch({ param: { id }, json: patch }));
+      qc.setQueryData<Project[]>(['projects'], (old) =>
+        old?.map((p) => (p.id === id ? project : p)),
+      );
+      qc.setQueryData<ProjectPage>(['project', id], (old) => (old ? { ...old, project } : old));
+      refreshEntities(qc);
+      return project;
+    },
 
     /** Throws (an `active_limit` 409 is handled by the caller's dialog). */
     setStatus: async (id: string, status: ProjectStatus, park?: string) => {
@@ -345,8 +377,21 @@ export function structureActions(qc: QueryClient) {
         qc.setQueryData<ProjectPage>(['project', goal.projectId], (old) =>
           old ? { ...old, goals: old.goals.map((g) => (g.id === goal.id ? updated : g)) } : old,
         );
+        qc.setQueryData(['goal', goal.id], updated);
+        refreshEntities(qc);
         return updated;
       }),
+
+    /** Autosave's sender for a goal's title and description: throws. */
+    saveGoal: async (goal: Goal, patch: GoalPatch) => {
+      const updated = await call(api.goals[':id'].$patch({ param: { id: goal.id }, json: patch }));
+      qc.setQueryData<ProjectPage>(['project', goal.projectId], (old) =>
+        old ? { ...old, goals: old.goals.map((g) => (g.id === goal.id ? updated : g)) } : old,
+      );
+      qc.setQueryData(['goal', goal.id], updated);
+      refreshEntities(qc);
+      return updated;
+    },
 
     deleteGoal: (goal: Goal) =>
       attempt(async () => {

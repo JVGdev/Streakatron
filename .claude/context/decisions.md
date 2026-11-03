@@ -105,6 +105,26 @@ The canonical record of what was decided, why, and what was considered instead. 
   - **Project lifecycle:** active ↔ parked; either one → completed; completed → active (reopen) or parked; anything → archived; archived → parked only. Activating checks the limit (D5) inside a locked transaction, and the "Park one to continue" dialog parks and activates in one request.
 - **Why:** The app needs one definition of "done" (Phase 3 counts completions for XP). Preferring in-progress work is closer to what "next action" means than taking the leftmost column.
 
+### D21 · How mentions and links work — accepted (2026-11-03, Claude's choice, confirm when convenient)
+- **Decision:**
+  - A mention is a TipTap `mention` node holding the target's **id** and the label it had when inserted (a fallback only). Chips always show the target's current title, fetched in batches through `GET /api/entities/resolve`.
+  - Every save of a description **rewrites that source's rows in `links`** in the same transaction. Neither side is a foreign key: either side can be any kind, and a link to something deleted stays (it shows a **broken chip**, struck through, with its old label).
+  - **Deleted sources:** a soft-deleted task or goal drops out of backlinks until it's restored. Rows whose source is gone for good (purged, or deleted with a project/area snapshot) are removed by the hourly `purge` job. **Restoring a snapshot rebuilds** the links from the restored descriptions.
+  - **Backlinks** show the line each mention is in, built when read, so the mentions in it read with their current titles.
+  - Self-mentions aren't links. Asking for the backlinks of another account's id answers 404, like any of their ids.
+- **Why:** Links derived from the document can't drift from it (Quire's LOG-8: one function per question). Keeping them across deletes is what makes "deleting shows a broken chip" and undo/restore work without bookkeeping.
+
+### D22 · Detail sheets for goals and areas; descriptions edited in place — accepted (2026-11-03, Claude's choice, confirm when convenient)
+- **Decision:**
+  - Goals and areas open in **side sheets** like tasks (`?goal=` and `?area=` over any page), with title and description autosaved, their tasks or projects, and the backlinks panel. Clicking a goal in the goals panel, or an area's title in the overview, opens its sheet. Projects keep their page; their description is edited in place on the "Goals & details" tab, with backlinks under it.
+  - The project dialog no longer edits an existing project's description (only a new one's), so the rich text has one editor and is never rebuilt from plain text.
+  - A sheet's editor only starts from **freshly fetched** data, never from a cached copy, so text changed on another device (the phone) isn't saved over.
+- **Why:** The Phase 2 acceptance needs a goal's backlinks panel, and goals and areas had no page. Sheets open from a chip without leaving the page you're on, as tasks already did.
+
+### D23 · Search: full-text with prefixes, typo-tolerant titles — accepted (2026-11-03, Claude's choice)
+- **Decision:** Postgres FTS with the `simple` configuration (no stemming, so text in any language matches the same way) over unaccented titles (weight A) and descriptions (weight B); every query word is a prefix, in any order. Titles also match by trigram similarity when **every** query word is close to a word of the title (≥ 0.5, e.g. "algerba" → "Linear algebra"). Ranking: title starts with the query, title contains it, FTS rank, similarity, then open before closed, shorter, recent. Description-only matches return the words around the match. An empty query lists recently changed open things (the mention picker's first view).
+- **Why:** The UI is English (D7) but the user may write in Portuguese; stemming for one language would mis-handle the other. Requiring every word to be similar stops one shared word from carrying a multi-word query.
+
 ---
 
 ## Rejected ideas (don't propose again)

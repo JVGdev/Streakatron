@@ -1,12 +1,14 @@
 // Snapshots: deleting a project or an area first stores everything that goes with it as JSON, so
 // it can be restored from Settings for 30 days (plan.md §6). Restoring puts the rows back with
-// their ids, so references to them (later: mentions) work again.
+// their ids, so mentions of them work again, and rebuilds the links their own descriptions make
+// (the purge job drops links whose source is gone).
 
 import { newId } from '@streaktron/shared/ids';
 import { and, desc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { areas, boardColumns, goals, projects, snapshots, tasks } from '../db/schema';
 import { conflict, edgeOrder, notFound, restoreDeadline, type Tx } from './common';
+import { writeLinks } from './links';
 import { hasRoomForActive } from './projects';
 
 type AreaRow = typeof areas.$inferSelect;
@@ -179,6 +181,14 @@ export async function restoreSnapshot(userId: string, id: string) {
           .set({ nextActionTaskId: project.nextActionTaskId })
           .where(eq(projects.id, project.id));
       }
+    }
+
+    const sources = [
+      ...(data.area ? [data.area] : []),
+      ...data.projects.flatMap((b) => [b.project, ...b.goals, ...b.tasks]),
+    ];
+    for (const row of sources) {
+      if (row.description) await writeLinks(tx, userId, row.id, row.description);
     }
 
     await tx.delete(snapshots).where(eq(snapshots.id, id));

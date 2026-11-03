@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 import { isId, type IdKind } from '../ids';
-import { MAX_RICH_BYTES, type RichDoc } from '../rich';
+import { LINKABLE_KINDS, linkableKind, MAX_RICH_BYTES, type RichDoc } from '../rich';
 import {
   COLORS,
   COLUMN_CATEGORIES,
@@ -269,9 +269,30 @@ export const taskListQuerySchema = z.object({
 });
 export type TaskListQuery = z.input<typeof taskListQuerySchema>;
 
+/** A comma-separated query value as a list (`?ids=a,b`), empty items dropped. */
+const commaList = z
+  .string()
+  .max(5000)
+  .transform((s) => s.split(',').filter(Boolean));
+
 export const searchQuerySchema = z.object({
+  /** Empty: recently changed open things. */
   q: z.string().trim().max(200).default(''),
   limit: z.coerce.number().int().min(1).max(50).default(20),
+  /** Only these kinds (`task,goal`). */
+  types: commaList.pipe(z.array(z.enum(LINKABLE_KINDS)).max(LINKABLE_KINDS.length)).optional(),
+});
+
+// --- Links (D4) -------------------------------------------------------------------------------
+
+/** Any id a mention can point to. */
+export const linkableId = z.string().refine((s) => linkableKind(s) !== null, 'Expected an id');
+
+/** Mention chips ask for many ids at once. */
+export const MAX_RESOLVE_IDS = 100;
+
+export const resolveQuerySchema = z.object({
+  ids: commaList.pipe(z.array(linkableId).min(1).max(MAX_RESOLVE_IDS)),
 });
 
 export const settingsPatchSchema = userSettingsSchema.pick({ activeProjectLimit: true }).partial();

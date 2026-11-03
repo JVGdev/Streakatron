@@ -1,9 +1,11 @@
-// Deleted things past their 30 days to restore: soft-deleted tasks and goals, expired snapshots.
+// Deleted things past their 30 days to restore: soft-deleted tasks and goals, expired snapshots;
+// then the links whose source is gone.
 
 import { lt } from 'drizzle-orm';
 import { db } from '../db/client';
 import { goals, tasks } from '../db/schema';
 import { RESTORE_DAYS } from '../services/common';
+import { purgeOrphanLinks } from '../services/links';
 import { purgeExpiredSnapshots } from '../services/snapshots';
 
 export async function runPurge(now = new Date()) {
@@ -17,5 +19,6 @@ export async function runPurge(now = new Date()) {
     .where(lt(goals.deletedAt, cutoff))
     .returning({ id: goals.id });
   const snapshots = await purgeExpiredSnapshots();
-  return { tasks: goneTasks.length, goals: goneGoals.length, snapshots };
+  const links = await purgeOrphanLinks();
+  return { tasks: goneTasks.length, goals: goneGoals.length, snapshots, links };
 }

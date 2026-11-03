@@ -49,6 +49,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useOpenSheet } from '@/hooks/use-open-task';
 import { useStructureActions } from '@/lib/actions';
 import { countdown } from '@/lib/days';
 import { STATUS_LABEL } from '@/lib/look';
@@ -210,6 +211,7 @@ function AreaSection({
   children: ReactNode;
 }) {
   const actions = useStructureActions();
+  const openSheet = useOpenSheet();
   const { data: projects = [] } = useQuery(projectsQuery);
   const [deleting, setDeleting] = useState(false);
   const count = projects.filter((p) => p.areaId === area.id).length;
@@ -219,7 +221,14 @@ function AreaSection({
       <div className="flex items-center gap-2">
         {handle}
         <EntityIcon icon={area.icon} color={area.color} />
-        <h2 className="min-w-0 flex-1 truncate text-lg font-semibold">{area.title}</h2>
+        <h2 className="min-w-0 flex-1 truncate text-lg font-semibold">
+          <button
+            className="max-w-full truncate text-left hover:underline"
+            onClick={() => openSheet('area', area.id)}
+          >
+            {area.title}
+          </button>
+        </h2>
         <Button variant="ghost" size="sm" onClick={() => newProject(area.id)}>
           <Plus />
           <span className="hidden sm:inline">Project</span>

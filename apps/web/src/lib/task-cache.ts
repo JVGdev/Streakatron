@@ -4,6 +4,7 @@
 
 import type { QueryClient } from '@tanstack/react-query';
 import type { Task, TaskDetail, TaskFilter } from './queries';
+import { refreshEntities } from './entities';
 
 /** Whether a task belongs in a list with this filter (the server's rule, mirrored). */
 export function matchesFilter(f: TaskFilter, t: Task): boolean {
@@ -68,9 +69,10 @@ export function cachedTask(qc: QueryClient, id: string): Task | undefined {
 
 /**
  * After task writes settle: refetch what the server derives (counts, next actions, subtask
- * totals, positions of other tasks).
+ * totals, positions of other tasks, mention chips and backlinks).
  */
 export function refreshAfterTaskWrite(qc: QueryClient, projectIds: (string | null | undefined)[]) {
+  refreshEntities(qc);
   void qc.invalidateQueries({ queryKey: ['tasks', 'list'] });
   void qc.invalidateQueries({ queryKey: ['projects'] });
   for (const id of new Set(projectIds)) {

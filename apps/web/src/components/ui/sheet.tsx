@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { keepOpenForPicker } from '@/lib/picker';
 import { cn } from '@/lib/utils';
 import { XIcon } from 'lucide-react';
 import { Dialog as SheetPrimitive } from 'radix-ui';
@@ -42,6 +43,7 @@ function SheetContent({
   children,
   side = 'right',
   showCloseButton = true,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: 'top' | 'right' | 'bottom' | 'left';
@@ -65,6 +67,10 @@ function SheetContent({
           className,
         )}
         {...props}
+        onEscapeKeyDown={(e) => {
+          keepOpenForPicker(e);
+          onEscapeKeyDown?.(e);
+        }}
       >
         {children}
         {showCloseButton && (

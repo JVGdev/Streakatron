@@ -22,6 +22,20 @@
       "when": 1793739880082,
       "tag": "0002_structure",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793745849540,
+      "tag": "0003_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793745850234,
+      "tag": "0004_search",
+      "breakpoints": true
     }
   ]
 }

@@ -8,6 +8,7 @@ import { and, asc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { db } from '../db/client';
 import { goals } from '../db/schema';
 import { defined, edgeOrder, invalid, notFound, richColumns, type Conn } from './common';
+import { writeLinks } from './links';
 import { ownedProject } from './projects';
 
 const view = ({ userId: _, deletedAt: __, ...g }: typeof goals.$inferSelect) => g;
@@ -34,10 +35,11 @@ export async function createGoal(userId: string, input: GoalCreate) {
   return db.transaction(async (tx) => {
     await ownedProject(tx, userId, input.projectId);
     const outcome = input.kind === 'outcome';
+    const id = newId('goal');
     const [row] = await tx
       .insert(goals)
       .values({
-        id: newId('goal'),
+        id,
         userId,
         projectId: input.projectId,
         title: input.title,
@@ -54,29 +56,38 @@ export async function createGoal(userId: string, input: GoalCreate) {
         ...richColumns(input.description),
       })
       .returning();
+    await writeLinks(tx, userId, id, input.description);
     return view(row!);
   });
 }
 
+/** One goal (the goal sheet). */
+export async function getGoal(userId: string, id: string) {
+  return view(await ownedGoal(db, userId, id));
+}
+
 export async function updateGoal(userId: string, id: string, patch: GoalPatch) {
-  const goal = await ownedGoal(db, userId, id);
-  const { description, ...rest } = patch;
-  const next = { ...goal, ...defined(rest) };
-  // An outcome has no target; switching kinds drops it rather than failing.
-  if (next.kind === 'outcome') Object.assign(next, { targetMinutes: null, period: null });
-  const problem = goalShapeProblem(next);
-  if (problem) throw invalid('invalid_goal', problem);
-  const [row] = await db
-    .update(goals)
-    .set({
-      ...defined(rest),
-      targetMinutes: next.targetMinutes,
-      period: next.period,
-      ...richColumns(description),
-    })
-    .where(eq(goals.id, id))
-    .returning();
-  return view(row!);
+  return db.transaction(async (tx) => {
+    const goal = await ownedGoal(tx, userId, id);
+    const { description, ...rest } = patch;
+    const next = { ...goal, ...defined(rest) };
+    // An outcome has no target; switching kinds drops it rather than failing.
+    if (next.kind === 'outcome') Object.assign(next, { targetMinutes: null, period: null });
+    const problem = goalShapeProblem(next);
+    if (problem) throw invalid('invalid_goal', problem);
+    const [row] = await tx
+      .update(goals)
+      .set({
+        ...defined(rest),
+        targetMinutes: next.targetMinutes,
+        period: next.period,
+        ...richColumns(description),
+      })
+      .where(eq(goals.id, id))
+      .returning();
+    await writeLinks(tx, userId, id, description);
+    return view(row!);
+  });
 }
 
 /** Soft delete; tasks keep pointing at it so an undo restores everything. */

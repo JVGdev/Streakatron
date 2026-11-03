@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { requireUser, type AuthedEnv } from '../http/session';
 import { validate } from '../http/validate';
-import { createGoal, deleteGoal, restoreGoal, updateGoal } from '../services/goals';
+import { createGoal, deleteGoal, getGoal, restoreGoal, updateGoal } from '../services/goals';
 
 const param = validate('param', z.object({ id: idOf('goal') }));
 
@@ -12,6 +12,7 @@ export const goalRoutes = new Hono<AuthedEnv>()
   .post('/', validate('json', goalCreateSchema), async (c) =>
     c.json(await createGoal(c.get('user').id, c.req.valid('json')), 201),
   )
+  .get('/:id', param, async (c) => c.json(await getGoal(c.get('user').id, c.req.valid('param').id)))
   .patch('/:id', param, validate('json', goalPatchSchema), async (c) =>
     c.json(await updateGoal(c.get('user').id, c.req.valid('param').id, c.req.valid('json'))),
   )
