@@ -46,3 +46,10 @@ export function countdown(day: string, today: string): string {
   if (diff > 0) return `${diff} day${diff === 1 ? '' : 's'} left`;
   return `${-diff} day${diff === -1 ? '' : 's'} late`;
 }
+
+/** “1 h 30 min”, “2 h”, “45 min”. */
+export const formatMinutes = (m: number) => {
+  const h = Math.floor(m / 60);
+  const rest = m % 60;
+  return h ? (rest ? `${h} h ${rest} min` : `${h} h`) : `${rest} min`;
+};

@@ -24,6 +24,7 @@ import {
   type Conn,
   type Tx,
 } from './common';
+import { writeLinks } from './links';
 import { ownedProject, unpinClosed } from './projects';
 
 type TaskRow = typeof tasks.$inferSelect;
@@ -196,6 +197,7 @@ export async function createTask(userId: string, input: TaskCreate) {
       sortOrder: await edgeOrder(tx, tasks, and(eq(tasks.userId, userId), scope), position),
       ...richColumns(input.description),
     });
+    await writeLinks(tx, userId, id, input.description);
     return taskView(tx, userId, id);
   });
 }
@@ -229,6 +231,7 @@ export async function updateTask(userId: string, id: string, patch: TaskPatch) {
     }
 
     if (Object.keys(values).length) await tx.update(tasks).set(values).where(eq(tasks.id, id));
+    await writeLinks(tx, userId, id, description);
     return taskView(tx, userId, id);
   });
 }

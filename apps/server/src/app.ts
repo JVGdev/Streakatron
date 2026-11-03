@@ -14,7 +14,7 @@ import { columnRoutes } from './routes/columns';
 import { goalRoutes } from './routes/goals';
 import { healthRoutes } from './routes/health';
 import { meRoutes } from './routes/me';
-import { searchRoutes, settingsRoutes, snapshotRoutes } from './routes/misc';
+import { entityRoutes, searchRoutes, settingsRoutes, snapshotRoutes } from './routes/misc';
 import { projectRoutes } from './routes/projects';
 import { setupRoutes } from './routes/setup';
 import { taskRoutes } from './routes/tasks';
@@ -33,6 +33,7 @@ const api = new Hono()
   .route('/goals', goalRoutes)
   .route('/tasks', taskRoutes)
   .route('/search', searchRoutes)
+  .route('/entities', entityRoutes)
   .route('/snapshots', snapshotRoutes)
   .route('/settings', settingsRoutes);
 

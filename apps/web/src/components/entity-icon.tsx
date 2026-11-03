@@ -1,4 +1,6 @@
+import type { LinkableKind } from '@streaktron/shared/rich';
 import type { ColorKey, IconKey } from '@streaktron/shared/structure';
+import { CheckCircle2, CircleDashed, Folder, Shapes, Target } from 'lucide-react';
 import { COLOR, ICON } from '@/lib/look';
 import { cn } from '@/lib/utils';
 
@@ -30,4 +32,33 @@ export function EntityIcon({
       <Icon />
     </span>
   );
+}
+
+/** The icon of anything mentionable: an area's or project's own, else its kind's. */
+export function RefIcon({
+  entity,
+  className,
+}: {
+  entity: {
+    kind: LinkableKind;
+    icon?: IconKey | null;
+    color?: ColorKey | null;
+    closed?: boolean;
+  };
+  className?: string;
+}) {
+  if (entity.icon && entity.color) {
+    return <EntityIcon icon={entity.icon} color={entity.color} size="sm" className={className} />;
+  }
+  const Icon =
+    entity.kind === 'goal'
+      ? Target
+      : entity.kind === 'area'
+        ? Shapes
+        : entity.kind === 'project'
+          ? Folder
+          : entity.closed
+            ? CheckCircle2
+            : CircleDashed;
+  return <Icon className={cn('size-4 shrink-0 text-muted-foreground', className)} aria-hidden />;
 }

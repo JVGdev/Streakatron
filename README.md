@@ -2,7 +2,7 @@
 
 A web app that builds consistency for studies and personal projects: real project management (areas, projects, goals, tasks, Kanban, calendar, countdowns, `@` links between anything) with light gamification (XP, levels, forgiving streaks, quests) and cosmetic rewards (loot boxes, collectibles, a customizable bedroom). Friend streaks come later.
 
-**Status:** Phases 0 and 1 done: areas, projects with an active-project limit, goals, tasks and subtasks, Kanban boards, list view, inbox, command palette (Ctrl/⌘ K) and keyboard shortcuts (press `?`). Next is Phase 2 (mentions and links).
+**Status:** Phases 0–2 done: areas, projects with an active-project limit, goals, tasks and subtasks, Kanban boards, list view, inbox, command palette (Ctrl/⌘ K) and keyboard shortcuts (press `?`); rich-text descriptions where `@` or `[[` links any task, goal, project or area, with live-title chips, backlinks and full-text search. Next is Phase 3 (Today and the gamification core: the MVP).
 
 ## Docs
 
@@ -13,7 +13,7 @@ A web app that builds consistency for studies and personal projects: real projec
 
 ## Stack
 
-TypeScript monorepo (pnpm): React + Vite, TanStack Router/Query, Tailwind + shadcn/ui, dnd-kit, cmdk · Hono on Node · PostgreSQL + Drizzle · Better Auth · pg-boss · Vitest · Docker Compose. Later phases add TipTap, PixiJS and Playwright.
+TypeScript monorepo (pnpm): React + Vite, TanStack Router/Query, Tailwind + shadcn/ui, TipTap, dnd-kit, cmdk · Hono on Node · PostgreSQL + Drizzle · Better Auth · pg-boss · Vitest · Docker Compose. Later phases add PixiJS and Playwright.
 
 ```
 apps/server      Hono API: Drizzle schema + migrations, Better Auth, pg-boss jobs

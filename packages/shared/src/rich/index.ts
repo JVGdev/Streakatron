@@ -7,7 +7,7 @@ export interface RichNode {
   text?: string;
   attrs?: Record<string, unknown>;
   content?: RichNode[];
-  marks?: unknown[];
+  marks?: { type: string; attrs?: Record<string, unknown> }[];
 }
 
 export interface RichDoc extends RichNode {
@@ -79,3 +79,5 @@ export function textFromDoc(doc: RichNode | null | undefined): string {
   if (line) lines.push(line);
   return lines.join('\n').replace(/^\n+|\n+$/g, '');
 }
+
+export * from './mentions';

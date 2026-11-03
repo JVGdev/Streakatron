@@ -16,6 +16,7 @@ import {
   writeOrder,
   type Conn,
 } from './common';
+import { writeLinks } from './links';
 import { snapshotProjects } from './snapshots';
 
 const view = ({ userId: _, ...a }: typeof areas.$inferSelect) => a;
@@ -41,10 +42,11 @@ async function ownedArea(conn: Conn, userId: string, id: string) {
 export async function createArea(userId: string, input: AreaCreate) {
   return db.transaction(async (tx) => {
     const sortOrder = await edgeOrder(tx, areas, eq(areas.userId, userId), 'bottom');
+    const id = newId('area');
     const [row] = await tx
       .insert(areas)
       .values({
-        id: newId('area'),
+        id,
         userId,
         title: input.title,
         color: input.color,
@@ -53,22 +55,26 @@ export async function createArea(userId: string, input: AreaCreate) {
         ...richColumns(input.description),
       })
       .returning();
+    await writeLinks(tx, userId, id, input.description);
     return view(row!);
   });
 }
 
 export async function updateArea(userId: string, id: string, patch: AreaPatch) {
-  const area = await ownedArea(db, userId, id);
-  const { archived, description, ...rest } = patch;
-  const values = defined({
-    ...rest,
-    ...richColumns(description),
-    archivedAt:
-      archived === undefined ? undefined : archived ? (area.archivedAt ?? new Date()) : null,
+  return db.transaction(async (tx) => {
+    const area = await ownedArea(tx, userId, id);
+    const { archived, description, ...rest } = patch;
+    const values = defined({
+      ...rest,
+      ...richColumns(description),
+      archivedAt:
+        archived === undefined ? undefined : archived ? (area.archivedAt ?? new Date()) : null,
+    });
+    if (!Object.keys(values).length) return view(area);
+    const [row] = await tx.update(areas).set(values).where(eq(areas.id, id)).returning();
+    await writeLinks(tx, userId, id, description);
+    return view(row!);
   });
-  if (!Object.keys(values).length) return view(area);
-  const [row] = await db.update(areas).set(values).where(eq(areas.id, id)).returning();
-  return view(row!);
 }
 
 export async function reorderAreas(userId: string, ids: string[]) {

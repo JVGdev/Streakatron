@@ -22,6 +22,7 @@ import {
   type Conn,
   type Tx,
 } from './common';
+import { writeLinks } from './links';
 import { snapshotProjects } from './snapshots';
 
 type ProjectRow = typeof projects.$inferSelect;
@@ -219,6 +220,7 @@ export async function createProject(userId: string, input: ProjectCreate) {
       sortOrder,
       ...richColumns(input.description),
     });
+    await writeLinks(tx, userId, id, input.description);
     await tx.insert(boardColumns).values(
       DEFAULT_COLUMNS.map((c, i) => ({
         id: newId('boardColumn'),
@@ -279,6 +281,7 @@ export async function updateProject(userId: string, id: string, patch: ProjectPa
     if (Object.keys(values).length) {
       await tx.update(projects).set(values).where(eq(projects.id, id));
     }
+    await writeLinks(tx, userId, id, description);
     return projectView(tx, userId, id);
   });
 }

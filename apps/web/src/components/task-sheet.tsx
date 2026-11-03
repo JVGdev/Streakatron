@@ -1,7 +1,7 @@
 // A task's details, in a side sheet opened by the `task` search param from anywhere in the app.
 // Title and description save as you type (useAutosave); the other fields save on change.
 
-import { docFromText, textFromDoc } from '@streaktron/shared/rich';
+import type { RichDoc } from '@streaktron/shared/rich';
 import { EFFORTS, type Effort } from '@streaktron/shared/structure';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
@@ -19,7 +19,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
-import { Textarea } from '@/components/ui/textarea';
 import { useOpenTask } from '@/hooks/use-open-task';
 import { useStructureActions, useTaskActions } from '@/lib/actions';
 import { ApiError } from '@/lib/api';
@@ -35,7 +34,10 @@ import {
   type TaskDetail,
 } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { Backlinks } from './backlinks';
 import { EntityIcon } from './entity-icon';
+import { RichEditor } from './rich-editor';
+import { SheetBar, TitleField } from './sheet-parts';
 import { QuickAdd } from './quick-add';
 import { TaskCheck } from './task-check';
 import { onRowsKeyDown } from '@/lib/rows';
@@ -43,7 +45,10 @@ import { TaskRow } from './task-row';
 
 export function TaskSheet({ taskId }: { taskId: string | undefined }) {
   const open = useOpenTask();
-  const { data, error } = useQuery({ ...taskQuery(taskId ?? ''), enabled: !!taskId });
+  const { data, error, isFetchedAfterMount } = useQuery({
+    ...taskQuery(taskId ?? ''),
+    enabled: !!taskId,
+  });
 
   useEffect(() => {
     if (error instanceof ApiError && error.status === 404) {
@@ -59,7 +64,9 @@ export function TaskSheet({ taskId }: { taskId: string | undefined }) {
         className="w-full gap-0 overflow-y-auto p-0 sm:max-w-xl"
         aria-describedby={undefined}
       >
-        {data ? (
+        {/* The editors start from what they're given: never from a cached copy that another
+            device may have changed since (it would be saved over the newer text). */}
+        {data && isFetchedAfterMount ? (
           <TaskEditor key={data.id} task={data} />
         ) : (
           <div className="p-6">
@@ -94,14 +101,10 @@ function TaskEditor({ task }: { task: TaskDetail }) {
   });
 
   const [title, setTitle] = useState(task.title);
-  const [text, setText] = useState(() => textFromDoc(task.description));
-  const draft = { title, text };
+  const [description, setDescription] = useState<RichDoc | null>(task.description);
   const save = useAutosave(
-    draft,
-    (v) =>
-      v.title.trim()
-        ? tasks.save(task.id, { title: v.title, description: docFromText(v.text) })
-        : Promise.resolve(),
+    { title, description },
+    (v) => (v.title.trim() ? tasks.save(task.id, v) : Promise.resolve()),
     { what: 'the task' },
   );
 
@@ -110,55 +113,31 @@ function TaskEditor({ task }: { task: TaskDetail }) {
 
   return (
     <div className="flex min-h-full flex-col">
-      <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-background/95 px-4 py-2.5 backdrop-blur sm:px-6">
-        <div className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-          {isSubtask && parent ? (
-            <button className="hover:underline" onClick={() => openTask(parent.id)}>
-              ↑ {parent.title}
-            </button>
-          ) : project ? (
-            <Link
-              to="/projects/$projectId"
-              params={{ projectId: project.id }}
-              className="inline-flex items-center gap-1.5 hover:underline"
-            >
-              <EntityIcon icon={project.icon} color={project.color} size="sm" />
-              {project.title}
-            </Link>
-          ) : (
-            'Inbox'
-          )}
-        </div>
-        <SaveState status={save.status} />
-        <Button variant="ghost" size="icon" aria-label="Close" onClick={() => openTask(undefined)}>
-          <X />
-        </Button>
-      </div>
+      <SheetBar status={save.status} onClose={() => openTask(undefined)}>
+        {isSubtask && parent ? (
+          <button className="hover:underline" onClick={() => openTask(parent.id)}>
+            ↑ {parent.title}
+          </button>
+        ) : project ? (
+          <Link
+            to="/projects/$projectId"
+            params={{ projectId: project.id }}
+            className="inline-flex items-center gap-1.5 hover:underline"
+          >
+            <EntityIcon icon={project.icon} color={project.color} size="sm" />
+            {project.title}
+          </Link>
+        ) : (
+          'Inbox'
+        )}
+      </SheetBar>
 
       <div className="grid gap-6 px-4 py-5 sm:px-6">
         <div className="flex items-start gap-3">
           <TaskCheck task={task} onToggle={() => void tasks.toggle(task)} className="mt-2" />
-          <div className="min-w-0 flex-1">
-            <SheetTitle className="sr-only">{task.title}</SheetTitle>
-            <SheetDescription className="sr-only">Task details</SheetDescription>
-            <Textarea
-              aria-label="Title"
-              value={title}
-              maxLength={200}
-              rows={1}
-              onChange={(e) => setTitle(e.target.value.replace(/\n/g, ' '))}
-              onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
-              className={cn(
-                'min-h-0 resize-none border-transparent px-1 py-1 text-lg font-semibold shadow-none focus-visible:border-input dark:bg-transparent',
-                task.completedAt && 'text-muted-foreground line-through',
-              )}
-            />
-            {!title.trim() && (
-              <p className="px-1 text-xs text-destructive">
-                A task needs a title; this isn’t saved.
-              </p>
-            )}
-          </div>
+          <SheetTitle className="sr-only">{task.title}</SheetTitle>
+          <SheetDescription className="sr-only">Task details</SheetDescription>
+          <TitleField value={title} onChange={setTitle} what="task" struck={!!task.completedAt} />
         </div>
 
         <div className="grid grid-cols-[7rem_1fr] items-center gap-x-3 gap-y-3 text-sm">
@@ -256,16 +235,19 @@ function TaskEditor({ task }: { task: TaskDetail }) {
           <Label htmlFor="task-description" className="text-muted-foreground">
             Description
           </Label>
-          <Textarea
+          <RichEditor
             id="task-description"
-            value={text}
-            rows={4}
-            placeholder="Notes, links, what done looks like…"
-            onChange={(e) => setText(e.target.value)}
+            aria-label="Description"
+            value={task.description}
+            onChange={setDescription}
+            selfId={task.id}
+            placeholder="Notes, what done looks like… Type @ to link a task, goal, project or area."
           />
         </div>
 
         {!isSubtask && <Subtasks task={task} today={today} />}
+
+        <Backlinks id={task.id} />
       </div>
 
       <div className="mt-auto flex flex-wrap items-center gap-2 border-t px-4 py-3 sm:px-6">
@@ -299,23 +281,6 @@ function TaskEditor({ task }: { task: TaskDetail }) {
         </Button>
       </div>
     </div>
-  );
-}
-
-function SaveState({ status }: { status: string }) {
-  const text =
-    status === 'saving' || status === 'pending'
-      ? 'Saving…'
-      : status === 'error'
-        ? 'Not saved'
-        : 'Saved';
-  return (
-    <span
-      className={cn('text-xs text-muted-foreground', status === 'error' && 'text-destructive')}
-      aria-live="polite"
-    >
-      {text}
-    </span>
   );
 }
 

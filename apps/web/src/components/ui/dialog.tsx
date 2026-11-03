@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { keepOpenForPicker } from '@/lib/picker';
 import { cn } from '@/lib/utils';
 import { XIcon } from 'lucide-react';
 import { Dialog as DialogPrimitive } from 'radix-ui';
@@ -41,6 +42,7 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
@@ -55,6 +57,10 @@ function DialogContent({
           className,
         )}
         {...props}
+        onEscapeKeyDown={(e) => {
+          keepOpenForPicker(e);
+          onEscapeKeyDown?.(e);
+        }}
       >
         {children}
         {showCloseButton && (

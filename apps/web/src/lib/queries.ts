@@ -93,13 +93,20 @@ export const snapshotsQuery = queryOptions({
   queryFn: async () => (await fetchSnapshots()).snapshots,
 });
 
-const fetchSearch = (q: string) => call(api.search.$get({ query: { q, limit: '12' } }));
+const fetchSearch = (q: string, limit: number) =>
+  call(api.search.$get({ query: { q, limit: String(limit) } }));
 export type SearchHit = Awaited<ReturnType<typeof fetchSearch>>['results'][number];
 
-export const searchQuery = (q: string) =>
+/** Search; an empty query lists recently changed things (the mention picker's first view). */
+export const searchQuery = (q: string, limit = 12) =>
   queryOptions({
-    queryKey: ['search', q],
-    queryFn: async () => (await fetchSearch(q)).results,
-    enabled: q.trim().length > 0,
+    queryKey: ['search', q, limit],
+    queryFn: async () => (await fetchSearch(q, limit)).results,
     staleTime: 10_000,
   });
+
+const fetchGoal = (id: string) => call(api.goals[':id'].$get({ param: { id } }));
+
+/** One goal (the goal sheet). */
+export const goalQuery = (id: string) =>
+  queryOptions({ queryKey: ['goal', id], queryFn: () => fetchGoal(id) });

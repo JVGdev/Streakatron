@@ -5,8 +5,6 @@ import { Command as Cmdk } from 'cmdk';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useRouterState } from '@tanstack/react-router';
 import {
-  CheckCircle2,
-  CircleDashed,
   FolderPlus,
   Inbox,
   Keyboard,
@@ -16,25 +14,17 @@ import {
   Settings,
   Shapes,
   Sun,
-  Target,
   type LucideIcon,
 } from 'lucide-react';
 import { useDeferredValue, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { useOpenTask } from '@/hooks/use-open-task';
+import { useOpenEntity, useOpenTask } from '@/hooks/use-open-task';
 import { isMac } from '@/hooks/use-hotkeys';
 import { useTaskActions } from '@/lib/actions';
-import {
-  areasQuery,
-  projectsQuery,
-  searchQuery,
-  type Area,
-  type Project,
-  type SearchHit,
-} from '@/lib/queries';
+import { projectsQuery, searchQuery, type Project, type SearchHit } from '@/lib/queries';
 import { newArea, newProject, setUi, useUi } from '@/lib/ui-store';
-import { EntityIcon } from './entity-icon';
+import { EntityIcon, RefIcon } from './entity-icon';
 
 export function CommandPalette() {
   const ui = useUi();
@@ -76,9 +66,9 @@ function Palette({ mode, close }: { mode: 'search' | 'capture'; close: () => voi
   const searched = useDeferredValue(query);
   const navigate = useNavigate();
   const openTask = useOpenTask();
+  const openEntity = useOpenEntity();
   const tasks = useTaskActions();
   const { data: projects = [] } = useQuery(projectsQuery);
-  const { data: areas = [] } = useQuery(areasQuery);
   const { data: hits = [] } = useQuery({
     ...searchQuery(searched),
     enabled: mode === 'search' && searched.length > 0,
@@ -102,16 +92,7 @@ function Palette({ mode, close }: { mode: 'search' | 'capture'; close: () => voi
 
   function go(hit: SearchHit) {
     close();
-    if (hit.kind === 'task') openTask(hit.id);
-    else if (hit.kind === 'project') {
-      void navigate({ to: '/projects/$projectId', params: { projectId: hit.id } });
-    } else if (hit.kind === 'goal' && hit.projectId) {
-      void navigate({
-        to: '/projects/$projectId',
-        params: { projectId: hit.projectId },
-        search: { view: 'overview' },
-      });
-    } else if (hit.kind === 'area') void navigate({ to: '/projects', hash: hit.id });
+    openEntity(hit);
   }
 
   const run = (fn: () => void) => () => {
@@ -254,13 +235,16 @@ function Palette({ mode, close }: { mode: 'search' | 'capture'; close: () => voi
               <Item
                 key={h.id}
                 value={h.id}
-                icon={<HitIcon hit={h} projects={projects} areas={areas} />}
+                icon={<RefIcon entity={h} />}
                 onSelect={() => go(h)}
                 hint={h.context ?? undefined}
               >
                 <span className={h.closed ? 'text-muted-foreground line-through' : undefined}>
                   {h.title}
                 </span>
+                {h.snippet && (
+                  <span className="block truncate text-xs text-muted-foreground">{h.snippet}</span>
+                )}
               </Item>
             ))}
           </Group>
@@ -336,13 +320,4 @@ function Item({
       {hint && <span className="max-w-40 truncate text-xs text-muted-foreground">{hint}</span>}
     </Cmdk.Item>
   );
-}
-
-function HitIcon({ hit, projects, areas }: { hit: SearchHit; projects: Project[]; areas: Area[] }) {
-  if (hit.kind === 'project' || hit.kind === 'area') {
-    const e = (hit.kind === 'project' ? projects : areas).find((x) => x.id === hit.id);
-    if (e) return <EntityIcon icon={e.icon} color={e.color} size="sm" />;
-  }
-  if (hit.kind === 'goal') return <Target />;
-  return hit.closed ? <CheckCircle2 /> : <CircleDashed />;
 }

@@ -10,6 +10,8 @@ import { NAV } from '@/components/nav';
 import { ProjectStatusProvider } from '@/components/project-status';
 import { GlobalShortcuts } from '@/components/shortcuts';
 import { StructureDialogs } from '@/components/structure-dialogs';
+import { AreaSheet } from '@/components/area-sheet';
+import { GoalSheet } from '@/components/goal-sheet';
 import { TaskSheet } from '@/components/task-sheet';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,11 +38,12 @@ import { cn } from '@/lib/utils';
 
 export function AppShell({
   me,
-  taskId,
+  sheets,
   children,
 }: {
   me: Me;
-  taskId: string | undefined;
+  /** Which detail sheet is open (search params). */
+  sheets: { task?: string; goal?: string; area?: string };
   children: ReactNode;
 }) {
   const { data: inbox } = useQuery(tasksQuery({ project: 'inbox', status: 'open' }));
@@ -136,7 +139,9 @@ export function AppShell({
         </nav>
       </div>
 
-      <TaskSheet taskId={taskId} />
+      <TaskSheet taskId={sheets.task} />
+      <GoalSheet goalId={sheets.goal} />
+      <AreaSheet areaId={sheets.area} />
       <CommandPalette />
       <StructureDialogs />
       <GlobalShortcuts />

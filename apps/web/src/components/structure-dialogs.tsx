@@ -1,7 +1,7 @@
 // The area and project dialogs (new and edit), mounted once in the shell and opened through
 // ui-store, so the palette, sidebar and pages all open the same ones.
 
-import { docFromText } from '@streaktron/shared/rich';
+import type { RichDoc } from '@streaktron/shared/rich';
 import type { ColorKey, IconKey } from '@streaktron/shared/structure';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { RichEditor } from '@/components/rich-editor';
 import { useStructureActions } from '@/lib/actions';
 import { areasQuery, meQuery, projectsQuery, type Area, type Project } from '@/lib/queries';
 import { setUi, useUi } from '@/lib/ui-store';
@@ -174,7 +174,8 @@ function ProjectForm({
   const [status, setStatus] = useState<'active' | 'parked'>(full ? 'parked' : 'active');
   const [startDate, setStartDate] = useState(project?.startDate ?? '');
   const [dueDate, setDueDate] = useState(project?.dueDate ?? '');
-  const [description, setDescription] = useState(project?.descriptionText ?? '');
+  // New projects only; an existing one's description is edited on its page.
+  const [description, setDescription] = useState<RichDoc | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function submit(e: FormEvent) {
@@ -188,7 +189,6 @@ function ProjectForm({
       icon,
       startDate: startDate || null,
       dueDate: dueDate || null,
-      description: docFromText(description),
     };
     if (project) {
       const ok = await actions.updateProject(project.id, fields);
@@ -196,7 +196,7 @@ function ProjectForm({
       if (ok) onDone();
       return;
     }
-    const created = await actions.createProject({ ...fields, status });
+    const created = await actions.createProject({ ...fields, description, status });
     setBusy(false);
     if (created) {
       onDone();
@@ -290,15 +290,17 @@ function ProjectForm({
         <Field label="Icon">
           <IconPicker value={icon} color={color} onChange={setIcon} />
         </Field>
-        <Field label="Description" htmlFor="project-description">
-          <Textarea
-            id="project-description"
-            rows={3}
-            placeholder="What is this project for? What does done look like?"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </Field>
+        {!project && (
+          <Field label="Description" htmlFor="project-description">
+            <RichEditor
+              id="project-description"
+              value={null}
+              onChange={setDescription}
+              className="min-h-20"
+              placeholder="What is this project for? What does done look like?"
+            />
+          </Field>
+        )}
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={onDone}>
             Cancel
