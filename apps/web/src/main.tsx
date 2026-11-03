@@ -4,6 +4,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { toast } from 'sonner';
 import { ApiError, errorMessage } from './lib/api';
+import { setErrorHandler } from './lib/report';
 import { anyBusy, flushAll } from './lib/saver';
 import { followSystemTheme } from './lib/theme';
 import { routeTree } from './routeTree.gen';
@@ -17,6 +18,7 @@ const showError = (err: unknown) => {
   }
   toast.error(errorMessage(err));
 };
+setErrorHandler(showError);
 
 const queryClient = new QueryClient({
   queryCache: new QueryCache({

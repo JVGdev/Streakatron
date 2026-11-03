@@ -2,16 +2,17 @@
 
 ## Status
 
-- **Current phase:** Phase 0 (Foundation) done → **Phase 1 (Structure & views) next**.
-- **Code:** monorepo with server, web and shared packages; 56 tests passing. **Repository:** https://github.com/JVGdev/streaktron (private, `main`).
+- **Current phase:** Phases 0 and 1 done → **Phase 2 (Linking system) next**.
+- **Code:** monorepo with server, web and shared packages; 121 tests passing. **Repository:** https://github.com/JVGdev/streaktron (private, `main`).
 - **Running over Tailscale:** the Docker app is served at `https://hills.tail99ef4d.ts.net:8443` (port 8443, because the root of that address serves Quire on :8788; never replace it). Verified from the laptop over HTTPS (page, sign-in with a Secure cookie, `/me`); not yet opened from the phone.
 - **Open questions:** deferred by the user (plan.md §13). Pending confirmation: the loot-box timing for make quests (decisions.md D16).
 
 ## Next steps
 
-1. The user opens `https://hills.tail99ef4d.ts.net:8443` on the phone; that closes Phase 0's acceptance.
-2. Phase 1 (plan.md §9): areas, projects with the active-project limit, goals, tasks, Kanban, list view, next action, command palette, snapshots.
-3. Then Phases 2–3 to reach the MVP and start dogfooding.
+1. The user tries Phase 1 on real data (a semester + side projects), on the laptop and the phone, against its acceptance: model areas → projects → goals → tasks, move cards across a board, capture to the inbox in under 5 seconds.
+2. The user confirms or changes D19 (deleting) and D20 (board and next-action rules), both Claude's choices.
+3. Phase 2 (plan.md §9): TipTap editor, mentions, Postgres full-text search (replacing Phase 1's title search), backlinks.
+4. Then Phase 3 to reach the MVP and start dogfooding.
 
 ---
 
@@ -40,3 +41,14 @@
 - **Decision:** D18 (backups once per day, checked hourly).
 - The Chrome extension wasn't connected, so the UI was checked through the build, typecheck and HTTP flows (sign-in, `/me`, sign-out through the Vite proxy), not visually.
 - **Tailscale (same day):** stopped `pnpm dev`, started the Docker app (`docker compose up -d --build`), and ran `tailscale serve --bg --https=8443 http://127.0.0.1:3001`. Quire keeps the root (`/` → :8788). `.env` `APP_ORIGINS` now includes the :8443 origin.
+
+### 2026-11-03 — Phase 1 (Structure & views)
+- **Shared:** `structure/` (statuses, column categories, effort, color and icon keys, default columns, project transitions, and pure rules: `placeAt`, `checkedOrder`, `boardProblem`, `firstColumnOf`/`firstOpenColumn`, `pickNextAction`). `rich/` (TipTap JSON ↔ plain text). Zod schemas for every structure request.
+- **Database:** migration `0002_structure`: `areas`, `projects`, `board_columns`, `goals`, `tasks`, `snapshots`. FKs with explicit `ON DELETE`; CHECK constraints on statuses, categories, effort and the commitment-goal shape. Rich fields are stored as TipTap JSON plus `description_text` from the start; until Phase 2's editor, the web app edits plain text and sends `docFromText(...)`.
+- **API:** `/api/areas` (CRUD, reorder, delete keeping or deleting projects), `/api/projects` (list with counts and next action, page with columns and goals, PATCH, `/status` with the limit and `park`, delete, columns create/reorder), `/api/columns/:id`, `/api/goals` (CRUD, restore), `/api/tasks` (list by project/inbox/status/parent, CRUD, complete, reopen, move, restore), `/api/search` (titles, accent-insensitive, prefix first; Phase 2 replaces it with FTS), `/api/snapshots` (list, restore), `PATCH /api/settings` (active limit). Every lookup is scoped by user; another account's ids answer 404. A `purge` job removes deleted things after 30 days.
+- **Web:** a sidebar tree of areas → active/parked projects; a Projects overview (areas reordered by drag, project cards with next action and progress); a project page with Board, List, and Goals & details tabs. The board uses dnd-kit: mouse, touch (short press) and keyboard (Space). Moves are optimistic and the next action is pinned on the card. The list view filters by project, status and date, sorts, and groups; its options live in the URL. The Inbox has quick add. A task sheet opens from anywhere via `?task=`: title and description autosave, plus project, column, goal, effort, due and scheduled dates, subtasks, pinning as next action, and delete with Undo. The command palette (Ctrl/⌘ K) captures to the inbox or an active project, searches, runs commands and navigates. Shortcuts: C capture, G+T/I/P/L/S navigation, J/K/X/Enter in lists, ? help. The active-limit dialog says "Park one to continue". Settings has the active limit and deleted projects and areas. Phones get a floating capture button, and Tasks replaces Stats in the bottom bar.
+- **One merge rule:** `lib/task-cache.ts` puts every task a write returns, or one predicted optimistically, into each cached task list whose filter it matches, and takes it out of the others; derived data is refetched after.
+- **Tests (121):** shared structure and rich-text rules; 30 API tests (access and scoping, active limit and park-swap, lifecycle, next action and pins, board done semantics, drag order, subtasks, triage, goals, columns, delete/restore of tasks, projects and areas, search, purge); web merge rule, list filters/sorts/groups, day formatting.
+- **Checked in a real browser:** a headless Chromium smoke run (Playwright from the scratchpad, not added to the project) against `pnpm dev` with the seed account. Signed in, created an area and a project, added cards, dragged one to Doing (it became the next action), completed one, autosaved a description and checked it survived a reload, added a subtask, captured with C, searched with Ctrl K, hit the active-limit dialog and parked one, used the list view, deleted a project and restored it from Settings, and loaded the phone layout. No console errors except the expected 409. That run found one bug, now fixed: Enter right after typing in the palette did nothing, because the capture item waited on a deferred value.
+- **Decisions:** D19 (deleting) and D20 (board and next-action rules), both Claude's choices.
+- **Not yet:** write responses carry no `game` block (nothing to report before Phase 3). Projects can't be reordered within an area (areas can). Done tasks aren't paginated.

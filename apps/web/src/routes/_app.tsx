@@ -1,10 +1,12 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router';
+import { z } from 'zod';
 import { AppShell } from '@/components/app-shell';
 import { ApiError } from '@/lib/api';
 import { meQuery } from '@/lib/queries';
 
-// Everything behind sign-in.
+// Everything behind sign-in. `?task=tsk_…` opens that task's sheet over any page.
 export const Route = createFileRoute('/_app')({
+  validateSearch: z.object({ task: z.string().optional() }),
   beforeLoad: async ({ context, location }) => {
     try {
       return { me: await context.queryClient.ensureQueryData(meQuery) };
@@ -20,8 +22,9 @@ export const Route = createFileRoute('/_app')({
 
 function AppLayout() {
   const { me } = Route.useRouteContext();
+  const { task } = Route.useSearch();
   return (
-    <AppShell me={me}>
+    <AppShell me={me} taskId={task}>
       <Outlet />
     </AppShell>
   );

@@ -2,6 +2,19 @@
 
 import { z } from 'zod';
 import { isId, type IdKind } from '../ids';
+import { MAX_RICH_BYTES, type RichDoc } from '../rich';
+import {
+  COLORS,
+  COLUMN_CATEGORIES,
+  EFFORTS,
+  GOAL_KINDS,
+  GOAL_PERIODS,
+  GOAL_STATUSES,
+  ICONS,
+  PROJECT_STATUSES,
+  type GoalKind,
+  type GoalPeriod,
+} from '../structure';
 import { isDateString, isValidTimeZone } from '../time';
 
 export const dateString = z.string().refine(isDateString, 'Expected a YYYY-MM-DD day');
@@ -72,3 +85,194 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   ],
   questSettings: { restingTypes: [], timeQuestMinMinutes: 15, timeQuestMaxMinutes: 180 },
 };
+
+// --- Structure: areas, projects, columns, goals, tasks --------------------------------------
+
+export const title = z
+  .string()
+  .trim()
+  .min(1, 'Give it a title')
+  .max(200, 'Keep it under 200 characters');
+
+const isNode = (v: unknown): v is { type: string } =>
+  typeof v === 'object' && v !== null && typeof (v as { type?: unknown }).type === 'string';
+
+/** A TipTap document (checked loosely: the editor owns its shape), or null for empty. */
+export const richDoc = z
+  .custom<RichDoc>(
+    (v) =>
+      isNode(v) &&
+      v.type === 'doc' &&
+      ((v as RichDoc).content === undefined ||
+        (Array.isArray((v as RichDoc).content) && (v as RichDoc).content!.every(isNode))),
+    'Expected a rich-text document',
+  )
+  .refine((d) => JSON.stringify(d).length <= MAX_RICH_BYTES, 'That text is too long');
+
+const description = richDoc.nullable();
+const color = z.enum(COLORS);
+const icon = z.enum(ICONS);
+const optionalDay = dateString.nullable();
+
+export const reorderSchema = z.object({ ids: z.array(z.string()).max(1000) });
+export type ReorderInput = z.infer<typeof reorderSchema>;
+
+export const areaCreateSchema = z.object({
+  title,
+  description: description.optional(),
+  color: color.optional(),
+  icon: icon.optional(),
+});
+export type AreaCreate = z.infer<typeof areaCreateSchema>;
+
+export const areaPatchSchema = z
+  .object({ title, description, color, icon, archived: z.boolean() })
+  .partial();
+export type AreaPatch = z.infer<typeof areaPatchSchema>;
+
+export const areaDeleteQuerySchema = z.object({
+  /** What happens to the area's projects: moved out of it (kept), or deleted with it. */
+  projects: z.enum(['keep', 'delete']).default('keep'),
+});
+
+export const projectCreateSchema = z.object({
+  title,
+  areaId: idOf('area').nullable().optional(),
+  /** New projects start active, or parked; activating still respects the active limit. */
+  status: z.enum(['active', 'parked']).default('active'),
+  description: description.optional(),
+  color: color.optional(),
+  icon: icon.optional(),
+  startDate: optionalDay.optional(),
+  dueDate: optionalDay.optional(),
+});
+export type ProjectCreate = z.input<typeof projectCreateSchema>;
+
+export const projectPatchSchema = z
+  .object({
+    title,
+    areaId: idOf('area').nullable(),
+    description,
+    color,
+    icon,
+    startDate: optionalDay,
+    dueDate: optionalDay,
+    /** Pin a task as the next action, or null to go back to the automatic one. */
+    nextActionTaskId: idOf('task').nullable(),
+  })
+  .partial();
+export type ProjectPatch = z.infer<typeof projectPatchSchema>;
+
+export const projectStatusSchema = z.object({
+  status: z.enum(PROJECT_STATUSES),
+  /** Park this active project in the same step, to make room under the limit. */
+  park: idOf('project').optional(),
+});
+export type ProjectStatusInput = z.infer<typeof projectStatusSchema>;
+
+export const columnCreateSchema = z.object({
+  title: title.max(60),
+  category: z.enum(COLUMN_CATEGORIES),
+});
+export type ColumnCreate = z.infer<typeof columnCreateSchema>;
+
+export const columnPatchSchema = columnCreateSchema.partial();
+export type ColumnPatch = z.infer<typeof columnPatchSchema>;
+
+export const columnDeleteQuerySchema = z.object({
+  /** Where the column's tasks go; by default the leftmost other column of the same category. */
+  moveTo: idOf('boardColumn').optional(),
+});
+
+const goalFields = {
+  title,
+  description,
+  kind: z.enum(GOAL_KINDS),
+  /** Commitment goals: minutes of focus per period. */
+  targetMinutes: z.int().min(5).max(10_000).nullable(),
+  period: z.enum(GOAL_PERIODS).nullable(),
+  /** Outcome goals: an optional deadline. */
+  dueDate: optionalDay,
+};
+
+/** A commitment goal needs a target and a period; an outcome goal has neither. */
+export const goalShapeProblem = (g: {
+  kind: GoalKind;
+  targetMinutes: number | null;
+  period: GoalPeriod | null;
+}) =>
+  g.kind === 'commitment' && (g.targetMinutes == null || g.period == null)
+    ? 'A commitment goal needs a target and a period'
+    : null;
+
+export const goalCreateSchema = z
+  .object({
+    projectId: idOf('project'),
+    ...goalFields,
+    description: description.optional(),
+    targetMinutes: goalFields.targetMinutes.optional().default(null),
+    period: goalFields.period.optional().default(null),
+    dueDate: optionalDay.optional(),
+  })
+  .superRefine((g, ctx) => {
+    const problem = goalShapeProblem(g);
+    if (problem) ctx.addIssue({ code: 'custom', path: ['targetMinutes'], message: problem });
+  });
+export type GoalCreate = z.input<typeof goalCreateSchema>;
+
+export const goalPatchSchema = z.object({ ...goalFields, status: z.enum(GOAL_STATUSES) }).partial();
+export type GoalPatch = z.infer<typeof goalPatchSchema>;
+
+const taskFields = {
+  title,
+  description,
+  effort: z.enum(EFFORTS).nullable(),
+  dueDate: optionalDay,
+  scheduledDate: optionalDay,
+  /** null: the inbox. */
+  projectId: idOf('project').nullable(),
+  goalId: idOf('goal').nullable(),
+};
+
+export const taskCreateSchema = z.object({
+  ...taskFields,
+  description: description.optional(),
+  effort: taskFields.effort.optional(),
+  dueDate: optionalDay.optional(),
+  scheduledDate: optionalDay.optional(),
+  projectId: taskFields.projectId.optional(),
+  goalId: taskFields.goalId.optional(),
+  /** A subtask (one level): it joins its parent's project. */
+  parentTaskId: idOf('task').optional(),
+  /** Board column; by default the project's leftmost open column. */
+  columnId: idOf('boardColumn').optional(),
+  /** Where in its column or list it goes. */
+  position: z.enum(['top', 'bottom']).default('bottom'),
+});
+export type TaskCreate = z.input<typeof taskCreateSchema>;
+
+export const taskPatchSchema = z.object(taskFields).partial();
+export type TaskPatch = z.infer<typeof taskPatchSchema>;
+
+export const taskMoveSchema = z.object({
+  columnId: idOf('boardColumn'),
+  index: z.int().min(0),
+});
+export type TaskMove = z.infer<typeof taskMoveSchema>;
+
+export const taskListQuerySchema = z.object({
+  /** A project id, `inbox`, or every task when left out. */
+  project: z.union([idOf('project'), z.literal('inbox')]).optional(),
+  status: z.enum(['open', 'done', 'any']).default('any'),
+  /** Subtasks of this task. Without it, lists hold top-level tasks only. */
+  parent: idOf('task').optional(),
+});
+export type TaskListQuery = z.input<typeof taskListQuerySchema>;
+
+export const searchQuerySchema = z.object({
+  q: z.string().trim().max(200).default(''),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+export const settingsPatchSchema = userSettingsSchema.pick({ activeProjectLimit: true }).partial();
+export type SettingsPatch = z.infer<typeof settingsPatchSchema>;

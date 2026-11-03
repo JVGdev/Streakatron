@@ -9,9 +9,15 @@ import { env } from './env';
 import { DEFAULT_STATIC_DIR } from './paths';
 import { errorBody, onError } from './http/errors';
 import { adminRoutes } from './routes/admin';
+import { areaRoutes } from './routes/areas';
+import { columnRoutes } from './routes/columns';
+import { goalRoutes } from './routes/goals';
 import { healthRoutes } from './routes/health';
 import { meRoutes } from './routes/me';
+import { searchRoutes, settingsRoutes, snapshotRoutes } from './routes/misc';
+import { projectRoutes } from './routes/projects';
 import { setupRoutes } from './routes/setup';
+import { taskRoutes } from './routes/tasks';
 
 const api = new Hono()
   // Accounts are made through /api/setup only, while sign-up is closed (D1).
@@ -20,7 +26,15 @@ const api = new Hono()
   .route('/', healthRoutes)
   .route('/', setupRoutes)
   .route('/', meRoutes)
-  .route('/', adminRoutes);
+  .route('/', adminRoutes)
+  .route('/areas', areaRoutes)
+  .route('/projects', projectRoutes)
+  .route('/columns', columnRoutes)
+  .route('/goals', goalRoutes)
+  .route('/tasks', taskRoutes)
+  .route('/search', searchRoutes)
+  .route('/snapshots', snapshotRoutes)
+  .route('/settings', settingsRoutes);
 
 export const app = new Hono();
 

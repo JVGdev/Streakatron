@@ -1,1 +1,1 @@
-- The bedroom should have a "wardrobe" where all the prizes and medals earned by the user could show it off.
+- Quests should have a one-time-a-day rerrol for each.

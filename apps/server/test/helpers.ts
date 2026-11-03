@@ -45,3 +45,24 @@ export async function setUpOwner(): Promise<string> {
   if (res.status !== 200) throw new Error(`setup failed: ${res.status} ${await res.text()}`);
   return cookiesFrom(res);
 }
+
+type Json = Record<string, unknown> | unknown[];
+// Test bodies are read loosely; the assertions check their shape.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Loose = any;
+
+/** A signed-in client: `await as.post('/api/tasks', {...})` → `{ status, body }`. */
+export function client(cookie: string) {
+  const send = async <T = Loose>(method: string, path: string, body?: unknown) => {
+    const res = await request(path, { method, body, cookie });
+    const text = await res.text();
+    return { status: res.status, body: (text ? JSON.parse(text) : undefined) as T };
+  };
+  return {
+    get: <T = Loose>(path: string) => send<T>('GET', path),
+    post: <T = Loose>(path: string, body: Json = {}) => send<T>('POST', path, body),
+    patch: <T = Loose>(path: string, body: Json) => send<T>('PATCH', path, body),
+    del: <T = Loose>(path: string) => send<T>('DELETE', path),
+  };
+}
+export type Client = ReturnType<typeof client>;

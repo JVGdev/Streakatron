@@ -2,7 +2,7 @@
 
 > A web app that builds consistency for studies and personal projects with light gamification (quests, streaks, XP) and a cosmetic reward layer (loot boxes, collectibles, a bedroom) on top of real project management (areas, projects, goals, tasks, Kanban, calendar). Built for one user first, designed to become a product.
 
-**Status:** Phase 0 (Foundation) done, 2026-11-03 · open questions deferred (§13) · Next up: Phase 1 (Structure & views)
+**Status:** Phases 0 (Foundation) and 1 (Structure & views) done, 2026-11-03 · open questions deferred (§13) · Next up: Phase 2 (Linking system)
 **Last updated:** 2026-11-03
 
 **How to use this file across sessions:** It is the source of truth for *what to build and how*. Project memory lives in `.claude/` (`CLAUDE.md` is loaded automatically): the vision, the **decisions log** (`.claude/context/decisions.md`, referenced here as D1…) and progress. When a task is done, tick its checkbox, update the status line above and add to `.claude/context/progress.md`. When a decision changes, record it in the decisions log rather than silently diverging. New ideas go to the backlog (§12), not into the current phase.
@@ -62,6 +62,8 @@ The full decisions log, with rationale, alternatives and status, lives in **`.cl
 | D16 | Make quests with follow-up quests and a soft cap |
 | D17 | Server-authoritative rewards and days |
 | D18 | Daily backups checked hourly, named by the owner's day |
+| D19 | Deleting: tasks/goals soft-deleted with Undo; projects/areas into a snapshot; 30 days to restore |
+| D20 | Board rules: "done" follows the column category; next action prefers in-progress tasks |
 
 Rejected ideas are listed at the end of the decisions log so they aren't proposed again.
 
@@ -336,7 +338,7 @@ Svelte 5 would be a perfectly good web framework; the deciding factors are Postg
 - **One way to save.** A single autosave helper on the client (value-driven, one request in flight, flushed on page hide) and a single merge rule for optimistic updates (Quire's DES-3/4/6).
 - **Optimistic UI** for Kanban moves, checkboxes, and check-ins via TanStack Query.
 - **Backups (D18).** One `pg_dump` per day to `data/backups/`, keeping the last 14 (named by the owner's local day). The job checks hourly and at startup, so a machine that was off at night still gets one. Optional copy to a folder or Google Drive later. Retries on failure.
-- **Snapshots before delete.** Deleting a project or area first writes a JSON export of it, restorable for 30 days.
+- **Deleting (D19).** Tasks and goals are soft-deleted (`deleted_at`, Undo in the toast). Projects and areas are written to a JSON snapshot and then deleted, restorable from Settings. Both last 30 days, then an hourly purge job removes them.
 - **Multi-tenant from day one (D1).** Better Auth users; every table has `user_id`; every query is scoped. Sign-up is closed (invite-only / first user) until the product is opened.
 - **Offline is out of scope** for now. If it's ever added, start from Quire's final design (a route table of every write, client-made ids so creates are idempotent, one merge rule), not from scratch (Quire's OFF-1…13).
 
@@ -384,8 +386,8 @@ Postgres. All tables include `id` (prefixed ULID, `text`), `user_id` (FK to the 
 |---|---|
 | Better Auth tables | `user`, `session`, `account`, `verification` (managed by Better Auth) |
 | `user_settings` | `user_id` (PK), `timezone`, `timezone_changed_at`, `day_start_hour`, `week_start`, `active_project_limit`, `weekly_active_day_target`, `focus_presets`, `quest_settings` (resting types, time-quest min/max) |
-| `areas` | `title`, `description` (rich), `color`, `icon`, `sort_order`, `archived_at`, `deleted_at` |
-| `projects` | `area_id?`, `title`, `description` (rich), `status` (active/parked/completed/archived), `next_action_task_id?`, `color`, `icon`, `start_date?`, `due_date?`, `deleted_at` |
+| `areas` | `title`, `description` (rich), `color`, `icon`, `sort_order`, `archived_at` (deleted into a snapshot, D19) |
+| `projects` | `area_id?`, `title`, `description` (rich), `status` (active/parked/completed/archived), `status_changed_at`, `next_action_task_id?`, `color`, `icon`, `start_date?`, `due_date?`, `sort_order` (deleted into a snapshot, D19) |
 | `board_columns` | `project_id`, `title`, `category` (todo/in_progress/done), `sort_order` |
 | `goals` | `project_id`, `title`, `description` (rich), `kind` (outcome/commitment), `target_minutes?`, `period?` (week/month), `due_date?`, `status` (open/achieved/dropped), `deleted_at` |
 | `tasks` | `project_id?` (null = inbox), `goal_id?`, `parent_task_id?`, `column_id?`, `title`, `description` (rich), `effort` (S/M/L, nullable = not set), `due_date?`, `scheduled_date?`, `sort_order`, `completed_at?`, `deleted_at` |
@@ -403,7 +405,7 @@ Postgres. All tables include `id` (prefixed ULID, `text`), `user_id` (FK to the 
 | `showcase` | `achievement_id`, `slot` — which medals/prizes are displayed on the wardrobe |
 | `links` | `source_id`, `source_field`, `target_id` — index on `target_id` for backlinks |
 | `countdown_pins` | `target_id` (event / task / goal / project with a date) — or reuse `is_countdown` where the entity has it |
-| `snapshots` | `entity_id`, `reason`, `data` (jsonb), `expires_at` |
+| `snapshots` | `kind` (project/area), `entity_id`, `title`, `data` (jsonb: the rows that went with it), `expires_at` |
 | *(social phase)* `friendships` | `user_a`, `user_b`, `status` (pending/accepted/blocked), `created_at` |
 | *(social phase)* `friend_invites` | `code`, `created_by`, `expires_at`, `used_by?` |
 
@@ -458,16 +460,16 @@ Each phase ends with a usable app. **Phase 3 completion = MVP = start using it d
 **Acceptance:** `pnpm dev` opens an app shell at localhost after signing in; the same app is reachable over HTTPS from the phone on the tailnet; DB migrates automatically; tests pass.
 
 ### Phase 1 — Structure & views
-- [ ] Areas CRUD (sidebar tree, colors/icons, reorder)
-- [ ] Projects CRUD with status lifecycle and **hard active-project limit** dialog
-- [ ] Goals CRUD on project page (outcome + commitment kinds; commitment progress placeholder)
-- [ ] Tasks CRUD: effort, due/scheduled dates, subtasks, inbox
-- [ ] Kanban board per project: custom columns with categories, drag & drop (dnd-kit), optimistic updates
-- [ ] List view with filters (project, status, due) and sorting
-- [ ] Next action: pin or auto-derive
-- [ ] Command palette (Ctrl+K): quick-capture task, jump to entity
-- [ ] Keyboard shortcuts for common actions (new task, complete, open palette)
-- [ ] Snapshots before deleting a project or area; restore from settings
+- [x] Areas CRUD (sidebar tree, colors/icons, reorder)
+- [x] Projects CRUD with status lifecycle and **hard active-project limit** dialog
+- [x] Goals CRUD on project page (outcome + commitment kinds; commitment progress placeholder)
+- [x] Tasks CRUD: effort, due/scheduled dates, subtasks, inbox
+- [x] Kanban board per project: custom columns with categories, drag & drop (dnd-kit), optimistic updates
+- [x] List view with filters (project, status, due) and sorting
+- [x] Next action: pin or auto-derive
+- [x] Command palette (Ctrl+K): quick-capture task, jump to entity
+- [x] Keyboard shortcuts for common actions (new task, complete, open palette)
+- [x] Snapshots before deleting a project or area; restore from settings
 
 **Acceptance:** You can model a real semester + side projects: areas → projects → goals → tasks, move tasks across a board, capture tasks to the inbox in < 5 seconds.
 
