@@ -2,7 +2,7 @@
 
 > A web app that builds consistency for studies and personal projects with light gamification (quests, streaks, XP) and a cosmetic reward layer (loot boxes, collectibles, a bedroom) on top of real project management (areas, projects, goals, tasks, Kanban, calendar). Built for one user first, designed to become a product.
 
-**Status:** Planning · stack chosen for product direction (D14, §6) · open questions deferred (§13) · Next up: Phase 0 (Foundation)
+**Status:** Phase 0 (Foundation) done, 2026-11-03 · open questions deferred (§13) · Next up: Phase 1 (Structure & views)
 **Last updated:** 2026-11-03
 
 **How to use this file across sessions:** It is the source of truth for *what to build and how*. Project memory lives in `.claude/` (`CLAUDE.md` is loaded automatically): the vision, the **decisions log** (`.claude/context/decisions.md`, referenced here as D1…) and progress. When a task is done, tick its checkbox, update the status line above and add to `.claude/context/progress.md`. When a decision changes, record it in the decisions log rather than silently diverging. New ideas go to the backlog (§12), not into the current phase.
@@ -61,6 +61,7 @@ The full decisions log, with rationale, alternatives and status, lives in **`.cl
 | D15 | XP is never taken away; each source earns once |
 | D16 | Make quests with follow-up quests and a soft cap |
 | D17 | Server-authoritative rewards and days |
+| D18 | Daily backups checked hourly, named by the owner's day |
 
 Rejected ideas are listed at the end of the decisions log so they aren't proposed again.
 
@@ -334,7 +335,7 @@ Svelte 5 would be a perfectly good web framework; the deciding factors are Postg
 - **Rich text storage.** TipTap JSON in `jsonb`, plus a derived plain-text column for FTS. Mentions extracted to `links` on every save (delete-and-reinsert per source field).
 - **One way to save.** A single autosave helper on the client (value-driven, one request in flight, flushed on page hide) and a single merge rule for optimistic updates (Quire's DES-3/4/6).
 - **Optimistic UI** for Kanban moves, checkboxes, and check-ins via TanStack Query.
-- **Backups.** Nightly `pg_dump` job to `data/backups/`, keeping the last 14 (named by the user's local day); optional copy to a folder or Google Drive later. Retries on failure.
+- **Backups (D18).** One `pg_dump` per day to `data/backups/`, keeping the last 14 (named by the owner's local day). The job checks hourly and at startup, so a machine that was off at night still gets one. Optional copy to a folder or Google Drive later. Retries on failure.
 - **Snapshots before delete.** Deleting a project or area first writes a JSON export of it, restorable for 30 days.
 - **Multi-tenant from day one (D1).** Better Auth users; every table has `user_id`; every query is scoped. Sign-up is closed (invite-only / first user) until the product is opened.
 - **Offline is out of scope** for now. If it's ever added, start from Quire's final design (a route table of every write, client-made ids so creates are idempotent, one merge rule), not from scratch (Quire's OFF-1…13).
@@ -443,16 +444,16 @@ JSON over Hono with Zod validation; typed client via Hono RPC. Write responses i
 Each phase ends with a usable app. **Phase 3 completion = MVP = start using it daily.**
 
 ### Phase 0 — Foundation
-- [ ] Initialize git repo, pnpm workspace, TypeScript configs, ESLint/Prettier
-- [ ] `docker-compose.yml` with Postgres (+ `unaccent`, `pg_trgm`); app service for running over Tailscale
-- [ ] `apps/server`: Hono app, health route, Drizzle schema + migrations, seed
-- [ ] Better Auth: sign-in, sessions; sign-up closed after the first user
-- [ ] pg-boss wired with a sample cron job; nightly `pg_dump` backup job (keep 14)
-- [ ] `apps/web`: Vite + React + Tailwind + shadcn/ui + TanStack Router/Query, sign-in page, app shell (sidebar: Today, Inbox, Areas/Projects, Calendar, Stats; top bar)
-- [ ] `packages/shared`: Zod schemas, prefixed-ULID helper, time helpers (day boundary, week start, `YYYY-MM-DD` arithmetic) with tests
-- [ ] Client autosave helper + API wrapper that surfaces errors clearly (one pattern from the start)
-- [ ] `pnpm dev` runs everything; Vitest wired in all packages, with API tests against the Docker Postgres
-- [ ] Document `tailscale serve` setup in the README
+- [x] Initialize git repo, pnpm workspace, TypeScript configs, ESLint/Prettier
+- [x] `docker-compose.yml` with Postgres (+ `unaccent`, `pg_trgm`); app service for running over Tailscale
+- [x] `apps/server`: Hono app, health route, Drizzle schema + migrations, seed
+- [x] Better Auth: sign-in, sessions; sign-up closed after the first user
+- [x] pg-boss wired with a sample cron job; nightly `pg_dump` backup job (keep 14)
+- [x] `apps/web`: Vite + React + Tailwind + shadcn/ui + TanStack Router/Query, sign-in page, app shell (sidebar: Today, Inbox, Areas/Projects, Calendar, Stats; top bar)
+- [x] `packages/shared`: Zod schemas, prefixed-ULID helper, time helpers (day boundary, week start, `YYYY-MM-DD` arithmetic) with tests
+- [x] Client autosave helper + API wrapper that surfaces errors clearly (one pattern from the start)
+- [x] `pnpm dev` runs everything; Vitest wired in all packages, with API tests against the Docker Postgres
+- [x] Document `tailscale serve` setup in the README
 
 **Acceptance:** `pnpm dev` opens an app shell at localhost after signing in; the same app is reachable over HTTPS from the phone on the tailnet; DB migrates automatically; tests pass.
 
