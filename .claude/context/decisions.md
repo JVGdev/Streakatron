@@ -82,6 +82,11 @@ The canonical record of what was decided, why, and what was considered instead. 
 - **Decision:** Only the server computes XP, streaks, quest progress and loot. The user's day comes from their stored timezone and day-start hour, not the client clock; timezone changes are rate-limited.
 - **Why:** A consequence of D14 (product) and social features: friend streaks and collectibles must be cheat-resistant. Quire trusted the client's day, which is fine only for a personal app.
 
+### D18 · Daily backups, checked hourly — accepted (2026-11-03)
+- **Decision:** The backup job runs every hour and at startup. It writes one `pg_dump` per day (named by the owner's local day) if that day's file doesn't exist yet, and keeps the newest 14. `POST /api/admin/backup` forces one.
+- **Why:** The app runs on a laptop that is often off at night. A fixed nightly cron would skip those days; an hourly "make today's backup if missing" check still gives one backup per day of use.
+- **History:** plan.md first said "nightly `pg_dump` job". Claude changed it while implementing Phase 0.
+
 ---
 
 ## Rejected ideas (don't propose again)

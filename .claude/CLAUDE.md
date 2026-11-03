@@ -4,7 +4,8 @@ Streaktron is a web app that helps people stay consistent with studies and perso
 
 ## Current status
 
-- **Phase:** planning done; **next up is Phase 0 (Foundation)**. No code yet.
+- **Phase:** Phase 0 (Foundation) done 2026-11-03; **next up is Phase 1 (Structure & views)**.
+- **Run it:** `pnpm db:up && pnpm dev` (README has setup, scripts, Tailscale and backups).
 - **Repository:** https://github.com/JVGdev/streaktron (private), branch `main`.
 - Detailed status and session history: `.claude/context/progress.md`.
 
@@ -40,7 +41,7 @@ Read the relevant context file before working on an area; read `plan.md` section
 - New ideas go to `plan.md` §12 (backlog), not into the current phase.
 - **Quire** (`~/Documentos/quire`) is the user's earlier personal app (Svelte 5 + Fastify + node:sqlite). It is a **reference only**: reuse its framework-agnostic logic and lessons (plan.md §11), never integrate with it.
 
-## Code conventions (for when code starts)
+## Code conventions
 
 - IDs: type-prefixed ULIDs (`tsk_`, `prj_`, `gol_`, `are_`, `hab_`, `evt_`…).
 - References are FK columns with explicit `ON DELETE`; `jsonb` only for leaf data.
@@ -49,4 +50,7 @@ Read the relevant context file before working on an area; read `plan.md` section
 - Write responses carry a `game` block with the events they caused.
 - One client autosave helper and one optimistic-update merge rule.
 - Game evaluation errors never fail a committed write (log and retry).
+- Failed API responses are always `{ error: { code, message, details? } }` (throw `HttpError` on the server); the web app calls the API only through `call()` in `apps/web/src/lib/api.ts`.
+- Schema changes: edit `apps/server/src/db/schema`, then `pnpm db:generate`. Hand-written SQL goes in a `drizzle-kit generate --custom` migration, never into generated ones.
+- TypeScript stays on 6.0 until typescript-eslint supports TS 7 (it needs the old JS API).
 - Commit or push only when the user asks.
