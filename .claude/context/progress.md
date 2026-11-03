@@ -3,13 +3,13 @@
 ## Status
 
 - **Current phase:** Planning complete → **Phase 0 (Foundation) next**.
-- **Code:** none yet. **Git:** not initialized.
+- **Code:** none yet. **Repository:** https://github.com/JVGdev/streaktron (private, `main`).
 - **Open questions:** deferred by the user (plan.md §13). Pending confirmation: the loot-box timing for make quests (decisions.md D16).
 
 ## Next steps
 
 1. Phase 0 (plan.md §9):
-   - git init; pnpm monorepo
+   - pnpm monorepo (git repo already exists)
    - Docker Compose with Postgres; Hono + Drizzle
    - Better Auth (sign-up closed after the first user)
    - pg-boss and the nightly backup job
@@ -31,3 +31,4 @@
 - **Other decisions:** XP is never taken away (D15); make quests with follow-ups and a soft cap (D16); runs locally and over Tailscale (D2 revised).
 - **Merged `observations.txt` (round 2):** a wardrobe in the bedroom for medals and prizes (D12).
 - **Created `.claude/`** (CLAUDE.md, context/vision.md, decisions.md, progress.md) as the project's memory; the decisions log moved here from plan.md §2.
+- **Created the GitHub repository** `JVGdev/streaktron` (private) with the planning docs, `.claude/` memory, README and `.gitignore`.

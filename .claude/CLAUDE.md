@@ -4,7 +4,8 @@ Streaktron is a web app that helps people stay consistent with studies and perso
 
 ## Current status
 
-- **Phase:** planning done; **next up is Phase 0 (Foundation)**. No code yet; git not initialized.
+- **Phase:** planning done; **next up is Phase 0 (Foundation)**. No code yet.
+- **Repository:** https://github.com/JVGdev/streaktron (private), branch `main`.
 - Detailed status and session history: `.claude/context/progress.md`.
 
 ## Where things live
