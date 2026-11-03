@@ -4,8 +4,9 @@
 import { PgBoss } from 'pg-boss';
 import { env } from '../env';
 import { runBackup } from './backup';
+import { runPurge } from './purge';
 
-export const QUEUES = { backup: 'backup' } as const;
+export const QUEUES = { backup: 'backup', purge: 'purge' } as const;
 
 export async function startJobs(): Promise<PgBoss> {
   const boss = new PgBoss({ connectionString: env.DATABASE_URL, schema: 'pgboss' });
@@ -29,6 +30,17 @@ export async function startJobs(): Promise<PgBoss> {
   await boss.schedule(QUEUES.backup, '17 * * * *');
   // And once at startup, for a machine that was off when the last one was due.
   await boss.send(QUEUES.backup);
+
+  await boss.createQueue(QUEUES.purge, { policy: 'exclusive', retryLimit: 3, retryDelay: 300 });
+  await boss.work(QUEUES.purge, async () => {
+    const gone = await runPurge();
+    if (gone.tasks || gone.goals || gone.snapshots) {
+      console.log(
+        `[jobs] purged ${gone.tasks} task(s), ${gone.goals} goal(s), ${gone.snapshots} snapshot(s) past 30 days`,
+      );
+    }
+  });
+  await boss.schedule(QUEUES.purge, '43 * * * *');
 
   return boss;
 }

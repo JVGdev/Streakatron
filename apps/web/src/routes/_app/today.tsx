@@ -47,7 +47,8 @@ function TodayPage() {
         />
       </div>
       <p className="text-xs text-muted-foreground">
-        These arrive with the MVP (Phase 3). Projects and tasks come first, in Phase 1.
+        These arrive with the MVP (Phase 3). Projects, tasks and the inbox are ready now; press C to
+        capture a task.
       </p>
     </div>
   );

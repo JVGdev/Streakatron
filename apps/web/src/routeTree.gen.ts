@@ -14,9 +14,12 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
 import { Route as AppInboxRouteImport } from './routes/_app/inbox'
-import { Route as AppProjectsRouteImport } from './routes/_app/projects'
+import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppStatsRouteImport } from './routes/_app/stats'
+import { Route as AppTasksRouteImport } from './routes/_app/tasks'
 import { Route as AppTodayRouteImport } from './routes/_app/today'
+import { Route as AppProjectsIndexRouteImport } from './routes/_app/projects.index'
+import { Route as AppProjectsProjectIdRouteImport } from './routes/_app/projects.$projectId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -42,9 +45,9 @@ const AppInboxRoute = AppInboxRouteImport.update({
   path: '/inbox',
   getParentRoute: () => AppRoute,
 } as any)
-const AppProjectsRoute = AppProjectsRouteImport.update({
-  id: '/projects',
-  path: '/projects',
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
 const AppStatsRoute = AppStatsRouteImport.update({
@@ -52,9 +55,24 @@ const AppStatsRoute = AppStatsRouteImport.update({
   path: '/stats',
   getParentRoute: () => AppRoute,
 } as any)
+const AppTasksRoute = AppTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppTodayRoute = AppTodayRouteImport.update({
   id: '/today',
   path: '/today',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProjectsIndexRoute = AppProjectsIndexRouteImport.update({
+  id: '/projects/',
+  path: '/projects/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProjectsProjectIdRoute = AppProjectsProjectIdRouteImport.update({
+  id: '/projects/$projectId',
+  path: '/projects/$projectId',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -63,18 +81,24 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/calendar': typeof AppCalendarRoute
   '/inbox': typeof AppInboxRoute
-  '/projects': typeof AppProjectsRoute
+  '/settings': typeof AppSettingsRoute
   '/stats': typeof AppStatsRoute
+  '/tasks': typeof AppTasksRoute
   '/today': typeof AppTodayRoute
+  '/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/projects/': typeof AppProjectsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
   '/calendar': typeof AppCalendarRoute
   '/inbox': typeof AppInboxRoute
-  '/projects': typeof AppProjectsRoute
+  '/settings': typeof AppSettingsRoute
   '/stats': typeof AppStatsRoute
+  '/tasks': typeof AppTasksRoute
   '/today': typeof AppTodayRoute
+  '/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/projects': typeof AppProjectsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -83,9 +107,12 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/_app/calendar': typeof AppCalendarRoute
   '/_app/inbox': typeof AppInboxRoute
-  '/_app/projects': typeof AppProjectsRoute
+  '/_app/settings': typeof AppSettingsRoute
   '/_app/stats': typeof AppStatsRoute
+  '/_app/tasks': typeof AppTasksRoute
   '/_app/today': typeof AppTodayRoute
+  '/_app/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/_app/projects/': typeof AppProjectsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -94,18 +121,24 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/calendar'
     | '/inbox'
-    | '/projects'
+    | '/settings'
     | '/stats'
+    | '/tasks'
     | '/today'
+    | '/projects/$projectId'
+    | '/projects/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/sign-in'
     | '/calendar'
     | '/inbox'
-    | '/projects'
+    | '/settings'
     | '/stats'
+    | '/tasks'
     | '/today'
+    | '/projects/$projectId'
+    | '/projects'
   id:
     | '__root__'
     | '/'
@@ -113,9 +146,12 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/_app/calendar'
     | '/_app/inbox'
-    | '/_app/projects'
+    | '/_app/settings'
     | '/_app/stats'
+    | '/_app/tasks'
     | '/_app/today'
+    | '/_app/projects/$projectId'
+    | '/_app/projects/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -161,11 +197,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInboxRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/projects': {
-      id: '/_app/projects'
-      path: '/projects'
-      fullPath: '/projects'
-      preLoaderRoute: typeof AppProjectsRouteImport
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/stats': {
@@ -175,11 +211,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppStatsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/tasks': {
+      id: '/_app/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof AppTasksRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/today': {
       id: '/_app/today'
       path: '/today'
       fullPath: '/today'
       preLoaderRoute: typeof AppTodayRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/projects/': {
+      id: '/_app/projects/'
+      path: '/projects'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof AppProjectsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/projects/$projectId': {
+      id: '/_app/projects/$projectId'
+      path: '/projects/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof AppProjectsProjectIdRouteImport
       parentRoute: typeof AppRoute
     }
   }
@@ -188,17 +245,23 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppCalendarRoute: typeof AppCalendarRoute
   AppInboxRoute: typeof AppInboxRoute
-  AppProjectsRoute: typeof AppProjectsRoute
+  AppSettingsRoute: typeof AppSettingsRoute
   AppStatsRoute: typeof AppStatsRoute
+  AppTasksRoute: typeof AppTasksRoute
   AppTodayRoute: typeof AppTodayRoute
+  AppProjectsProjectIdRoute: typeof AppProjectsProjectIdRoute
+  AppProjectsIndexRoute: typeof AppProjectsIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppCalendarRoute: AppCalendarRoute,
   AppInboxRoute: AppInboxRoute,
-  AppProjectsRoute: AppProjectsRoute,
+  AppSettingsRoute: AppSettingsRoute,
   AppStatsRoute: AppStatsRoute,
+  AppTasksRoute: AppTasksRoute,
   AppTodayRoute: AppTodayRoute,
+  AppProjectsProjectIdRoute: AppProjectsProjectIdRoute,
+  AppProjectsIndexRoute: AppProjectsIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

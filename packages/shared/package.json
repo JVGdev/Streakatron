@@ -6,7 +6,9 @@
     ".": "./src/index.ts",
     "./ids": "./src/ids.ts",
     "./time": "./src/time/index.ts",
-    "./schemas": "./src/schemas/index.ts"
+    "./schemas": "./src/schemas/index.ts",
+    "./structure": "./src/structure/index.ts",
+    "./rich": "./src/rich/index.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"

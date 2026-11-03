@@ -4,7 +4,7 @@ Streaktron is a web app that helps people stay consistent with studies and perso
 
 ## Current status
 
-- **Phase:** Phase 0 (Foundation) done 2026-11-03; **next up is Phase 1 (Structure & views)**.
+- **Phase:** Phases 0 (Foundation) and 1 (Structure & views) done 2026-11-03; **next up is Phase 2 (Linking system)**.
 - **Run it:** `pnpm db:up && pnpm dev` (README has setup, scripts, Tailscale and backups).
 - **Repository:** https://github.com/JVGdev/streaktron (private), branch `main`.
 - Detailed status and session history: `.claude/context/progress.md`.
@@ -48,9 +48,11 @@ Read the relevant context file before working on an area; read `plan.md` section
 - Day arithmetic only on `YYYY-MM-DD` values; the user's day comes from their stored timezone + day-start hour.
 - Game rules are pure functions in `packages/shared/game`, exhaustively unit-tested; the server is the only place they run for real.
 - Write responses carry a `game` block with the events they caused.
-- One client autosave helper and one optimistic-update merge rule.
+- One client autosave helper (`useAutosave`) and one optimistic-update merge rule (`lib/task-cache.ts`); writes go through `lib/actions.ts`.
 - Game evaluation errors never fail a committed write (log and retry).
 - Failed API responses are always `{ error: { code, message, details? } }` (throw `HttpError` on the server); the web app calls the API only through `call()` in `apps/web/src/lib/api.ts`.
 - Schema changes: edit `apps/server/src/db/schema`, then `pnpm db:generate`. Hand-written SQL goes in a `drizzle-kit generate --custom` migration, never into generated ones.
 - TypeScript stays on 6.0 until typescript-eslint supports TS 7 (it needs the old JS API).
+- Pure structure rules (board, next action, transitions) live in `packages/shared/structure`; rich text is TipTap JSON + `*_text` (`packages/shared/rich`).
+- Every service lookup is scoped by `user_id`; another account's ids answer 404.
 - Commit or push only when the user asks.
