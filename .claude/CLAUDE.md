@@ -1,0 +1,51 @@
+# Streaktron — project memory
+
+Streaktron is a web app that helps people stay consistent with studies and personal projects. It combines real project management (areas → projects → goals → tasks, Kanban, list, calendar, countdowns, `@` mentions with backlinks) with light gamification (XP, levels, forgiving streaks, typed quests) and a cosmetic reward layer (loot boxes, collectibles, a customizable bedroom with a wardrobe of medals). Friend streaks come later. The first user is the author (a CS student), but it is **designed to potentially become a product**.
+
+## Current status
+
+- **Phase:** planning done; **next up is Phase 0 (Foundation)**. No code yet; git not initialized.
+- Detailed status and session history: `.claude/context/progress.md`.
+
+## Where things live
+
+| File | What it holds | Owner of |
+|---|---|---|
+| `plan.md` | Feature spec, gamification rules, architecture and stack, data model, API sketch, phases with checkboxes, lessons from Quire, backlog, open questions | **what to build and how** |
+| `.claude/context/vision.md` | Main idea, the problem, target user, principles, product direction | **why** |
+| `.claude/context/decisions.md` | Every decision (D1…), with rationale, alternatives, status; rejected ideas | **decisions** (canonical log) |
+| `.claude/context/progress.md` | Session log, what's done, what's next | **state** |
+| `observations.txt` | The user's idea inbox between sessions (they clear it after merging) | — |
+
+Read the relevant context file before working on an area; read `plan.md` sections as needed rather than all of it.
+
+## Load-bearing decisions (one-liners; details in decisions.md)
+
+- **Stack (D14):** TypeScript pnpm monorepo — React + Vite, TanStack Router/Query, Tailwind + shadcn/ui, TipTap, dnd-kit, PixiJS · Hono on Node · PostgreSQL + Drizzle · Better Auth · pg-boss · Vitest + Playwright · Docker Compose.
+- **Runs locally and over Tailscale** (`tailscale serve` HTTPS) for now (D2); single user, multi-tenant data model (D1).
+- **Gamification is derived from an append-only activity log** (D8) and is **server-authoritative** (D17).
+- **XP is never taken away; each source earns once** (D15).
+- **Every completed quest grants a loot box**, rolled server-side; **no real-money purchases, ever** (D11).
+- **Make quests come with a follow-up quest and a soft cap** (D16).
+- **Hard active-project limit**, default 3 (D5). **Mentions are free-form only**, no behavioral effect (D4). **English UI** (D7).
+
+## Working agreements
+
+- **Ask clarifying questions** when a decision is genuinely the user's; give a recommendation, not a survey.
+- **Record every new or changed decision** in `.claude/context/decisions.md` (new ID, date, rationale). Never silently diverge from it.
+- **Don't re-propose rejected ideas** (listed at the end of decisions.md).
+- **When `observations.txt` has new content**, fold it into `plan.md` (right phase/section) and decisions.md if it decides something, then tell the user.
+- **Tick `plan.md` checkboxes** as tasks finish and **append a session entry to `progress.md`** at the end of meaningful work.
+- New ideas go to `plan.md` §12 (backlog), not into the current phase.
+- **Quire** (`~/Documentos/quire`) is the user's earlier personal app (Svelte 5 + Fastify + node:sqlite). It is a **reference only**: reuse its framework-agnostic logic and lessons (plan.md §11), never integrate with it.
+
+## Code conventions (for when code starts)
+
+- IDs: type-prefixed ULIDs (`tsk_`, `prj_`, `gol_`, `are_`, `hab_`, `evt_`…).
+- References are FK columns with explicit `ON DELETE`; `jsonb` only for leaf data.
+- Day arithmetic only on `YYYY-MM-DD` values; the user's day comes from their stored timezone + day-start hour.
+- Game rules are pure functions in `packages/shared/game`, exhaustively unit-tested; the server is the only place they run for real.
+- Write responses carry a `game` block with the events they caused.
+- One client autosave helper and one optimistic-update merge rule.
+- Game evaluation errors never fail a committed write (log and retry).
+- Commit or push only when the user asks.
