@@ -102,7 +102,7 @@ function GoalEditor({ goal }: { goal: Goal }) {
 
       <div className="grid gap-6 px-4 py-5 sm:px-6">
         <div className="flex items-start gap-3">
-          <Icon className="mt-2.5 size-5 shrink-0 text-primary" aria-hidden />
+          <Icon className="mt-2.5 size-5 shrink-0 text-ember" aria-hidden />
           <SheetTitle className="sr-only">{goal.title}</SheetTitle>
           <SheetDescription className="sr-only">Goal details</SheetDescription>
           <TitleField

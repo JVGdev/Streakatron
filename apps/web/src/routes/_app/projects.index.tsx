@@ -92,7 +92,7 @@ function ProjectsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
+    <div className="space-y-8">
       <PageHeader
         title="Projects"
         description={
@@ -117,7 +117,7 @@ function ProjectsPage() {
       />
 
       {areas.length === 0 && projects.length === 0 && (
-        <div className="rounded-xl border border-dashed px-6 py-12 text-center">
+        <div className="rounded-3xl border-2 border-dashed px-6 py-12 text-center">
           <p className="font-medium">Start with what you’re working on.</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
             Areas are long-lived parts of your life (University, Side projects). Projects live in
@@ -221,7 +221,7 @@ function AreaSection({
       <div className="flex items-center gap-2">
         {handle}
         <EntityIcon icon={area.icon} color={area.color} />
-        <h2 className="min-w-0 flex-1 truncate text-lg font-semibold">
+        <h2 className="min-w-0 flex-1 truncate text-xl">
           <button
             className="max-w-full truncate text-left hover:underline"
             onClick={() => openSheet('area', area.id)}
@@ -323,7 +323,7 @@ function ProjectGrid({
       ) : (
         <button
           onClick={() => newProject(areaId)}
-          className="w-full rounded-xl border border-dashed px-4 py-6 text-sm text-muted-foreground hover:bg-muted/40"
+          className="w-full rounded-3xl border-2 border-dashed px-4 py-6 text-sm font-semibold text-muted-foreground hover:bg-muted/40"
         >
           No projects in progress. Add one?
         </button>
@@ -348,14 +348,14 @@ function ProjectCard({ project: p, today }: { project: Project; today: string })
       to="/projects/$projectId"
       params={{ projectId: p.id }}
       className={cn(
-        'group flex flex-col gap-3 rounded-xl border bg-card p-4 transition hover:border-ring/40 hover:shadow-sm',
+        'group flex flex-col gap-3 rounded-3xl border-2 bg-card p-5 shadow-ledge-lg transition-colors hover:border-input',
         p.status !== 'active' && 'bg-card/60',
       )}
     >
       <div className="flex items-start gap-3">
         <EntityIcon icon={p.icon} color={p.color} />
         <div className="min-w-0 flex-1">
-          <div className="truncate font-semibold">{p.title}</div>
+          <div className="truncate font-display text-lg font-semibold">{p.title}</div>
           {p.dueDate && (
             <div
               className={cn(
@@ -373,7 +373,7 @@ function ProjectCard({ project: p, today }: { project: Project; today: string })
         <div className="flex min-h-5 items-center gap-1.5 text-sm">
           {p.nextAction ? (
             <>
-              <Pin className="size-3.5 shrink-0 text-primary" />
+              <Pin className="size-3.5 shrink-0 text-ember" />
               <span className="truncate">{p.nextAction.title}</span>
             </>
           ) : (

@@ -32,6 +32,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { DayField } from '@/components/day-field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useOpenSheet } from '@/hooks/use-open-task';
@@ -58,7 +59,7 @@ export function GoalsPanel({
   return (
     <section className="space-y-3" aria-label="Goals">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold">Goals</h2>
+        <h2 className="text-xl">Goals</h2>
         <Button variant="ghost" size="sm" onClick={() => setEditing('new')}>
           <Plus />
           Goal
@@ -67,7 +68,7 @@ export function GoalsPanel({
       {goals.length === 0 && (
         <button
           onClick={() => setEditing('new')}
-          className="w-full rounded-xl border border-dashed px-4 py-6 text-left text-sm text-muted-foreground hover:bg-muted/40"
+          className="w-full rounded-2xl border-2 border-dashed px-4 py-6 text-left text-sm text-muted-foreground hover:bg-muted/40"
         >
           What is this project aiming for? An outcome (“Pass the exam”) or a commitment (“4 hours a
           week”).
@@ -118,11 +119,11 @@ function GoalRow({
   return (
     <div
       className={cn(
-        'flex items-start gap-3 rounded-xl border bg-card px-4 py-3',
+        'flex items-start gap-3 rounded-2xl border-2 bg-card px-4 py-3 shadow-ledge',
         goal.status !== 'open' && 'opacity-70',
       )}
     >
-      <Icon className="mt-0.5 size-4 shrink-0 text-primary" />
+      <Icon className="mt-0.5 size-4 shrink-0 text-ember" />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <button
@@ -302,12 +303,12 @@ export function GoalForm({
         )}
         <div className="grid gap-1.5">
           <Label htmlFor="goal-due">{kind === 'outcome' ? 'Deadline' : 'Until'} (optional)</Label>
-          <Input
+          <DayField
             id="goal-due"
-            type="date"
-            className="w-44"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
+            outlined
+            className="w-56"
+            value={dueDate || null}
+            onChange={(d) => setDueDate(d ?? '')}
           />
         </div>
         <DialogFooter>

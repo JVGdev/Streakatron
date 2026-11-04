@@ -26,6 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+
+import { DayField } from '@/components/day-field';
 import { RichEditor } from '@/components/rich-editor';
 import { useStructureActions } from '@/lib/actions';
 import { areasQuery, meQuery, projectsQuery, type Area, type Project } from '@/lib/queries';
@@ -268,19 +270,19 @@ function ProjectForm({
         )}
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Start date" htmlFor="project-start">
-            <Input
+            <DayField
               id="project-start"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              outlined
+              value={startDate || null}
+              onChange={(d) => setStartDate(d ?? '')}
             />
           </Field>
           <Field label="Due date" htmlFor="project-due">
-            <Input
+            <DayField
               id="project-due"
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
+              outlined
+              value={dueDate || null}
+              onChange={(d) => setDueDate(d ?? '')}
             />
           </Field>
         </div>

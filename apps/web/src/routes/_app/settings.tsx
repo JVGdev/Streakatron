@@ -19,7 +19,7 @@ const date = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }
 
 function SettingsPage() {
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="max-w-2xl space-y-6">
       <PageHeader
         title="Settings"
         description="Time zone, day start and quests come with the MVP."

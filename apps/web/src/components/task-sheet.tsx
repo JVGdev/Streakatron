@@ -5,11 +5,10 @@ import type { RichDoc } from '@streaktron/shared/rich';
 import { EFFORTS, type Effort } from '@streaktron/shared/structure';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Pin, PinOff, Trash2, X } from 'lucide-react';
+import { Check, Pin, PinOff, RotateCcw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -23,7 +22,7 @@ import { useOpenTask } from '@/hooks/use-open-task';
 import { useStructureActions, useTaskActions } from '@/lib/actions';
 import { ApiError } from '@/lib/api';
 import { useAutosave } from '@/lib/autosave';
-import { CATEGORY_DOT } from '@/lib/look';
+import { CATEGORY_DOT, EFFORT_LABEL } from '@/lib/look';
 import {
   meQuery,
   projectQuery,
@@ -35,11 +34,13 @@ import {
 } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { Backlinks } from './backlinks';
+import { DayField } from './day-field';
 import { EntityIcon } from './entity-icon';
 import { RichEditor } from './rich-editor';
 import { SheetBar, TitleField } from './sheet-parts';
 import { QuickAdd } from './quick-add';
 import { TaskCheck } from './task-check';
+import { EffortBars } from './task-meta';
 import { onRowsKeyDown } from '@/lib/rows';
 import { TaskRow } from './task-row';
 
@@ -80,6 +81,9 @@ export function TaskSheet({ taskId }: { taskId: string | undefined }) {
 }
 
 const INBOX = 'inbox';
+/** Property values read as text and look editable on hover, not as a form of boxes. */
+const PROPERTY =
+  'w-full max-w-72 border-transparent bg-transparent px-2 shadow-none hover:bg-muted dark:bg-transparent dark:hover:bg-muted';
 const NONE = 'none';
 
 function TaskEditor({ task }: { task: TaskDetail }) {
@@ -140,14 +144,14 @@ function TaskEditor({ task }: { task: TaskDetail }) {
           <TitleField value={title} onChange={setTitle} what="task" struck={!!task.completedAt} />
         </div>
 
-        <div className="grid grid-cols-[7rem_1fr] items-center gap-x-3 gap-y-3 text-sm">
+        <div className="grid grid-cols-[6.5rem_1fr] items-center gap-x-2 gap-y-1 text-sm">
           <Label className="text-muted-foreground">Project</Label>
           <Select
             value={task.projectId ?? INBOX}
             disabled={isSubtask}
             onValueChange={(v) => void tasks.update(task, { projectId: v === INBOX ? null : v })}
           >
-            <SelectTrigger className="w-full" size="sm">
+            <SelectTrigger className={PROPERTY} size="sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -179,7 +183,7 @@ function TaskEditor({ task }: { task: TaskDetail }) {
                 }
                 onValueChange={(v) => void tasks.update(task, { goalId: v === NONE ? null : v })}
               >
-                <SelectTrigger className="w-full" size="sm">
+                <SelectTrigger className={PROPERTY} size="sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -204,10 +208,20 @@ function TaskEditor({ task }: { task: TaskDetail }) {
                 variant={task.effort === e ? 'secondary' : 'ghost'}
                 role="radio"
                 aria-checked={task.effort === e}
-                className={cn('h-8 min-w-9', task.effort === e && 'ring-1 ring-ring/40')}
+                className={cn(
+                  'h-8 gap-1.5 px-2.5 text-xs',
+                  task.effort === e ? 'ring-1 ring-ring/40' : 'text-muted-foreground',
+                )}
                 onClick={() => void tasks.update(task, { effort: e as Effort | null })}
               >
-                {e ?? '—'}
+                {e ? (
+                  <>
+                    <EffortBars effort={e} />
+                    {EFFORT_LABEL[e]}
+                  </>
+                ) : (
+                  'None'
+                )}
               </Button>
             ))}
           </div>
@@ -215,7 +229,7 @@ function TaskEditor({ task }: { task: TaskDetail }) {
           <Label htmlFor="task-due" className="text-muted-foreground">
             Due
           </Label>
-          <DayInput
+          <DayField
             id="task-due"
             value={task.dueDate}
             onChange={(dueDate) => void tasks.update(task, { dueDate })}
@@ -224,9 +238,10 @@ function TaskEditor({ task }: { task: TaskDetail }) {
           <Label htmlFor="task-scheduled" className="text-muted-foreground">
             Scheduled
           </Label>
-          <DayInput
+          <DayField
             id="task-scheduled"
             value={task.scheduledDate}
+            placeholder="Not scheduled"
             onChange={(scheduledDate) => void tasks.update(task, { scheduledDate })}
           />
         </div>
@@ -250,7 +265,18 @@ function TaskEditor({ task }: { task: TaskDetail }) {
         <Backlinks id={task.id} />
       </div>
 
-      <div className="mt-auto flex flex-wrap items-center gap-2 border-t px-4 py-3 sm:px-6">
+      <div className="sticky bottom-0 mt-auto flex flex-wrap items-center gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur sm:px-6">
+        {task.completedAt ? (
+          <Button variant="outline" size="sm" onClick={() => void tasks.toggle(task)}>
+            <RotateCcw />
+            Reopen
+          </Button>
+        ) : (
+          <Button size="sm" onClick={() => void tasks.toggle(task)}>
+            <Check />
+            Complete
+          </Button>
+        )}
         {canPin && (
           <Button
             variant="ghost"
@@ -284,43 +310,6 @@ function TaskEditor({ task }: { task: TaskDetail }) {
   );
 }
 
-/** A day field; clearing it removes the date. */
-function DayInput({
-  id,
-  value,
-  onChange,
-}: {
-  id: string;
-  value: string | null;
-  onChange: (day: string | null) => void;
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      <Input
-        id={id}
-        type="date"
-        className="h-8 w-44"
-        value={value ?? ''}
-        onChange={(e) => {
-          const v = e.target.value;
-          if (v !== (value ?? '')) onChange(v || null);
-        }}
-      />
-      {value && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8"
-          aria-label="Clear date"
-          onClick={() => onChange(null)}
-        >
-          <X />
-        </Button>
-      )}
-    </div>
-  );
-}
-
 function ColumnSelect({ task }: { task: Task }) {
   const tasks = useTaskActions();
   const { data: page } = useQuery(projectQuery(task.projectId!));
@@ -340,7 +329,7 @@ function ColumnSelect({ task }: { task: Task }) {
         );
       }}
     >
-      <SelectTrigger className="w-full" size="sm">
+      <SelectTrigger className={PROPERTY} size="sm">
         <SelectValue placeholder="No column" />
       </SelectTrigger>
       <SelectContent>

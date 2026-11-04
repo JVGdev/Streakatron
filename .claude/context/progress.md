@@ -3,16 +3,17 @@
 ## Status
 
 - **Current phase:** Phases 0–2 done (Phase 2 on branch `phase-2-linking`, not committed yet) → **Phase 3 (Today + gamification core = MVP) next**.
-- **Code:** monorepo with server, web and shared packages; 137 tests passing. **Repository:** https://github.com/JVGdev/streaktron (private, `main`).
+- **Code:** monorepo with server, web and shared packages; 142 tests passing. **Repository:** https://github.com/JVGdev/streaktron (private, `main`).
 - **Running over Tailscale:** the Docker app is served at `https://hills.tail99ef4d.ts.net:8443` (port 8443, because the root of that address serves Quire on :8788; never replace it). Verified from the laptop over HTTPS (page, sign-in with a Secure cookie, `/me`); not yet opened from the phone.
 - **Open questions:** deferred by the user (plan.md §13). Pending confirmation: the loot-box timing for make quests (D16); D19–D23 are Claude's choices to confirm when convenient.
 - **The Docker app on :8443 still runs Phase 1.** Rebuilding it (`docker compose up -d --build`) applies migrations `0003_links` and `0004_search` to the real database on start (new table, generated search columns; no data changes).
 
 ## Next steps
 
-1. The user tries Phases 1–2 on real data, on the laptop and the phone (after rebuilding the Docker app), against their acceptance.
-2. The user confirms or changes D19–D23 (Claude's choices).
-3. Phase 3 (plan.md §9) to reach the MVP and start dogfooding.
+1. **Visual identity (D25):** applied to the app (uncommitted). Still open: loot rarity colors and sound, decided when loot boxes are built. Phase 3 screens (progress strip, quests, quest-complete) follow the Merged mockups on the canvas.
+2. The user tries Phases 1–2 on real data, on the laptop and the phone (after rebuilding the Docker app), against their acceptance.
+3. The user confirms or changes D19–D24 (Claude's choices).
+4. Phase 3 (plan.md §9) to reach the MVP and start dogfooding.
 
 ---
 
@@ -67,3 +68,11 @@
 - **Checked in a real browser:** headless Chromium (Playwright from the scratchpad) against a production build on :3101 with a throwaway `streaktron_e2e` database (the Docker app and real data untouched; dropped afterwards). It ran the acceptance flow (mention a goal, rename it, the chip and the backlink line follow, delete it, broken chip), `[[`, hover preview, reload, palette description search, project and area descriptions with mentions, and the phone layout (the picker stays on screen). No console errors.
 - **Decisions:** D21 (mentions and links), D22 (goal and area sheets, editors start fresh), D23 (search). All Claude's choices.
 - **Not yet:** creating an entity from the picker, and refreshing stored mention labels on rename (both in plan.md §12).
+
+### 2026-11-04 — UI review and polish pass
+- **Review:** ran a production build on :3101 against a throwaway `streaktron_ui` database with sample data and screenshotted every screen (desktop, dark, phone) with headless Chromium. Findings: the app reads as a generic shadcn task manager. Today was placeholder cards, Calendar and Stats were dead ends, completing a task gave no feedback, page widths jumped between pages and tabs, the desktop top bar held only the avatar, native date inputs showed the browser's locale (Portuguese) in an English UI, and metadata was noisy (boxed S/M/L, repeated project chips).
+- **The user's answers:** they use it on PC. Duolingo feels great; Streaktron "looks almost like an office tool, or a spreadsheet manager". Polish now, then discuss a visual identity.
+- **Polish (D24):** one page width in the shell; no desktop top bar (account menu at the sidebar's bottom); Calendar and Stats hidden until built; Today shows the real focus list (`lib/focus.ts`, tested): overdue, today, then next actions, 5 visible; `DayField` (react-day-picker 9) replaces every native date input; the check pops and bursts for ~0.4 s before a task moves; effort as bars; no repeated project chip under "by project" groups; inbox rows get **Move to…**; the task sheet has a bigger title, text-like properties, effort words and a **Complete** button; the next-action hint text became a tooltip; phone bottom padding clears the + button.
+- **Checked in a real browser** (same throwaway setup): every screen re-shot; date picker, completion animation (slowed through CDP to see the frames), and inbox triage (the task leaves the inbox) work; no console errors. 142 tests, typecheck and lint pass.
+- **Visual directions:** mocked up A Arcade, B Cozy room and C Calm + moments on a design canvas (https://claude.ai/artifact/14XHtFFDd29N8PjRNg2R1C): a comparison board, plus Today and the quest-complete screen for each. The user chose **B's structure, C's colors, A's quest-complete screen** (D25); Claude added that as a "Merged" row with a typeface switch.
+- **Identity applied (D25):** the user picked the rounded typeface. Fredoka + Nunito replace Manrope; C's palette as tokens (light and dark) with `ember`, `glow`, `peach` and ledge shadows; pressable buttons, rounded 2px-bordered cards, bolder icons; new logo and favicon; the sidebar as rounded pills with an ember inbox count; Today with tile rows (`TaskRow tile`, `TaskCheck size="lg"`) and a dashed big check; the completion is ember. Board, project cards, goals, sheets, dialogs and menus follow. Re-shot light, dark and sign-in on :3101; no console errors; 142 tests, typecheck, lint and format pass.

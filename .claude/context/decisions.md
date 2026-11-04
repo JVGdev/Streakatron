@@ -125,6 +125,26 @@ The canonical record of what was decided, why, and what was considered instead. 
 - **Decision:** Postgres FTS with the `simple` configuration (no stemming, so text in any language matches the same way) over unaccented titles (weight A) and descriptions (weight B); every query word is a prefix, in any order. Titles also match by trigram similarity when **every** query word is close to a word of the title (≥ 0.5, e.g. "algerba" → "Linear algebra"). Ranking: title starts with the query, title contains it, FTS rank, similarity, then open before closed, shorter, recent. Description-only matches return the words around the match. An empty query lists recently changed open things (the mention picker's first view).
 - **Why:** The UI is English (D7) but the user may write in Portuguese; stemming for one language would mis-handle the other. Requiring every word to be similar stops one shared word from carrying a multi-word query.
 
+### D24 · UI polish rules — accepted (2026-11-04, Claude's choices after the user's UI review)
+- **Context:** The user found the UI "not exactly usable" and said it looks like an office tool or a spreadsheet manager; Duolingo is their reference for an app that feels good. They asked for a polish pass first, then a visual-identity discussion.
+- **Decision:**
+  - **One page width** for every page (`max-w-6xl` on `<main>` in the shell); pages don't set their own, so content never shifts sideways between pages or project tabs. Narrow content (Today, Inbox, Settings) is limited inside it, left-aligned.
+  - **Desktop has no top bar:** the sidebar holds the logo, search and the account menu (at its bottom). Phones keep their top bar.
+  - **Unbuilt pages are hidden from navigation** (`later` in `nav.ts`) until their phase lands; their routes still exist.
+  - **Today shows the focus list** of plan.md §4.3 from existing data (overdue, due or scheduled today, next action of each active project; 5 visible) instead of placeholder cards. Phase 3 adds habits and the gamification header around it.
+  - **Days are picked with `DayField`** (quick picks + calendar, shown like the rest of the app: "Tomorrow", "Mon"), never native date inputs, which follow the browser's locale (D7).
+  - **Completing a task plays a ~0.4 s pop and burst** on its check before the optimistic move takes it away (skipped with reduced motion).
+  - Effort shows as **1–3 bars**, not boxed letters; a project chip isn't repeated under a "by project" group heading; inbox rows offer **Move to…** on hover; the task sheet's properties read as text until hovered, and its footer has a **Complete** button.
+- **Why:** The fastest usability wins that don't depend on the visual identity, which is decided separately.
+
+### D25 · Visual identity — chosen by the user and applied (2026-11-04)
+- **Context:** After the D24 polish, Claude mocked up three directions on a design canvas (https://claude.ai/artifact/14XHtFFDd29N8PjRNg2R1C, private to the user): A Arcade (chunky, Duolingo-like energy), B Cozy room (warm paper and wood, gift-like quests, a room preview), C Calm + moments (quiet work screens, wins take over the screen).
+- **Decision:** **B's structure** (rounded, pressable panels and chips; a progress strip with streak, freezes, level and week across Today; quests as gift cards; the room preview in the sidebar; roomy task rows) **in C's colors** (ink `#1D1B19`, ember `#F05A1A` with `#C2410C` for text and buttons, glow `#FFE7D6`, white surfaces on `#FAFAF9`, warm grey lines `#ECEAE7`), with **A's quest-complete screen** (big loot box, stat boxes for XP, streak and level, chunky "Open your box" button). **Icons follow A** (added the same day): the ember rounded-square logo with a bolt, heavier line icons, bare filled icons in the progress strip, and quests as chunky colored icon tiles (daily ember, time ink, quick peach) instead of gift boxes. **The loot box itself is B's wrapped gift** (bow, lid, ribbon) in C's colors, on A's quest-complete screen. Mocked up as the "Merged" row on the canvas.
+- **Typeface (2026-11-04, the user):** **Rounded**: Fredoka for headings, buttons and navigation, Nunito for body text (self-hosted through `@fontsource-variable`; Manrope removed).
+- **Applied to the app (2026-11-04):** tokens in `index.css` (`ember`, `glow`, `peach`, `primary-shade`, `ledge`, and `shadow-ledge`/`shadow-press` utilities; a matching dark palette), a larger radius, solid and outline buttons standing on a ledge that press down, cards and panels as 2px-bordered rounded surfaces with a ledge, Lucide icons at 2.25 stroke (2.6 in the navigation), the ember logo tile and favicon, a sidebar of rounded pills (the active page is a white pill with an ember icon), Today with roomy task tiles and a big dashed check, and an ember completion (fill, ring and ember/peach sparks). Board, lists and sheets took the same tokens, which settles how the work screens take the style for now. The progress strip, quests, room preview and quest-complete screen come with their features (Phase 3 onward).
+- **Still open:** loot rarity colors (C's palette has a single accent) and sound.
+- **Why:** The user found the app too much like an office tool; Duolingo is their reference for a good feel, but they preferred C's calmer colors.
+
 ---
 
 ## Rejected ideas (don't propose again)

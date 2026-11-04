@@ -88,7 +88,7 @@ export const Route = createFileRoute('/_app/projects/$projectId')({
   },
   component: ProjectPage,
   errorComponent: ({ error }) => (
-    <div className="mx-auto max-w-3xl py-16 text-center">
+    <div className="py-16 text-center">
       <p className="font-medium">
         {error instanceof ApiError && error.status === 404
           ? 'This project doesn’t exist (it may have been deleted).'
@@ -130,7 +130,7 @@ function ProjectPage() {
   };
 
   return (
-    <div className={cn('mx-auto space-y-5', view === 'board' ? 'max-w-none' : 'max-w-4xl')}>
+    <div className="space-y-5">
       <ProjectHeader project={project} today={today} />
       <NextAction project={project} />
 
@@ -219,7 +219,7 @@ function ProjectHeader({ project, today }: { project: Project; today: string }) 
             </>
           )}
         </div>
-        <h1 className="truncate text-2xl font-bold tracking-tight">{project.title}</h1>
+        <h1 className="truncate text-3xl font-semibold tracking-tight">{project.title}</h1>
       </div>
       <div className="flex items-center gap-2">
         <DropdownMenu>
@@ -301,10 +301,13 @@ function NextAction({ project }: { project: Project }) {
   if (project.status === 'completed' || project.status === 'archived') return null;
   const next = project.nextAction;
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-primary/20 bg-accent/40 px-4 py-2.5">
-      <Pin className="size-4 shrink-0 text-primary" />
+    <div className="flex items-center gap-3 rounded-2xl border-2 border-ember/25 bg-glow/50 px-4 py-2.5">
+      <Pin
+        className="size-4 shrink-0 text-ember"
+        aria-label={next?.pinned ? 'Pinned' : 'Picked from the board; pin another from its task'}
+      />
       <div className="min-w-0 flex-1 text-sm">
-        <span className="mr-2 text-xs font-semibold tracking-wide text-accent-foreground uppercase">
+        <span className="mr-2 text-xs font-extrabold tracking-[0.08em] text-glow-foreground uppercase">
           Next action
         </span>
         {next ? (
@@ -327,11 +330,6 @@ function NextAction({ project }: { project: Project }) {
           <PinOff />
           Unpin
         </Button>
-      )}
-      {next && !next.pinned && (
-        <span className="hidden text-xs text-muted-foreground sm:inline">
-          Picked from the board · pin another from its task
-        </span>
       )}
     </div>
   );

@@ -151,12 +151,15 @@ export function TaskListView({
   options,
   goals,
   showProject,
+  triage,
   empty,
 }: {
   tasks: Task[];
   options: ListOptions;
   goals?: Goal[];
   showProject: boolean;
+  /** Rows offer "Move to project" on hover (the inbox). */
+  triage?: boolean;
   empty?: string;
 }) {
   const { data: me } = useQuery(meQuery);
@@ -175,7 +178,7 @@ export function TaskListView({
 
   if (!total) {
     return (
-      <p className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
+      <p className="rounded-3xl border-2 border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
         {empty ?? 'Nothing here with these filters.'}
       </p>
     );
@@ -197,7 +200,13 @@ export function TaskListView({
                 key={t.id}
                 task={t}
                 today={today}
-                project={showProject && t.projectId ? byProject.get(t.projectId) : undefined}
+                // Grouped by project, the group heading already says which one.
+                project={
+                  showProject && options.group !== 'project' && t.projectId
+                    ? byProject.get(t.projectId)
+                    : undefined
+                }
+                triage={triage}
                 goal={t.goalId ? byGoal.get(t.goalId) : undefined}
               />
             ))}
