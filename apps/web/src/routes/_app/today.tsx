@@ -2,21 +2,26 @@ import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { ChevronDown, Play, Plus, Timer } from 'lucide-react';
 import { useState } from 'react';
+import { CommitmentRow } from '@/components/commitment-row';
+import { doneToday } from '@/lib/commitments';
 import { ProgressStrip } from '@/components/progress-strip';
 import { QuestBoard } from '@/components/quest-board';
 import { TaskRow } from '@/components/task-row';
 import { Button } from '@/components/ui/button';
 import { clockText, sessionLabel, useFocus, useQuickFocus } from '@/hooks/use-focus';
+import { useOpenSheet } from '@/hooks/use-open-task';
 import { formatDayLong } from '@/lib/days';
-import { FOCUS_VISIBLE, focusList, type FocusReason } from '@/lib/focus';
+import { FOCUS_VISIBLE, todayItems, type FocusReason, type TodayItem } from '@/lib/focus';
 import {
+  commitmentsQuery,
   focusQuery,
   gameQuery,
   meQuery,
   projectsQuery,
   questsQuery,
   tasksQuery,
-  type Task,
+  type Commitment,
+  type Project,
 } from '@/lib/queries';
 import { onRowsKeyDown } from '@/lib/rows';
 import { openPalette } from '@/lib/ui-store';
@@ -27,6 +32,7 @@ export const Route = createFileRoute('/_app/today')({
     Promise.all([
       context.queryClient.ensureQueryData(projectsQuery),
       context.queryClient.ensureQueryData(tasksQuery({ status: 'open' })),
+      context.queryClient.ensureQueryData(commitmentsQuery()),
       context.queryClient.prefetchQuery(gameQuery),
       context.queryClient.prefetchQuery(focusQuery),
       context.queryClient.prefetchQuery(questsQuery),
@@ -34,21 +40,32 @@ export const Route = createFileRoute('/_app/today')({
   component: TodayPage,
 });
 
-const REASON_LABEL: Record<FocusReason, string> = {
+const REASON_LABEL: Record<FocusReason | 'commitment', string> = {
   overdue: 'Overdue',
   today: 'Today',
+  commitment: 'Commitments',
   next: 'Up next',
 };
+
+const itemKey = (i: TodayItem) => (i.kind === 'task' ? i.task.id : i.commitment.id);
+
+/** Commitments that rest with their parked (completed, archived) project, like its tasks. */
+const resting = (c: Commitment, projects: Project[]) =>
+  !!c.projectId && projects.find((p) => p.id === c.projectId)?.status !== 'active';
 
 function TodayPage() {
   const { data: me } = useQuery(meQuery);
   const { data: projects = [] } = useQuery(projectsQuery);
   const { data: tasks = [] } = useQuery(tasksQuery({ status: 'open' }));
+  const { data: commitments = [] } = useQuery(commitmentsQuery());
   const [all, setAll] = useState(false);
   if (!me) return null;
 
   const first = me.user.name.split(/\s+/)[0];
-  const items = focusList(tasks, projects, me.today);
+  const todays = commitments.filter((c) => c.day.scheduled && !resting(c, projects));
+  const due = todays.filter((c) => !doneToday(c));
+  const doneCommitments = todays.filter((c) => doneToday(c));
+  const items = todayItems(tasks, projects, due, me.today);
   const shown = all ? items : items.slice(0, FOCUS_VISIBLE);
   const byProject = new Map(projects.map((p) => [p.id, p]));
   const hasActive = projects.some((p) => p.status === 'active');
@@ -64,7 +81,7 @@ function TodayPage() {
         </p>
       </header>
 
-      <FocusLauncher top={items[0]?.task} minutes={me.settings.focusPresets[0]?.focusMinutes} />
+      <FocusLauncher top={items[0]} minutes={me.settings.focusPresets[0]?.focusMinutes} />
 
       <section
         aria-label="Today’s focus"
@@ -83,7 +100,11 @@ function TodayPage() {
           </Button>
         </div>
 
-        {items.length === 0 ? (
+        {items.length === 0 && doneCommitments.length > 0 ? (
+          <p className="px-2 pt-2 pb-4 text-center font-display text-lg font-semibold">
+            All done for today.
+          </p>
+        ) : items.length === 0 ? (
           <div className="px-2 pt-4 pb-6 text-center">
             <p className="font-display text-lg font-semibold">Nothing urgent today.</p>
             <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
@@ -98,7 +119,7 @@ function TodayPage() {
         ) : (
           <div className="grid gap-2" onKeyDown={onRowsKeyDown}>
             {shown.map((item, i) => (
-              <div key={item.task.id}>
+              <div key={itemKey(item)}>
                 {item.reason !== shown[i - 1]?.reason && (
                   <h3
                     className={cn(
@@ -110,12 +131,20 @@ function TodayPage() {
                     {REASON_LABEL[item.reason]}
                   </h3>
                 )}
-                <TaskRow
-                  tile
-                  task={item.task}
-                  today={me.today}
-                  project={item.task.projectId ? byProject.get(item.task.projectId) : undefined}
-                />
+                {item.kind === 'task' ? (
+                  <TaskRow
+                    tile
+                    task={item.task}
+                    today={me.today}
+                    project={item.task.projectId ? byProject.get(item.task.projectId) : undefined}
+                  />
+                ) : (
+                  <CommitmentRow
+                    tile
+                    commitment={item.commitment}
+                    weekStart={me.settings.weekStart}
+                  />
+                )}
               </div>
             ))}
             {items.length > FOCUS_VISIBLE && (
@@ -130,6 +159,7 @@ function TodayPage() {
             )}
           </div>
         )}
+        <DoneToday commitments={doneCommitments} />
       </section>
 
       <QuestBoard />
@@ -137,8 +167,32 @@ function TodayPage() {
   );
 }
 
+/** Commitments done for today, folded into one line (D31); each opens its sheet. */
+function DoneToday({ commitments }: { commitments: Commitment[] }) {
+  const open = useOpenSheet();
+  if (!commitments.length) return null;
+  return (
+    <p className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 px-1 text-sm text-muted-foreground">
+      <span className="font-sans text-xs font-extrabold tracking-[0.08em] uppercase">
+        Done today
+      </span>
+      {commitments.map((c, i) => (
+        <span key={c.id}>
+          <button
+            className="font-semibold text-foreground/80 hover:underline"
+            onClick={() => open('commitment', c.id)}
+          >
+            {c.title}
+          </button>
+          {i < commitments.length - 1 && ' ·'}
+        </span>
+      ))}
+    </p>
+  );
+}
+
 /** The big "Start focus" (plan.md §4.3): one click, on the top item; or the running session. */
-function FocusLauncher({ top, minutes = 25 }: { top?: Task; minutes?: number }) {
+function FocusLauncher({ top, minutes = 25 }: { top?: TodayItem; minutes?: number }) {
   const { session, clock, state } = useFocus();
   const quick = useQuickFocus();
 
@@ -170,7 +224,15 @@ function FocusLauncher({ top, minutes = 25 }: { top?: Task; minutes?: number }) 
       <Button
         size="lg"
         className="h-14 rounded-2xl px-6 text-lg"
-        onClick={() => void quick(top ? { taskId: top.id } : undefined)}
+        onClick={() =>
+          void quick(
+            top?.kind === 'task'
+              ? { taskId: top.task.id }
+              : top
+                ? { commitmentId: top.commitment.id }
+                : undefined,
+          )
+        }
       >
         <Play className="size-5" />
         Start focus · {minutes} min
@@ -179,13 +241,13 @@ function FocusLauncher({ top, minutes = 25 }: { top?: Task; minutes?: number }) 
         {top && (
           <p className="truncate font-bold">
             <span className="text-muted-foreground">on </span>
-            {top.title}
+            {top.kind === 'task' ? top.task.title : top.commitment.title}
           </p>
         )}
         <p className="text-muted-foreground">
           <Link
             to="/focus"
-            search={top ? { on: top.id } : {}}
+            search={top ? { on: itemKey(top) } : {}}
             className="font-bold underline-offset-2 hover:underline"
           >
             Other length or task

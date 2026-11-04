@@ -1,5 +1,5 @@
 // The focus timer's pieces (D29): the ring, the mini timer on every page, the watcher that chimes
-// and notifies, and the picker that attaches a session to a task or project.
+// and notifies, and the picker that attaches a session to a task, project or commitment.
 
 import { autoFinishAt, formatClock, plannedEndAt } from '@streakatron/shared/focus';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -293,12 +293,12 @@ export function MinutesField({
 // --- Attaching -------------------------------------------------------------------------------
 
 export interface Attachment {
-  kind: 'task' | 'project';
+  kind: 'task' | 'project' | 'commitment';
   id: string;
   title: string;
 }
 
-/** Pick an open task or project to focus on (or none). */
+/** Pick an open task, project or commitment to focus on (or none). */
 export function AttachPicker({
   value,
   onChange,
@@ -311,7 +311,8 @@ export function AttachPicker({
   const { data: hits = [] } = useQuery({
     queryKey: ['search', 'focus-attach', q],
     queryFn: async () =>
-      (await call(api.search.$get({ query: { q, limit: '10', types: 'task,project' } }))).results,
+      (await call(api.search.$get({ query: { q, limit: '10', types: 'task,project,commitment' } })))
+        .results,
     enabled: open,
     staleTime: 10_000,
   });
@@ -327,13 +328,17 @@ export function AttachPicker({
           >
             <Search className="text-muted-foreground" />
             <span className={cn('truncate', !value && 'text-muted-foreground')}>
-              {value ? value.title : 'Focus on a task or project (optional)'}
+              {value ? value.title : 'Focus on something (optional)'}
             </span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[min(28rem,calc(100vw-2rem))] p-0" align="start">
           <Command shouldFilter={false}>
-            <CommandInput placeholder="Find a task or project…" value={q} onValueChange={setQ} />
+            <CommandInput
+              placeholder="Find a task, project or commitment…"
+              value={q}
+              onValueChange={setQ}
+            />
             <CommandList>
               <CommandEmpty>Nothing open matches.</CommandEmpty>
               <CommandGroup heading={q ? 'Matches' : 'Recent'}>

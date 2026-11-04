@@ -24,6 +24,7 @@ Design principles:
 7. **Quests reward the work you actually do.** Quests must match real usage, be sized from your own recent days, and never pile up work faster than it gets done (lessons from Quire, §11).
 8. **Product-ready from day one, personal-scale for now.** Multi-tenant data model, real auth, server-authoritative rewards — running on one machine for one user until it's worth more (D14).
 9. **Dogfood early.** The MVP must be usable daily as early as possible; later features are driven by what's actually missing.
+10. **Easy to use as it grows.** Defaults first, options behind "More"; grow existing screens before adding pages; the same patterns everywhere; every slice ends with a UI review (D32).
 
 ### Failure modes this app targets
 
@@ -70,6 +71,14 @@ The full decisions log, with rationale, alternatives and status, lives in **`.cl
 | D24 | UI polish rules: one page width, no desktop top bar, unbuilt pages hidden, day picker, completion pop |
 | D25 | Visual identity: B's structure, C's colors, A's icons and quest-complete screen, rounded type (Fredoka + Nunito); applied to the app (rarity colors open) |
 | D26 | The app is called Streakatron, internals included (packages, database, containers, backups) |
+| D27 | Phase 3 in three slices; the game starts fresh (no backfill); unset effort earns like S |
+| D28 | The game runs on the server; write responses carry a `game` block the UI turns into moments |
+| D29 | Focus sessions: overtime capped at plan + 60 min, browser-only breaks, mini timer + focus page |
+| D30 | MVP quests: big moments on screen, small in the toast; placeholder loot box; templates and evaluation |
+| D31 | Habits become Commitments (any measure, period, schedule; remind until done); "commitment goal" → time goal; Phase 4 = commitments, reminders, calendar, then the rest |
+| D32 | Use-case gaps placed (waiting, required projects, task reminders, recurring tasks, tentative dates, number goals, timezone moves, planned breaks); group projects to the backlog; the UI stays easy (defaults first, UI review per slice) |
+| D33 | Spotlight: up to 4 tasks or goals featured on Today; countdowns use it too |
+| D34 | Phase 4 in six slices: commitments (+ time-goal progress), Today & boards, reminders, calendar, recurring tasks, goals & review |
 
 Rejected ideas are listed at the end of the decisions log so they aren't proposed again.
 
@@ -81,13 +90,13 @@ Rejected ideas are listed at the end of the decisions log so they aren't propose
 - **Project** — a bounded effort with a status: `active`, `parked`, `completed`, `archived`. Has goals, tasks, a board, and one *next action*.
 - **Goal** — something a project is aiming for. Two kinds:
   - **Outcome goal** — a result, optionally with a deadline ("Pass Linear Algebra exam", "Ship v1").
-  - **Commitment goal** — a recurring effort target ("4 hours/week of focus on this project").
+  - **Time goal** — a recurring effort target ("4 hours/week of focus on this project"), counted from focus sessions on the project. *(Called "commitment goal" until D31.)*
 - **Task** — a unit of work. Has status (via board column), effort (S/M/L), optional due date, optional scheduled date, optional parent task (subtasks). Tasks without a project live in the **Inbox**.
-- **Habit** — a recurring commitment that is never "done" ("Read 20 min daily", "Practice Leetcode 3×/week"). Checked in per day.
+- **Commitment** (D31; planned as *habit*) — a recurring routine that is never "done", set up however the user wants: measured as done / not done, an amount with their own unit, or minutes; per day or per week; every day, chosen weekdays or N times a week ("Duolingo lesson daily", "Anki: 20 cards a day", "3 course classes a week", "15 min listening a day"). Optionally belongs to a project; can remind you until it's done.
 - **Calendar event** — a dated item: one-off (exam, presentation, meetup) or recurring (*schedule block*, e.g. "Mon/Wed 14:00–16:00 lecture"). Can belong to a project.
-- **Countdown** — any event or due date pinned to show "N days left".
+- **Countdown** — any event or due date pinned to show "N days left". Dates may be tentative (a month, or TBD) until known (D32).
 - **Focus session** — a timed work block (Pomodoro-style), optionally attached to a task or project. The primary unit of effort.
-- **Activity** — an immutable log entry for anything that counts (task completed, focus session finished, habit check-in, weekly review done…).
+- **Activity** — an immutable log entry for anything that counts (task completed, focus session finished, commitment logged or met, weekly review done…).
 - **Active day** — a day with at least one qualifying activity (see §5).
 - **Quest** (a.k.a. mission) — a time-boxed challenge of a given *type* that grants XP and a loot box.
 - **Follow-up quest** — a quest spawned when a make quest is completed, asking to fill in the details of what was just made.
@@ -104,14 +113,15 @@ Rejected ideas are listed at the end of the decisions log so they aren't propose
 
 ### 4.1 Structure & project management
 
-- CRUD for areas, projects, goals, tasks, habits, calendar events.
-- Project status lifecycle: `active ↔ parked → completed → archived`. Enforce the active limit (D5): trying to activate beyond the limit opens a dialog: "Park one of these to continue".
+- CRUD for areas, projects, goals, tasks, commitments, calendar events.
+- Project status lifecycle: `active ↔ parked → completed → archived`. Enforce the active limit (D5): trying to activate beyond the limit opens a dialog: "Park one of these to continue". **Required** projects (D32: a course, an obligation) don't count toward the limit and are never offered for parking.
 - **Next action** per project: a pinned task, or automatically the top open task on the board if none is pinned.
 - **Subtasks**: one level of nesting is enough for now.
+- **Recurring tasks** (D32): a repeat rule (every weekday X, monthly on day N, or N days after completion); completing one creates the next instance.
 - **Inbox**: quick-captured tasks with no project; triage later (weekly review prompts it).
 - **Views** (all over the same data, no duplication):
   - **List view** — grouped/sorted/filtered tasks (by project, status, due date).
-  - **Kanban board** — per project, with custom columns. Each column maps to a status *category* (`todo` / `in_progress` / `done`) so the rest of the app knows what "done" means. Drag & drop between and within columns.
+  - **Kanban board** — per project, with custom columns. Each column maps to a status *category* (`todo` / `in_progress` / `waiting` / `done`) so the rest of the app knows what "done" means. **Waiting** tasks (blocked on someone else, D32) are never the next action and come back on Today as "follow up" on their scheduled date. Drag & drop between and within columns.
   - **Calendar view** — month and week views showing calendar events, recurring schedule blocks, task due/scheduled dates, and logged focus sessions.
   - **Today view** — see §4.3.
 - **Countdowns**: pin any event or due date; shown on Today and on the project page.
@@ -120,7 +130,7 @@ Rejected ideas are listed at the end of the decisions log so they aren't propose
 
 ### 4.2 Linking system (D4)
 
-- Every entity has a **global, type-prefixed ID** (e.g. `tsk_01J…`, `prj_01J…`, `gol_…`, `are_…`, `hab_…`, `evt_…`) so a reference alone tells you what it points to.
+- Every entity has a **global, type-prefixed ID** (e.g. `tsk_01J…`, `prj_01J…`, `gol_…`, `are_…`, `cmt_…`, `evt_…`) so a reference alone tells you what it points to.
 - Every free-text field (descriptions, notes, review answers) is a **rich-text field** (TipTap) supporting inline mentions:
   - Typing `@` or `[[` opens a fuzzy picker across all entity types (shows type icon + parent context).
   - A mention renders as a chip with the **target's current title** and icon; renames propagate automatically because only the ID is stored.
@@ -136,19 +146,20 @@ Rejected ideas are listed at the end of the decisions log so they aren't propose
 - **Focus list** (max 5 visible, "show more" collapses the rest), ordered:
   1. Overdue tasks
   2. Tasks due or scheduled today
-  3. Habits due today (check-in button)
+  3. Commitments due today and not yet met (check, +1 / +N, log minutes or start focus, by measure); met ones collapse into a "done today" line
   4. Next action of each active project
-- Today's calendar events/schedule blocks and pinned countdowns.
+- **Spotlight** (D33): at most 4 tasks or goals the user chose to feature, at the top (tasks with a one-click focus start, goals with progress and days left); countdowns show here too.
+- Today's calendar events/schedule blocks.
 - Quest board (daily + quick + follow-ups, and comeback quest when active).
 - Big "Start focus session" button (optionally pre-attached to the top item).
 - **Day boundary** is configurable (default 04:00) so late-night work counts for the previous day.
 
 ### 4.4 Focus sessions
 
-- Timer with presets (25/5, 50/10, custom); attach to a task or project (or none).
+- Timer with presets (25/5, 50/10, custom); attach to a task, a project or a commitment (or none). On a commitment, the minutes go to it (minutes measure) or finishing offers "Mark done" / "+1" (D31).
 - Pause/resume; sessions survive page reloads (state stored server-side with start timestamp).
 - At the planned time: chime and notification, then overtime counts until you finish; a running session finishes on its own 60 minutes past the plan (D29).
-- On finish: optional one-line note, optional "mark task done", the preset's break offered as a browser-only countdown (D29).
+- On finish: optional one-line note, optional "mark task done" (or the commitment's "Mark done" / "+1"), the preset's break offered as a browser-only countdown (D29).
 - A mini timer on every page plus a full `/focus` page; Today starts one in one click on the top item (D29).
 - Browser notification + sound when a session ends (Web Push once the PWA lands, so it works with the tab closed).
 
@@ -160,10 +171,10 @@ Rejected ideas are listed at the end of the decisions log so they aren't propose
 
 ### 4.6 Consistency tools
 
-- **Habits** with flexible schedules: specific weekdays, or N times per week. Optional minimum duration.
+- **Commitments** (D31): measure (done / amount with a unit / minutes), target, period (day / week), schedule (every day, chosen weekdays; "N times a week" is a week-period check). Filled by a tick, +1 / +N, typed minutes (work done in other apps), or focus sessions started on the commitment (not other sessions on its project). Each has a streak and a history; a commitments page and a section on the project page.
 - **Weekly review** (guided, ~5 min): what got done (auto-summary from activity), what stalled (active projects without activity), inbox triage, pick next actions, swap active/parked projects, a short reflection (rich text). Completing it is a quest and an activity.
-- **Commitment goal tracking**: progress bar from focus minutes on the project in the current period; pace ("X min/day to hit this week's target").
-- **Reminders** (PWA + Web Push): habits due, focus session ended, "streak at risk" evening nudge (opt-in, at most one per day).
+- **Time goal tracking**: progress bar from focus minutes on the project in the current period; pace ("X min/day to hit this week's target").
+- **Reminders** (PWA + Web Push, D31): per commitment off / once at a time / **repeat until done** (from a time, every N hours, until a time; only on scheduled days, skipped once met, never past the day's end); **task reminders** at a date and time (D32); focus session ended; "streak at risk" evening nudge (opt-in, at most one per day). Browser notifications while the app is open, Web Push otherwise. Notifications carry actions (Done, +1, Snooze 1 h).
 
 ### 4.7 Stats
 
@@ -226,7 +237,7 @@ All values live in one config module in `packages/shared/game` and are applied b
 | Task completed — effort S / M / L (unset = S, D27) | 10 / 25 / 50 |
 | Subtask completed | 0 (the parent task carries the XP) |
 | Focus session completed (≥ 10 min) | 1 XP per minute |
-| Habit check-in | 10 |
+| Commitment met (once per commitment per period, D31) | 10 |
 | Weekly review completed | 50 |
 | Quest completed | quest-defined (10–100) |
 
@@ -239,7 +250,7 @@ All values live in one config module in `packages/shared/game` and are applied b
 
 ### Active day & streaks
 
-- **Active day**: at least one of — a completed focus session ≥ 10 min, a completed task, a habit check-in.
+- **Active day**: at least one of — a completed focus session ≥ 10 min, a completed task, a day-period commitment met, any entry on a week-period commitment (D31).
 - **The user's day** comes from their stored timezone and day-start hour (D17). Changing the timezone is allowed but rate-limited (e.g. once a week) so it can't be used to farm streaks.
 - **Daily streak**: consecutive active days.
   - Earn **1 streak freeze** per 7 consecutive active days; bank at most 2.
@@ -253,14 +264,14 @@ Quests come from an **extensible type registry**. Each type defines: cadence, ge
 
 | Type | Cadence / availability | Examples | XP | Box |
 |---|---|---|---|---|
-| **Quick** | Always available, ≤ 5 min, **max 3 rewarded per day** | Clear 1 inbox item · Set the next action for project X · Check in one habit · Write a 1-line reflection | 10 | Small |
-| **Daily** | 3 per day from a pool, no repeats of yesterday | Finish your top Today item · Complete a task in a project untouched for 3+ days · Check in all habits due today | 20–40 | Standard |
+| **Quick** | Always available, ≤ 5 min, **max 3 rewarded per day** | Clear 1 inbox item · Set the next action for project X · Log one commitment · Write a 1-line reflection | 10 | Small |
+| **Daily** | 3 per day from a pool, no repeats of yesterday | Finish your top Today item · Complete a task in a project untouched for 3+ days · Meet every commitment due today | 20–40 | Standard |
 | **Time** | Daily and weekly variants | Focus 60 min today · Focus 3 h this week on project X (sized from your own days, below) | 30–80 | Standard (daily) / Large (weekly) |
 | **Make** | At most 1 per day, **soft-capped** (below) | Add a task to project X · Add a goal to project Y (one with no goals) · Break task Z into subtasks | 15 | Standard |
 | **Follow-up** | Spawned when a make quest is done; lasts until the end of the next day | Add details to "<new task>": any 2 of description, effort, due/scheduled date, goal, subtasks | 15 | Small |
 | **Weekly** | Fixed set per week | Touch every active project · Hit the weekly active-day target | 60–100 | Large |
 | **Review** | Weekly (later: monthly) | Complete the weekly review · Revisit one parked project and decide keep/drop | 50–100 | Large |
-| **Project** | Generated from goals and deadlines | Finish 3 tasks of goal X before Friday · Reach 50% of commitment goal Y this week | 50–100 | Large |
+| **Project** | Generated from goals and deadlines | Finish 3 tasks of goal X before Friday · Reach 50% of time goal Y this week | 50–100 | Large |
 | **Comeback** | After ≥ 2 consecutive inactive days | Do one 10-minute focus session — friendly message, never shaming | 50 | Standard |
 | **Friend / co-op** *(social phase)* | Per friend pair | You and Alex both do a 25-min session today | 50 | Special |
 | **Event / seasonal** *(backlog)* | Limited time | Exam-season sprint, themed collectible sets | — | Special |
@@ -336,11 +347,11 @@ Svelte 5 would be a perfectly good web framework; the deciding factors are Postg
 
 ### Key architectural notes
 
-- **Activity log as source of truth for gamification (D8).** Mutations that "count" (complete task, finish session, check in habit, finish review) write an `activity` row in the same DB transaction. XP, level, streaks, freezes, and quest progress are computed by pure functions in `packages/shared/game` from the activity log. A cached `stats_snapshot` can be rebuilt any time ("recompute" admin action).
+- **Activity log as source of truth for gamification (D8).** Mutations that "count" (complete task, finish session, log a commitment, finish review) write an `activity` row in the same DB transaction. XP, level, streaks, freezes, and quest progress are computed by pure functions in `packages/shared/game` from the activity log. A cached `stats_snapshot` can be rebuilt any time ("recompute" admin action).
 - **Earn once, never lose (D15).** The rules engine credits each source once (keyed by e.g. `task_completed:<taskId>`); later duplicates earn 0 and reopenings are ignored for XP. Recompute reproduces this exactly.
 - **Server-authoritative (D17).** Clients never send XP, streak, or loot values. The user's local day is computed on the server from their stored timezone and day-start hour.
 - **Game events on responses.** Each write returns the game events it caused (`{ data, game: { xp, levelUp, questsDone, boxesEarned } }`) so the UI reacts immediately.
-- **Time handling.** Timestamps as `timestamptz`; calendar dates (due dates, habit days) as `date`. Day arithmetic only on `YYYY-MM-DD` values (Quire's SH-7: never shift days through local-time `Date` objects). All "which day does this count for" logic lives in one tested helper.
+- **Time handling.** Timestamps as `timestamptz`; calendar dates (due dates, commitment days) as `date`. Day arithmetic only on `YYYY-MM-DD` values (Quire's SH-7: never shift days through local-time `Date` objects). All "which day does this count for" logic lives in one tested helper.
 - **References are real columns.** Every reference to another row is a foreign-key column with an explicit `ON DELETE` rule; JSON (`jsonb`) only holds leaf data (Quire's LOG-12: ids buried in JSON dangled after deletes). Mention links are the one exception by design (they live in rich text, extracted to `links`, and render as broken chips).
 - **Rich text storage.** TipTap JSON in `jsonb`, plus a derived plain-text column for FTS. Mentions extracted to `links` on every save (delete-and-reinsert per source field).
 - **One way to save.** A single autosave helper on the client (value-driven, one request in flight, flushed on page hide) and a single merge rule for optimistic updates (Quire's DES-3/4/6).
@@ -397,14 +408,14 @@ Postgres. All tables include `id` (prefixed ULID, `text`), `user_id` (FK to the 
 | `areas` | `title`, `description` (rich), `color`, `icon`, `sort_order`, `archived_at` (deleted into a snapshot, D19) |
 | `projects` | `area_id?`, `title`, `description` (rich), `status` (active/parked/completed/archived), `status_changed_at`, `next_action_task_id?`, `color`, `icon`, `start_date?`, `due_date?`, `sort_order` (deleted into a snapshot, D19) |
 | `board_columns` | `project_id`, `title`, `category` (todo/in_progress/done), `sort_order` |
-| `goals` | `project_id`, `title`, `description` (rich), `kind` (outcome/commitment), `target_minutes?`, `period?` (week/month), `due_date?`, `status` (open/achieved/dropped), `deleted_at` |
+| `goals` | `project_id`, `title`, `description` (rich), `kind` (outcome/time; `commitment` until D31), `target_minutes?`, `period?` (week/month), `due_date?`, `status` (open/achieved/dropped), `deleted_at` |
 | `tasks` | `project_id?` (null = inbox), `goal_id?`, `parent_task_id?`, `column_id?`, `title`, `description` (rich), `effort` (S/M/L, nullable = not set), `due_date?`, `scheduled_date?`, `sort_order`, `completed_at?`, `deleted_at` |
-| `habits` | `project_id?`, `title`, `description` (rich), `schedule` (jsonb: `{type: "weekdays", days: [...]}` or `{type: "per_week", count: n}`), `min_minutes?`, `archived_at` |
-| `habit_checkins` | `habit_id`, `date`, `note?` — unique (`habit_id`, `date`) |
+| `commitments` (D31) | `project_id?`, `title`, `description` (rich), `measure` (check/count/minutes), `target`, `unit?` (count), `period` (day/week), `schedule` (jsonb, day period: every day or `{days: [...]}`), `reminder` (jsonb: off / once `{at}` / repeat `{from, every_minutes, until}`), `sort_order`, `archived_at` |
+| `commitment_entries` | `commitment_id`, `local_date`, `amount`, `source` (manual/focus), `focus_session_id?`, `note?` — summed per day; one per day for check |
 | `calendar_events` | `project_id?`, `title`, `description` (rich), `start_at`, `end_at?`, `all_day`, `recurrence?` (RRULE string), `is_countdown`, `deleted_at` |
-| `focus_sessions` | `task_id?`, `project_id?`, `started_at`, `ended_at?`, `planned_minutes`, `paused_ms`, `status` (running/paused/completed/abandoned), `note?` |
+| `focus_sessions` | `task_id?`, `project_id?`, `commitment_id?` (one of the three), `started_at`, `ended_at?`, `planned_minutes`, `paused_ms`, `status` (running/paused/completed/abandoned), `note?` |
 | `weekly_reviews` | `week_start` (date), `answers` (jsonb), `completed_at?` |
-| `activity` | `type` (task_completed, task_reopened, focus_completed, habit_checked, review_completed, quest_completed, item_created, …), `entity_id?`, `occurred_at`, `local_date`, `payload` (jsonb, e.g. effort, minutes) — append-only |
+| `activity` | `type` (task_completed, task_reopened, focus_completed, commitment_logged, commitment_met, review_completed, quest_completed, item_created, …), `entity_id?`, `occurred_at`, `local_date`, `payload` (jsonb, e.g. effort, minutes) — append-only |
 | `quest_instances` | `type`, `template_key`, `period_start`, `period_end`, `target`, `reward_xp`, `box_tier`, `params` (jsonb), `target_entity_id?`, `parent_quest_id?` (follow-up chain), `status` (offered/completed/expired/rerolled/cancelled), `offered_at`, `completed_at?` |
 | `loot_boxes` | `quest_instance_id` (unique), `tier`, `earned_at`, `opened_at?`, `item_key?`, `rarity?` — pity counters derived from opened history |
 | `inventory_items` | `item_key`, `acquired_at`, `loot_box_id?` — one row per owned copy |
@@ -426,10 +437,10 @@ Gamification state (XP total, level, streaks, freezes, friend streaks) is **deri
 JSON over Hono with Zod validation; typed client via Hono RPC. Write responses include a `game` block with the events they caused.
 
 - `/api/auth/*` — Better Auth
-- `GET/POST/PATCH/DELETE /api/{areas|projects|goals|tasks|habits|events}`
+- `GET/POST/PATCH/DELETE /api/{areas|projects|goals|tasks|commitments|events}`
 - `POST /api/projects/:id/status` — enforces active limit; returns conflict payload listing active projects if over limit
 - `POST /api/tasks/:id/complete` · `POST /api/tasks/:id/reopen` · `POST /api/tasks/:id/move` (column + sort order)
-- `POST /api/habits/:id/checkin` · `DELETE /api/habits/:id/checkin/:date`
+- `POST /api/commitments/:id/entries` (check, +N, minutes) · `DELETE /api/commitments/:id/entries/:entryId`
 - `POST /api/focus/start` · `/pause` · `/resume` · `/finish` · `/abandon` · `GET /api/focus/current`
 - `GET /api/today` — aggregated Today payload
 - `GET /api/calendar?from&to` — events (expanded recurrences), due/scheduled tasks, focus sessions
@@ -512,20 +523,81 @@ Ships in three slices (D27): **3a** activity, XP/levels/streaks, game events, pr
 
 **Acceptance:** A full day of real use works end-to-end: plan on Today, run focus sessions, complete tasks, see XP/level/streak update immediately and correctly, complete daily quests. A make quest spawns a follow-up for the new task. Missing a day with a banked freeze keeps the streak. **Start dogfooding.**
 
-### Phase 4 — Consistency tools, calendar & reminders
-- [ ] Habits: CRUD, flexible schedules, check-ins from Today and habit page, habit streaks
+### Phase 4 — Commitments, reminders & calendar
+
+Shaped by the use case below and the gaps from brainstormed use cases (D32). **Every slice ends with a UI review** (D32): screenshots of the changed screens on desktop, phone and dark, checked for clutter and plain wording; defaults first, options behind "More".
+
+**Six slices (D34), in this order:** **4a** Commitments (+ time-goal progress) · **4b** Today & boards (Spotlight, waiting, required, create from selectors, small fixes) · **4c** Reminders · **4d** Calendar & countdowns · **4e** Recurring tasks · **4f** Goals & weekly review. Each one is usable on its own and has its own "done when".
+
+**Use case: Studying Japanese** (the user's real setup, 2026-11-04; dates are placeholders until the real ones exist). Area *Intercâmbio* → project *Studying Japanese*: "Get to conversational Japanese before the exchange. Duolingo every day for now; Anki and an online course later."
+- **Goals:** "Read and write hiragana and katakana" (outcome, mid-December) · "Pass JLPT N5" (outcome, July) · "4 hours of Japanese a week" (time goal).
+- **Tasks:** learn the hiragana rows, the rest of hiragana, katakana; set up Anki with a kana deck; choose an online course.
+- **Commitments:** "Duolingo lesson" (done / not done, every day; reminders from 10:00 every 3 h until 22:00) · "Anki reviews" (20 cards a day, once Anki starts) · "Course class" (3 a week, done through focus sessions on it) · "Listening" (15 min a day, minutes typed in).
+- **Calendar:** the course's class slots once it starts, the JLPT date and the departure date, both as countdowns on Today and the project page.
+- **Found by playing a day on the MVP** (D31): a "daily" thing can only be a task that disappears once done; the time goal shows nothing after a focus session on the project; time spent in Duolingo can't be counted; no reminders, calendar or countdowns; the new-project dialog starts on "No area"; the icon picker has no accessible names; `?tab=` links don't open project tabs.
+
+#### 4a — Commitments
+- [x] Rename the goal kind "commitment" to **time goal** (UI, code, migration: `kind: 'time'`; ids `habit`/`habitCheckin` → `commitment`/`commitmentEntry`, `cmt_`)
+- [x] `commitments` + `commitment_entries`; CRUD, archive; measure / target / unit / period / schedule; mentionable (linkable kind)
+- [x] Entries: check, +1 / +N, typed minutes, delete an entry; focus sessions attach to a commitment (minutes go to it; "Mark done" / "+1" on finish)
+- [x] Pure rules in `packages/shared`: day/week met, per-commitment streaks (unscheduled days don't break them), due today — unit-tested
+- [x] Game: `commitment_logged` / `commitment_met` activity, 10 XP once per commitment per period, active-day rule (§5); quest templates "Log one commitment" (quick) and "Meet every commitment due today" (daily)
+- [x] Today: commitments due and not yet met in the focus list, a "done today" line; commitments page; a section on the project page; sheet `?commitment=`; palette (create, open, log)
+- [x] **Time goal progress** from focus minutes (sessions on the project or its commitments), with pace — the use case's "4 hours of Japanese a week"
+- [x] UI review (D32)
+
+**Done when:** the four Japanese commitments run for a day: Duolingo ticked (10 XP, active day, its streak), Anki filled with +N to 20, Listening with typed minutes, a 50-minute session on "Course class" counts one class and 50 minutes toward "4 hours of Japanese a week".
+
+#### 4b — Today & boards
+- [ ] **Spotlight** on Today (D33): tasks and goals, at most 4, from sheets, menus and the palette; not repeated in the focus list
+- [ ] **Waiting** column category (D32): never the next action, off Today, back as "follow up" on its scheduled date; a "Waiting" column offered on new boards
+- [ ] **Required** projects (D32): option in the project dialog and menu; outside the active limit; never offered for parking; "Required" badge
+- [ ] **Create from any selector** (`observations.txt`, D31): every picker of an existing thing offers "New … “typed text”" when it fits — area in the project dialog, project in the task sheet / Move to… / focus attach, goal in the task sheet, commitment in focus attach, and the mention picker (moved from §12)
+- [ ] Small fixes from the use case: new-project dialog preselects the area; accessible names on icon and color pickers; project tabs from the URL
+- [ ] UI review (D32)
+
+**Done when:** "Learn katakana" stays in Spotlight for weeks; "Waiting for the acceptance letter" never becomes the next action and comes back on its follow-up date; a required course doesn't count toward the limit; a new area is made from the project dialog.
+
+#### 4c — Reminders
+- [ ] PWA: manifest, service worker (no offline data), install on phone and desktop over Tailscale HTTPS
+- [ ] Web Push: VAPID keys, subscriptions per device, a Settings card (enable on this device, test notification)
+- [ ] One reminder control (D32) reused by commitments, tasks and, later, events
+- [ ] Commitment reminders: off / once / repeat until done, scheduled server-side (pg-boss) in the user's timezone; skipped once met; never past the day's end
+- [ ] **Task reminders** at a date and time (D32)
+- [ ] Focus ended (with the tab closed) and opt-in "streak at risk" evening nudge (max one per day)
+- [ ] **Notification actions** (D32): Done, +1, Snooze 1 h — without opening the app
+- [ ] UI review (D32)
+
+**Done when:** Duolingo not done by 10:00 notifies the PC and the phone, again every 3 hours, none after it's ticked (also from the notification's Done); "check the visa status" reminds on its day and time.
+
+#### 4d — Calendar & countdowns
 - [ ] Calendar events: one-off + recurring (RRULE via `rrule` lib), project association
-- [ ] Calendar view: month + week, showing events, schedule blocks, task due/scheduled dates, focus sessions; drag a task onto a day to schedule it
-- [ ] Countdowns: pin events/due dates; countdown widgets on Today and project page
-- [ ] Weekly review flow (summary, stalled projects, inbox triage, next actions, active/parked swap, reflection)
-- [ ] Commitment goal progress from focus minutes, with pace
-- [ ] Weekly quests fully wired (touch all active projects, weekly target)
+- [ ] Calendar view: month + week, showing events, schedule blocks, task due/scheduled dates, focus sessions, commitments met; drag a task onto a day to schedule it
+- [ ] **Day load** in the week view (how much is scheduled each day)
+- [ ] **Tentative dates** (D32): goals, events and countdowns can be a month or TBD ("~March 2027")
+- [ ] Countdowns: events and dated goals in Today's Spotlight (D33) and on the project page
+- [ ] Event reminders (e.g. 15 min before a class) through 4c's control
+- [ ] UI review (D32)
+
+**Done when:** the JLPT and departure dates show on the calendar and as countdowns in Spotlight (the departure as "~March" until it's known); the course's classes show every week and remind 15 minutes before.
+
+#### 4e — Recurring tasks
+- [ ] **Recurring tasks** (D32): every weekday X, monthly on day N, N days after completion ("review again in 2 days"); completing one creates the next with the next date (earn once each, D15); shown on the calendar ahead
+- [ ] UI review (D32)
+
+**Done when:** "Problem set every Friday" and "pay the installment on the 5th" come back after each completion; "review topic 3 in 2 days" reappears two days after it's done.
+
+#### 4f — Goals & weekly review
+- [ ] **Number goals** (D32): target + unit ("40 lessons"), typed in or fed by a commitment with the same unit, pace to the deadline
+- [ ] Weekly review flow (summary, stalled projects, inbox triage, next actions, active/parked swap with required projects apart, reflection)
+- [x] Weekly quests fully wired (touch all active projects, weekly target) *(built in 3c, D30)*
 - [ ] **Review** quest type (weekly review, revisit a parked project)
 - [ ] **Project** quest type generated from goals and deadlines
-- [ ] PWA: manifest, service worker (no offline data), install on phone over Tailscale HTTPS
-- [ ] Web Push reminders: habits due, focus ended, opt-in "streak at risk" nudge (max one per day)
+- [ ] UI review (D32)
 
-**Acceptance:** Exams/deadlines appear on the calendar with countdowns; a recurring lecture block shows every week; completing the weekly review is guided and takes ~5 minutes; a habit reminder reaches the phone.
+**Done when:** "Finish the course: lesson 12 of 40 by June" shows the pace needed; the weekly review is guided and takes ~5 minutes.
+
+**Acceptance (the whole phase):** each slice's "done when", together: On Today, "Duolingo lesson" is due every day until ticked; ticking it earns 10 XP, makes the day active and grows its own streak, and it's due again tomorrow. "Anki reviews" fills with +N to 20; "Listening" fills with typed minutes; a 50-minute focus session on "Course class" counts one class and 50 minutes toward "4 hours of Japanese a week". Duolingo not done by 10:00 sends a notification to the PC and the phone, again every 3 hours, none after it's ticked. The JLPT and departure dates show on the calendar and as countdowns on Today; the course's classes show every week. The weekly review is guided and takes ~5 minutes.
 
 ### Phase 5 — Rewards: loot boxes & collection
 - [ ] Collectible catalogue format + initial catalogue (~40–60 items across categories and all rarities) with placeholder art (CC0 pack, license checked for commercial use)
@@ -545,7 +617,9 @@ Ships in three slices (D27): **3a** activity, XP/levels/streaks, game events, pr
 - [ ] Achievements → **medals** (first 7-day streak, 100 focus hours, 10 weekly reviews…) and **prizes** (completed projects, streak milestones), stored with earned dates
 - [ ] GitHub integration: link repo to project, poll commits, commits → activity (count toward active days)
 - [ ] Google Calendar integration: quests, deadlines, countdowns in an app-created calendar
-- [ ] Project templates (e.g. "Course": default columns, goals, recurring events)
+- [ ] Project templates (e.g. "Course": default columns, goals, recurring events, marked required)
+- [ ] **Moving timezones** (D32; earlier if the departure comes first): a move is its own action outside the weekly limit; the switch day can't break the streak; reminders follow the new zone
+- [ ] **Planned breaks** (D32; same timing): declared ahead, never after the fact; streak neither grows nor breaks; quests and reminders pause; yearly allowance
 - [ ] Data export (JSON) and import
 - [ ] UX polish pass: empty states, loading states, keyboard shortcut cheat sheet, dark mode
 - [ ] Playwright tests for key flows (capture → board → complete → XP → quest → box)
@@ -607,7 +681,7 @@ Quire (`~/Documentos/quire`) is the user's earlier project: a worldbuilding and 
 |---|---|
 | `shared/quests.ts`: `questWeight`, `pickWeighted`, `questWords` (median-based sizing), reroll and bonus flow | Quest engine selection and sizing (§5) |
 | `server/activity.ts`: "marks" (count only growth past the highest value reached), `quietly()` for imports, game events on responses | Earn-once rule (D15), imports that don't count as work, immediate feedback |
-| `shared/goals.ts`: `goalStreak`, `pace` | Commitment goal pace, countdown pacing |
+| `shared/goals.ts`: `goalStreak`, `pace` | Time goal pace, commitment streaks, countdown pacing |
 | `shared/familiar.ts`: `addDays`, `daysBetween` (noon-UTC day arithmetic, SH-7 fix) | `packages/shared/time` |
 | `web/src/editor/` (`entryLink.ts`, `suggestList.ts`) | TipTap mention + suggestion extensions (re-render the list in React) |
 | `server/search.ts`: ranking rules (names first, prefix, accent-insensitive) | Search behavior, re-implemented on Postgres FTS |
@@ -639,7 +713,6 @@ Quire (`~/Documentos/quire`) is the user's earlier project: a worldbuilding and 
 ## 12. Backlog / ideas (not scheduled)
 
 - Mentions inside titles (single-line TipTap editor, plain-text fallback for compact views)
-- Create from the mention picker ("New task “X”" when nothing matches; Quire has it)
 - Mention labels in stored text: `description_text` keeps the label a mention had when inserted, so search still finds the old name and palette snippets show it (chips and backlinks already read current titles)
 - "Names not linked yet": plain-text mentions of an entity's title suggested as links (Quire has this)
 - Typed relations (blocks / blocked by, contributes to) — explicitly out of scope per D4
@@ -650,6 +723,9 @@ Quire (`~/Documentos/quire`) is the user's earlier project: a worldbuilding and 
 - Notes as a first-class entity (linkable documents not tied to a task)
 - Time-of-day focus analytics ("you focus best at…")
 - Offline mode (see §6 note)
+- Spread tasks over the days until a deadline, with a warning for overloaded days (D32; the week view's day load comes first, 4d)
+- File attachments on tasks and projects (passport scans, letters); links in descriptions cover it for now (D32)
+- **Shared group projects** with classmates — a suggestion to be reworked later; must fit the privacy defaults of §4.11 (D32)
 - Google Calendar / iCal import
 - i18n (Portuguese) — out of scope per D7
 - Recycle duplicate collectibles into shards; rotating shard shop to buy specific items

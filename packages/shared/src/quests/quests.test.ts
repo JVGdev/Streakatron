@@ -72,6 +72,7 @@ const input = (over: Partial<BoardInput> = {}): BoardInput => ({
   unpinnedProjects: [{ id: 'prj_a', title: 'Compilers', daysWaiting: 0 }],
   noEffortTasks: [{ id: 'tsk_x', title: 'Email prof', daysWaiting: 0 }],
   lastFocusWithoutNote: null,
+  commitmentsDue: 0,
   ...over,
 });
 
@@ -412,5 +413,31 @@ describe('words', () => {
   it('maps templates to types', () => {
     expect(typeOfTemplate('add_goal')).toBe('make');
     expect(typeOfTemplate('week_projects')).toBe('weekly');
+  });
+});
+
+describe('commitment quests (D31)', () => {
+  it('offers meeting today’s commitments, sized to how many are due', () => {
+    // Three candidates left, so all three are picked.
+    const only = { top: null, nextActions: [], staleProjects: [], hasLargeTask: false };
+    const daily = planDaily(input({ ...only, commitmentsDue: 3 }), seeded(3));
+    const all = [...daily, ...planQuick(input({ commitmentsDue: 3 }), 5, seeded(3))];
+    expect(all.some((q) => q.template === 'commitments_due' && q.target === 3)).toBe(true);
+    expect(all.some((q) => q.template === 'log_commitment')).toBe(true);
+  });
+
+  it('offers neither with nothing due', () => {
+    const quick = planQuick(input(), 5, seeded(3));
+    expect(quick.map((q) => q.template)).not.toContain('log_commitment');
+  });
+
+  it('words them', () => {
+    expect(questTitle({ template: 'commitments_due', target: 3 })).toBe(
+      'Meet every commitment due today (3)',
+    );
+    expect(questTitle({ template: 'commitments_due', target: 1 })).toBe(
+      'Meet your commitment due today',
+    );
+    expect(questTitle({ template: 'log_commitment', target: 1 })).toBe('Log one commitment');
   });
 });

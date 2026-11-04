@@ -1,6 +1,5 @@
-// A project's goals: outcomes (with an optional deadline) and commitments (focus minutes per
-// week or month). Commitment progress needs focus sessions (Phase 3); until then it shows the
-// target only.
+// A project's goals: outcomes (with an optional deadline) and time goals (focus minutes per week
+// or month, D31), with their progress from focus sessions on the project and the pace still needed.
 
 import type { GoalKind, GoalPeriod, GoalStatus } from '@streakatron/shared/structure';
 import {
@@ -70,7 +69,7 @@ export function GoalsPanel({
           onClick={() => setEditing('new')}
           className="w-full rounded-2xl border-2 border-dashed px-4 py-6 text-left text-sm text-muted-foreground hover:bg-muted/40"
         >
-          What is this project aiming for? An outcome (“Pass the exam”) or a commitment (“4 hours a
+          What is this project aiming for? An outcome (“Pass the exam”) or a time goal (“4 hours a
           week”).
         </button>
       )}
@@ -114,7 +113,7 @@ function GoalRow({
   const openSheet = useOpenSheet();
   const done = tasks.filter((t) => t.completedAt).length;
   const setStatus = (status: GoalStatus) => void actions.updateGoal(goal, { status });
-  const Icon = goal.kind === 'commitment' ? Timer : Target;
+  const Icon = goal.kind === 'time' ? Timer : Target;
 
   return (
     <div
@@ -140,11 +139,8 @@ function GoalRow({
           )}
         </div>
         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          {goal.kind === 'commitment' && goal.targetMinutes && goal.period && (
-            <span title="Progress is tracked from focus sessions, which arrive in the MVP">
-              {formatMinutes(goal.targetMinutes)} of focus a {goal.period} · tracking starts with
-              focus sessions
-            </span>
+          {goal.progress && goal.status === 'open' && (
+            <TimeGoalProgress progress={goal.progress} period={goal.period} />
           )}
           {goal.dueDate && goal.status === 'open' && (
             <span className={cn(goal.dueDate < today && 'text-destructive')}>
@@ -224,8 +220,8 @@ export function GoalForm({
     const fields = {
       title,
       kind,
-      targetMinutes: kind === 'commitment' ? minutes : null,
-      period: kind === 'commitment' ? period : null,
+      targetMinutes: kind === 'time' ? minutes : null,
+      period: kind === 'time' ? period : null,
       dueDate: dueDate || null,
     };
     const ok = goal
@@ -247,7 +243,7 @@ export function GoalForm({
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1" role="radiogroup">
-          {(['outcome', 'commitment'] as const).map((k) => (
+          {(['outcome', 'time'] as const).map((k) => (
             <button
               key={k}
               type="button"
@@ -260,7 +256,7 @@ export function GoalForm({
               )}
             >
               {k === 'outcome' ? <Target className="size-4" /> : <Timer className="size-4" />}
-              {k === 'outcome' ? 'Outcome' : 'Commitment'}
+              {k === 'outcome' ? 'Outcome' : 'Time goal'}
             </button>
           ))}
         </div>
@@ -275,7 +271,7 @@ export function GoalForm({
             onChange={(e) => setTitle(e.target.value)}
           />
         </div>
-        {kind === 'commitment' && (
+        {kind === 'time' && (
           <div className="grid gap-1.5">
             <Label htmlFor="goal-hours">Target</Label>
             <div className="flex items-center gap-2 text-sm">
@@ -321,5 +317,36 @@ export function GoalForm({
         </DialogFooter>
       </form>
     </DialogContent>
+  );
+}
+
+/** A time goal's bar: minutes this period of the target, and the pace still needed. */
+export function TimeGoalProgress({
+  progress: p,
+  period,
+  className,
+}: {
+  progress: NonNullable<Goal['progress']>;
+  period: Goal['period'];
+  className?: string;
+}) {
+  return (
+    <span className={cn('grid w-full max-w-sm gap-1', className)}>
+      <span className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+        <span
+          className="block h-full rounded-full bg-ember transition-[width]"
+          style={{ width: `${Math.min(100, (p.minutes / p.target) * 100)}%` }}
+        />
+      </span>
+      <span>
+        <span className={cn('font-semibold', p.met && 'text-ember')}>
+          {formatMinutes(p.minutes)} of {formatMinutes(p.target)}
+        </span>{' '}
+        this {period}
+        {p.met
+          ? ' · made it'
+          : ` · ${formatMinutes(p.perDay)} a day to make it (${p.daysLeft} ${p.daysLeft === 1 ? 'day' : 'days'} left)`}
+      </span>
+    </span>
   );
 }

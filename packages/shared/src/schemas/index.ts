@@ -18,6 +18,13 @@ import {
 import { isDateString, isValidTimeZone } from '../time';
 import { FOCUS_LIMITS } from '../focus';
 import { RESTABLE_QUEST_TYPES } from '../quests';
+import {
+  COMMITMENT_LIMITS,
+  COMMITMENT_MEASURES,
+  COMMITMENT_PERIODS,
+  commitmentShapeProblem,
+  normalizeSchedule,
+} from '../commitments';
 
 export const dateString = z.string().refine(isDateString, 'Expected a YYYY-MM-DD day');
 
@@ -191,21 +198,21 @@ const goalFields = {
   title,
   description,
   kind: z.enum(GOAL_KINDS),
-  /** Commitment goals: minutes of focus per period. */
+  /** Time goals: minutes of focus per period. */
   targetMinutes: z.int().min(5).max(10_000).nullable(),
   period: z.enum(GOAL_PERIODS).nullable(),
   /** Outcome goals: an optional deadline. */
   dueDate: optionalDay,
 };
 
-/** A commitment goal needs a target and a period; an outcome goal has neither. */
+/** A time goal needs a target and a period; an outcome goal has neither. */
 export const goalShapeProblem = (g: {
   kind: GoalKind;
   targetMinutes: number | null;
   period: GoalPeriod | null;
 }) =>
-  g.kind === 'commitment' && (g.targetMinutes == null || g.period == null)
-    ? 'A commitment goal needs a target and a period'
+  g.kind === 'time' && (g.targetMinutes == null || g.period == null)
+    ? 'A time goal needs a target and a period'
     : null;
 
 export const goalCreateSchema = z
@@ -273,6 +280,64 @@ export const taskListQuerySchema = z.object({
 export type TaskListQuery = z.input<typeof taskListQuerySchema>;
 
 /** A comma-separated query value as a list (`?ids=a,b`), empty items dropped. */
+// --- Commitments (D31) ------------------------------------------------------------------------
+
+const commitmentSchedule = z.object({ days: z.array(z.int().min(0).max(6)).min(1).max(7) });
+
+const commitmentFields = {
+  title,
+  description,
+  /** null: no project. */
+  projectId: idOf('project').nullable(),
+  measure: z.enum(COMMITMENT_MEASURES),
+  target: z.int().min(1).max(COMMITMENT_LIMITS.minutes.week),
+  /** Amounts only: "cards", "pages". */
+  unit: z.string().trim().max(COMMITMENT_LIMITS.unitLength).nullable(),
+  period: z.enum(COMMITMENT_PERIODS),
+  /** Day commitments: the weekdays; null (or all seven) is every day. */
+  schedule: commitmentSchedule.nullable(),
+};
+
+export const commitmentCreateSchema = z
+  .object({
+    ...commitmentFields,
+    description: description.optional(),
+    projectId: commitmentFields.projectId.optional(),
+    measure: commitmentFields.measure.default('check'),
+    target: commitmentFields.target.default(1),
+    unit: commitmentFields.unit.optional(),
+    period: commitmentFields.period.default('day'),
+    schedule: commitmentFields.schedule.optional(),
+  })
+  .superRefine((c, ctx) => {
+    // Checked as it will be stored: a daily check's target is 1, a week has no weekdays.
+    const problem = commitmentShapeProblem({
+      ...c,
+      target: c.measure === 'check' && c.period === 'day' ? 1 : c.target,
+      schedule: normalizeSchedule(c.period, c.schedule),
+    });
+    if (problem) ctx.addIssue({ code: 'custom', path: ['target'], message: problem });
+  });
+export type CommitmentCreate = z.input<typeof commitmentCreateSchema>;
+
+export const commitmentPatchSchema = z
+  .object({ ...commitmentFields, archived: z.boolean() })
+  .partial();
+export type CommitmentPatch = z.infer<typeof commitmentPatchSchema>;
+
+/** Log on a commitment, today: a check (amount ignored), +N, or minutes. */
+export const entryCreateSchema = z.object({
+  amount: z.int().min(1).max(COMMITMENT_LIMITS.count.max).default(1),
+  /** The focus session it came from (its finish card's "Mark done" / "+1"). */
+  focusSessionId: idOf('focusSession').optional(),
+});
+export type EntryCreate = z.input<typeof entryCreateSchema>;
+
+export const commitmentListQuerySchema = z.object({
+  /** Archived ones too (the commitments page's "Archived" list). */
+  archived: z.enum(['true', 'false']).default('false'),
+});
+
 const commaList = z
   .string()
   .max(5000)
@@ -325,13 +390,19 @@ export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
 
 // --- Focus sessions --------------------------------------------------------------------------
 
-/** Start a session, on a task (its project comes along), a project, or nothing. */
+/**
+ * Start a session, on a task or a commitment (its project comes along), a project, or nothing.
+ */
 export const focusStartSchema = focusPresetSchema
   .extend({
     taskId: idOf('task').optional(),
     projectId: idOf('project').optional(),
+    commitmentId: idOf('commitment').optional(),
   })
-  .refine((v) => !(v.taskId && v.projectId), 'Attach a task or a project, not both');
+  .refine(
+    (v) => [v.taskId, v.projectId, v.commitmentId].filter(Boolean).length <= 1,
+    'Attach one thing: a task, a project or a commitment',
+  );
 export type FocusStart = z.infer<typeof focusStartSchema>;
 
 /** After a session: its one-line note. */

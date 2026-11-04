@@ -27,6 +27,12 @@ export interface ActivityPayload {
   xp?: number;
   /** Quests: the type (quest fit stats). */
   questType?: string;
+  /** Commitment entries and periods met: which commitment, its period and measure. */
+  commitmentId?: string;
+  period?: 'day' | 'week';
+  measure?: string;
+  /** Commitment entries: the amount logged. */
+  amount?: number;
 }
 
 export interface XpActivity {
@@ -81,7 +87,10 @@ export function xpFor(a: XpActivity, ctx: XpContext): number {
     case 'quest_bonus':
       return ctx.earnedBefore ? 0 : Math.max(0, Math.floor(a.payload.xp ?? 0));
     case 'task_triaged':
+    case 'commitment_logged':
       return 0;
+    case 'commitment_met':
+      return ctx.earnedBefore ? 0 : GAME.xp.commitmentMet;
   }
 }
 
@@ -93,7 +102,8 @@ export const earnsOnce = (a: Pick<XpActivity, 'type'>) =>
   a.type === 'task_completed' ||
   a.type === 'focus_completed' ||
   a.type === 'quest_completed' ||
-  a.type === 'quest_bonus';
+  a.type === 'quest_bonus' ||
+  a.type === 'commitment_met';
 
 /** Replay a log (in the order it happened): the XP each activity earns. */
 export function foldXp(log: readonly XpActivity[]): number[] {
@@ -111,7 +121,16 @@ export function foldXp(log: readonly XpActivity[]): number[] {
   });
 }
 
-export const countsAsActive = (type: ActivityType) => ACTIVE_DAY_TYPES.includes(type);
+/** Whether an activity makes its day active (plan.md §5, D31). */
+export const countsAsActive = (type: ActivityType, payload?: ActivityPayload | null) =>
+  ACTIVE_DAY_TYPES.includes(type) || (type === 'commitment_logged' && payload?.period === 'week');
+
+/**
+ * The key a commitment's period earns under: `cmt_…:2026-11-02` (the period's first day), so
+ * meeting it again in the same period (after deleting an entry) earns nothing (D15).
+ */
+export const commitmentPeriodKey = (commitmentId: string, periodStart: DateString) =>
+  `${commitmentId}:${periodStart}`;
 
 // --- Levels ----------------------------------------------------------------------------------
 

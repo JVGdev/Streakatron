@@ -1,6 +1,7 @@
-// Focus sessions (plan.md §4.4): timed work blocks, optionally on a task or a project. The timer's
-// state lives here, so a session survives reloads and other devices; the shared rules
-// (`@streakatron/shared/focus`) read focus time from these columns. One open session per user.
+// Focus sessions (plan.md §4.4): timed work blocks, optionally on a task, a project or a
+// commitment (D31). The timer's state lives here, so a session survives reloads and other devices;
+// the shared rules (`@streakatron/shared/focus`) read focus time from these columns. One open
+// session per user.
 
 import { FOCUS_LIMITS, FOCUS_STATUSES } from '@streakatron/shared/focus';
 import { sql } from 'drizzle-orm';
@@ -13,9 +14,11 @@ import {
   text,
   timestamp,
   uniqueIndex,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { users } from './auth';
 import { timestamps } from './columns';
+import { commitments } from './commitments';
 import { projects, tasks } from './structure';
 
 const { plannedMinutes, breakMinutes, noteLength } = FOCUS_LIMITS;
@@ -28,8 +31,10 @@ export const focusSessions = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     taskId: text().references(() => tasks.id, { onDelete: 'set null' }),
-    /** The project worked on: the one picked, or the task's when the session started. */
+    /** The project worked on: the one picked, or the task's or commitment's when it started. */
     projectId: text().references(() => projects.id, { onDelete: 'set null' }),
+    /** A commitment worked on: its minutes go to it, or its "Mark done" / "+1" on finish. */
+    commitmentId: text().references((): AnyPgColumn => commitments.id, { onDelete: 'set null' }),
     status: text({ enum: FOCUS_STATUSES }).notNull(),
     plannedMinutes: smallint().notNull(),
     /** The break the preset suggests afterwards (the break itself isn't stored). */

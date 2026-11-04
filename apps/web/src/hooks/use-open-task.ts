@@ -4,9 +4,9 @@ import { useCallback } from 'react';
 
 /** The search params that open a sheet over any page (so it survives a reload). */
 export type SheetKind = Exclude<LinkableKind, 'project'>;
-const SHEETS = { task: undefined, goal: undefined, area: undefined };
+const SHEETS = { task: undefined, goal: undefined, area: undefined, commitment: undefined };
 
-/** Open a task, goal or area in its sheet, closing any other; `undefined` closes it. */
+/** Open a task, goal, area or commitment in its sheet, closing any other; `undefined` closes it. */
 export function useOpenSheet() {
   const navigate = useNavigate();
   return useCallback(

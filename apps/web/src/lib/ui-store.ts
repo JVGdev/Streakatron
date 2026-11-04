@@ -1,5 +1,5 @@
 // App-wide UI state that any component (palette, shortcuts, sidebar) can open: the command
-// palette and the area/project dialogs.
+// palette and the area, project and commitment dialogs.
 
 import { useSyncExternalStore } from 'react';
 
@@ -8,10 +8,18 @@ export interface UiState {
   /** The project dialog: new (optionally in an area) or editing one. */
   projectDialog: null | { projectId?: string; areaId?: string | null };
   areaDialog: null | { areaId?: string };
+  /** The commitment dialog: new (optionally in a project) or editing one. */
+  commitmentDialog: null | { commitmentId?: string; projectId?: string | null };
   shortcuts: boolean;
 }
 
-let state: UiState = { palette: null, projectDialog: null, areaDialog: null, shortcuts: false };
+let state: UiState = {
+  palette: null,
+  projectDialog: null,
+  areaDialog: null,
+  commitmentDialog: null,
+  shortcuts: false,
+};
 const listeners = new Set<() => void>();
 
 export function setUi(patch: Partial<UiState>) {
@@ -34,3 +42,7 @@ export const newProject = (areaId?: string | null) => setUi({ projectDialog: { a
 export const editProject = (projectId: string) => setUi({ projectDialog: { projectId } });
 export const newArea = () => setUi({ areaDialog: {} });
 export const editArea = (areaId: string) => setUi({ areaDialog: { areaId } });
+export const newCommitment = (projectId?: string | null) =>
+  setUi({ commitmentDialog: { projectId } });
+export const editCommitment = (commitmentId: string) =>
+  setUi({ commitmentDialog: { commitmentId } });

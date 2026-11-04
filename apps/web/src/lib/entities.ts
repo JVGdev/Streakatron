@@ -83,6 +83,7 @@ export const KIND_LABEL = {
   goal: 'Goal',
   project: 'Project',
   area: 'Area',
+  commitment: 'Commitment',
 } as const;
 
 export const KIND_PLURAL = {
@@ -90,4 +91,5 @@ export const KIND_PLURAL = {
   goal: 'Goals',
   project: 'Projects',
   area: 'Areas',
+  commitment: 'Commitments',
 } as const;

@@ -107,6 +107,36 @@
 - **Decision:** D30.
 - **Committed and deployed (same day, at the user's request):** branch `phase-3-mvp` merged into `main` (not pushed); the Docker app rebuilt after a manual `pg_dump`; health OK locally and over Tailscale, all 8 migrations applied.
 
+### 2026-11-04 — Use case "Studying Japanese" → Phase 4 replanned
+- **Trigger:** the user created a real project and found daily goals, reminders and a calendar essential; we built a use case together.
+- **Played a day on the MVP** (production build on :3101, throwaway `streakatron_uc` database, dropped after; Playwright from the scratchpad): area *Intercâmbio* and project *Studying Japanese* through the dialogs, three goals (two outcomes with deadlines, a 4 h/week time goal), five tasks, Duolingo as a task scheduled today plus a hand-made copy for tomorrow; completed it from Today, ran a 25-minute focus session on the project. No console errors.
+- **Found:** a "daily" thing is a task that disappears once done (no repeat, no history); the time goal shows no progress after focus on its project (planned); minutes spent in other apps can't be counted; no reminders, calendar or countdowns; the new-project dialog starts on "No area" with one area; icon and color picker buttons have no accessible names; `?tab=` doesn't open project tabs.
+- **The user's answers:** habits are called **Commitments**, set up however the user wants (done / amount with a unit / minutes; per day or week; every day, weekdays, N a week); minutes from focus sessions on the commitment plus typed minutes; time goals and commitments both stay; reminders (repeat until done) before the calendar. Claude's details: "commitment goal" renamed **time goal**, internals renamed (`cmt_`), entries, streaks, XP and active-day rules, Today placement, reminder scheduling. Recorded as **D31**.
+- **plan.md:** glossary, §4 (structure, Today, focus, consistency tools, reminders), §5 (XP, active day, quest examples), §7 tables, §8 routes, decisions table (D27–D31 added) and **Phase 4 rewritten**: the use case, slices 4a Commitments · 4b Reminders · 4c Calendar and countdowns · 4d time goals, weekly review, quests, and an acceptance scenario from the use case. The small fixes go in 4a.
+- **`observations.txt`:** "create a new area from the new-project dialog's selector, and from every selector where it fits" → 4a item and D31 (the mention picker's backlog item moved into it). The old reroll line was replaced by the user.
+- **Not yet:** no code changed; `packages/shared/src/ids.ts` still has `habit: 'hab'` / `habitCheckin: 'chk'`, renamed when 4a starts.
+- **Next:** 4a Commitments.
+
+### 2026-11-04 — Brainstormed use cases → D32
+- **Use cases** (Claude's, aimed at what "Studying Japanese" didn't touch): getting ready to leave (visa, documents), moving to Japan (timezones, travel), a full semester (5 courses), finishing a course or textbook, an exam in 5 days, phone-only moments, a group assignment.
+- **Gaps found:** waiting-on-someone tasks wrongly become the next action; no reminders on tasks; no tentative dates; no files; a timezone move and travel days can break the streak; no planned breaks; the active limit doesn't fit required courses; no recurring tasks; outcome goals can't track numbers; no way to spread study over days; no acting from a notification; no shared projects.
+- **The user's answers:** all in scope except shared group projects (backlog, to be reworked later); a **"required"** project option as an exception to a few rules; **the UI must stay easy and good to use** as features land.
+- **Recorded as D32** (placements and details Claude's choice): 4a waiting column category, required projects · 4b task reminders, notification actions · 4c recurring tasks, tentative dates, day load · 4d number goals · Phase 6 (earlier if the departure comes first) timezone moves, planned breaks · backlog: spreading tasks, attachments, shared projects. UI rules: defaults first, options behind "More", grow existing screens, same patterns, a UI review closing every slice — added to plan.md principles (10), vision.md and CLAUDE.md.
+- **`observations.txt`:** "pin tasks or goals to be featured on the home screen, mostly ongoing tasks" → **D33 Spotlight** (named so it doesn't clash with the next-action pin; at most 4; countdowns reuse it), a 4a item. The selector idea was already merged (D31).
+- **Next:** 4a Commitments.
+
+### 2026-11-04 — Phase 4 split into six slices (D34)
+- **The user:** Phase 4 needed a proper split after D31–D33.
+- **D34:** 4a Commitments (+ time-goal progress, moved up) · 4b Today & boards (Spotlight, waiting, required, create from selectors, small fixes) · 4c Reminders · 4d Calendar & countdowns · 4e Recurring tasks · 4f Goals & weekly review. Each has a "done when" from the use cases and a closing UI review. "Weekly quests fully wired" ticked (built in 3c). D31–D33 annotated with the old → new letters.
+- **Next:** 4a Commitments.
+
 ### 2026-11-04 — License (D35)
 - **The user** chose a proprietary license. Added `LICENSE` (all rights reserved, © 2026 João Vitor Giacomolli), `"license": "UNLICENSED"` in all four `package.json` files, a License section in the README, and D35.
 - **Next:** 4a Commitments.
+
+### 2026-11-04 — 4a Commitments built (D36)
+- **Shared:** `commitments` module (shape, due today, met, per-commitment streaks, history, wording), `time-goals` (period, progress, pace), goal kind `time`, `cmt_`/`cme_` ids, XP 10 once per period, active-day rule, `todayItems`, quest templates `commitments_due` and `log_commitment`.
+- **Server:** migrations 0008 (goal kind rename, hand-written), 0009 (commitments, entries, `focus_sessions.commitment_id`), 0010 (search); `/api/commitments` CRUD + archive + restore + entries; focus on a commitment; time-goal progress on goals; commitments in search/mentions/backlinks, snapshots, purge, quests.
+- **Web:** commitment row/control (tick, +1, +N, minutes, focus), dialog, sheet (`?commitment=`), `/commitments` page (nav, phone bar), project section, Today (between today's tasks and next actions, "Done today" line), palette, focus attach and finish card, time-goal bars.
+- **Checked:** the "done when" played in a real browser (production build on :3101, throwaway DB, dropped after): Duolingo ticked (10 XP, active day, streak 1), Anki +1/+N to 20, Listening 15 typed minutes, a 50-min session on Course class → 1/3 classes and 50/240 min on the time goal. UI review desktop/phone/dark: fixed history before creation, "1 days", palette "Go to Commitments", weekday chips on phones. 323 tests, typecheck, lint, format pass. Not committed.
+- **Next:** 4b Today & boards.

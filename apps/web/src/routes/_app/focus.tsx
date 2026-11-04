@@ -1,5 +1,6 @@
 // The focus page (D29): start a session (preset, task or project), run it in a big calm ring, then
-// finish with a note, the task marked done, and a break. `?on=tsk_…|prj_…` picks what to focus on.
+// finish with a note, the task (or commitment) marked done, and a break. `?on=tsk_…|prj_…|cmt_…`
+// picks what to focus on.
 
 import { autoFinishAt, FOCUS_LIMITS, focusCounts, formatClock } from '@streakatron/shared/focus';
 import { GAME } from '@streakatron/shared/game';
@@ -14,8 +15,8 @@ import { clockText, sessionLabel, useBreak, useFocus } from '@/hooks/use-focus';
 import { SaveState } from '@/components/sheet-parts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useOpenTask } from '@/hooks/use-open-task';
-import { useFocusActions, useTaskActions } from '@/lib/actions';
+import { useOpenSheet, useOpenTask } from '@/hooks/use-open-task';
+import { useCommitmentActions, useFocusActions, useTaskActions } from '@/lib/actions';
 import { useAutosave } from '@/lib/autosave';
 import { entityQuery } from '@/lib/entities';
 import {
@@ -96,6 +97,7 @@ function Running({ session }: { session: FocusSession }) {
   const { clock } = useFocus();
   const focus = useFocusActions();
   const openTask = useOpenTask();
+  const openSheet = useOpenSheet();
   const [confirmAbandon, setConfirmAbandon] = useState(false);
   const [busy, setBusy] = useState(false);
   if (!clock) return null;
@@ -149,12 +151,19 @@ function Running({ session }: { session: FocusSession }) {
         </div>
       </FocusRing>
 
-      {(session.task || session.project) && (
+      {(session.task || session.project || session.commitment) && (
         <div className="text-center">
           <div className="text-xs font-extrabold tracking-[0.08em] text-muted-foreground uppercase">
             On
           </div>
-          {session.task ? (
+          {session.commitment ? (
+            <button
+              className="mt-0.5 font-display text-xl font-semibold hover:underline"
+              onClick={() => openSheet('commitment', session.commitment!.id)}
+            >
+              {session.commitment.title}
+            </button>
+          ) : session.task ? (
             <button
               className="mt-0.5 font-display text-xl font-semibold hover:underline"
               onClick={() => openTask(session.task!.id)}
@@ -170,7 +179,7 @@ function Running({ session }: { session: FocusSession }) {
               {session.project!.title}
             </Link>
           )}
-          {session.task && session.project && (
+          {(session.task || session.commitment) && session.project && (
             <div className="text-sm text-muted-foreground">{session.project.title}</div>
           )}
         </div>
@@ -241,6 +250,7 @@ function FinishCard({ session }: { session: FocusSession }) {
   const qc = useQueryClient();
   const focus = useFocusActions();
   const tasks = useTaskActions();
+  const commitments = useCommitmentActions();
   const minutes = session.minutes ?? 0;
   const counts = focusCounts(minutes);
   const capped = minutes >= session.plannedMinutes + GAME.focus.overtimeMinutes;
@@ -270,7 +280,7 @@ function FinishCard({ session }: { session: FocusSession }) {
           {capped
             ? `It finished on its own, ${GAME.focus.overtimeMinutes} minutes past the plan.`
             : counts
-              ? `+${minutes} XP${session.task || session.project ? ` on ${sessionLabel(session)}` : ''}.`
+              ? `+${minutes} XP${session.task || session.project || session.commitment ? ` on ${sessionLabel(session)}` : ''}.`
               : `Under ${GAME.focus.minMinutes} minutes, so this one doesn’t count. Next time!`}
         </p>
       </div>
@@ -303,6 +313,31 @@ function FinishCard({ session }: { session: FocusSession }) {
           {taskDone ? `“${session.task.title}” is done` : `Mark “${session.task.title}” done`}
         </Button>
       )}
+
+      {session.commitment &&
+        (session.commitment.measure === 'minutes' ? (
+          session.commitment.logged && (
+            <p className="text-sm font-semibold text-muted-foreground">
+              {minutes} min added to “{session.commitment.title}”.
+            </p>
+          )
+        ) : (
+          <Button
+            variant="outline"
+            disabled={session.commitment.logged}
+            onClick={() => void commitments.log(session.commitment!.id, 1, session.id)}
+          >
+            <Check />
+            {session.commitment.logged
+              ? `Logged on “${session.commitment.title}”`
+              : session.commitment.measure === 'check'
+                ? `Mark “${session.commitment.title}” done`
+                : `+1 ${session.commitment.unit ?? ''} on “${session.commitment.title}”`.replace(
+                    '  ',
+                    ' ',
+                  )}
+          </Button>
+        ))}
 
       <div className="flex flex-wrap justify-center gap-3">
         {session.breakMinutes > 0 && (
@@ -355,8 +390,21 @@ function BreakView({ remainingMs, minutes }: { remainingMs: number; minutes: num
 function useInitialAttachment(on: string | undefined, last: FocusSession | null) {
   const { data: named } = useQuery({ ...entityQuery(on ?? ''), enabled: !!on });
   if (on) {
-    if (!named || named.closed || (named.kind !== 'task' && named.kind !== 'project')) return null;
+    if (
+      !named ||
+      named.closed ||
+      (named.kind !== 'task' && named.kind !== 'project' && named.kind !== 'commitment')
+    ) {
+      return null;
+    }
     return { kind: named.kind, id: named.id, title: named.title } satisfies Attachment;
+  }
+  if (last?.commitment) {
+    return {
+      kind: 'commitment',
+      id: last.commitment.id,
+      title: last.commitment.title,
+    } satisfies Attachment;
   }
   if (last?.task && !last.task.completedAt) {
     return { kind: 'task', id: last.task.id, title: last.task.title } satisfies Attachment;
@@ -397,6 +445,7 @@ function StartPanel({ last }: { last: FocusSession | null }) {
       ...preset,
       ...(attachment?.kind === 'task' ? { taskId: attachment.id } : {}),
       ...(attachment?.kind === 'project' ? { projectId: attachment.id } : {}),
+      ...(attachment?.kind === 'commitment' ? { commitmentId: attachment.id } : {}),
     });
     setBusy(false);
   };

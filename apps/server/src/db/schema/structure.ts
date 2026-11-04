@@ -118,7 +118,7 @@ export const goals = pgTable(
     title: text().notNull(),
     ...rich(),
     kind: text({ enum: GOAL_KINDS }).notNull(),
-    /** Commitment goals: focus minutes per period. */
+    /** Time goals: focus minutes per period. */
     targetMinutes: integer(),
     period: text({ enum: GOAL_PERIODS }),
     dueDate: day(),
@@ -133,8 +133,8 @@ export const goals = pgTable(
     check('goals_kind', oneOf(t.kind, GOAL_KINDS)),
     check('goals_status', oneOf(t.status, GOAL_STATUSES)),
     check(
-      'goals_commitment_shape',
-      sql`${t.kind} <> 'commitment' or (${t.targetMinutes} is not null and ${t.period} is not null)`,
+      'goals_time_shape',
+      sql`${t.kind} <> 'time' or (${t.targetMinutes} is not null and ${t.period} is not null)`,
     ),
   ],
 );

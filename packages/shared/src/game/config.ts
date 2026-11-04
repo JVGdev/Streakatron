@@ -13,6 +13,8 @@ export const GAME = {
     taskDailySoftCap: 200,
     /** Focus: XP per minute of a completed session of at least `focus.minMinutes`. */
     focusPerMinute: 1,
+    /** Meeting a commitment's target: once per commitment per period (D31). */
+    commitmentMet: 10,
   },
   focus: {
     /** A session this long or longer earns XP and makes the day active. */
@@ -39,11 +41,21 @@ export const ACTIVITY_TYPES = [
   'quest_completed',
   /** Every daily quest of a day was done: the board bonus, once per day. */
   'quest_bonus',
+  /** An entry on a commitment (a tick, +N, minutes); no XP, for quests and stats. */
+  'commitment_logged',
+  /** A commitment's target was reached for a period: its XP, once per commitment per period. */
+  'commitment_met',
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
 /**
- * The activities that make a day active (plan.md §5; habits come in Phase 4). `focus_completed` is
- * only logged for sessions of at least `focus.minMinutes`, so every one counts.
+ * The activities that always make a day active (plan.md §5). `focus_completed` is only logged for
+ * sessions of at least `focus.minMinutes`, so every one counts. Meeting a commitment counts; so does
+ * any entry on a weekly one (`commitment_logged` with `period: 'week'`, see `countsAsActive`), while
+ * a partial entry on a daily one (+1 of 20 cards) doesn't (D31).
  */
-export const ACTIVE_DAY_TYPES: readonly ActivityType[] = ['task_completed', 'focus_completed'];
+export const ACTIVE_DAY_TYPES: readonly ActivityType[] = [
+  'task_completed',
+  'focus_completed',
+  'commitment_met',
+];

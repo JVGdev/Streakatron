@@ -33,19 +33,19 @@ export const clockText = (clock: FocusClock) =>
     : formatClock(clock.remainingMs);
 
 /** What a session is on, in a few words. */
-export const sessionLabel = (s: Pick<FocusSession, 'task' | 'project'>) =>
-  s.task?.title ?? s.project?.title ?? 'Focus';
+export const sessionLabel = (s: Pick<FocusSession, 'task' | 'project' | 'commitment'>) =>
+  s.task?.title ?? s.commitment?.title ?? s.project?.title ?? 'Focus';
 
 /**
- * Start a session with the first preset in one click (Today, the task sheet), then show the
- * timer. With a session already going, it just shows the timer.
+ * Start a session with the first preset in one click (Today, the task sheet, a commitment), then
+ * show the timer. With a session already going, it just shows the timer.
  */
 export function useQuickFocus() {
   const focus = useFocusActions();
   const navigate = useNavigate();
   const { data: me } = useQuery(meQuery);
   const { data: state } = useQuery(focusQuery);
-  return async (on?: { taskId: string } | { projectId: string }) => {
+  return async (on?: { taskId: string } | { projectId: string } | { commitmentId: string }) => {
     if (!state?.session) {
       const preset = me?.settings.focusPresets[0] ?? DEFAULT_USER_SETTINGS.focusPresets[0]!;
       await focus.start({ ...preset, ...on });

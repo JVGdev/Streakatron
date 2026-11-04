@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
+import { Route as AppCommitmentsRouteImport } from './routes/_app/commitments'
 import { Route as AppFocusRouteImport } from './routes/_app/focus'
 import { Route as AppInboxRouteImport } from './routes/_app/inbox'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
@@ -39,6 +40,11 @@ const SignInRoute = SignInRouteImport.update({
 const AppCalendarRoute = AppCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCommitmentsRoute = AppCommitmentsRouteImport.update({
+  id: '/commitments',
+  path: '/commitments',
   getParentRoute: () => AppRoute,
 } as any)
 const AppFocusRoute = AppFocusRouteImport.update({
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
   '/calendar': typeof AppCalendarRoute
+  '/commitments': typeof AppCommitmentsRoute
   '/focus': typeof AppFocusRoute
   '/inbox': typeof AppInboxRoute
   '/settings': typeof AppSettingsRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
   '/calendar': typeof AppCalendarRoute
+  '/commitments': typeof AppCommitmentsRoute
   '/focus': typeof AppFocusRoute
   '/inbox': typeof AppInboxRoute
   '/settings': typeof AppSettingsRoute
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/_app/calendar': typeof AppCalendarRoute
+  '/_app/commitments': typeof AppCommitmentsRoute
   '/_app/focus': typeof AppFocusRoute
   '/_app/inbox': typeof AppInboxRoute
   '/_app/settings': typeof AppSettingsRoute
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
     | '/'
     | '/sign-in'
     | '/calendar'
+    | '/commitments'
     | '/focus'
     | '/inbox'
     | '/settings'
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
     | '/'
     | '/sign-in'
     | '/calendar'
+    | '/commitments'
     | '/focus'
     | '/inbox'
     | '/settings'
@@ -156,6 +167,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/sign-in'
     | '/_app/calendar'
+    | '/_app/commitments'
     | '/_app/focus'
     | '/_app/inbox'
     | '/_app/settings'
@@ -200,6 +212,13 @@ declare module '@tanstack/react-router' {
       path: '/calendar'
       fullPath: '/calendar'
       preLoaderRoute: typeof AppCalendarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/commitments': {
+      id: '/_app/commitments'
+      path: '/commitments'
+      fullPath: '/commitments'
+      preLoaderRoute: typeof AppCommitmentsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/focus': {
@@ -263,6 +282,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppCalendarRoute: typeof AppCalendarRoute
+  AppCommitmentsRoute: typeof AppCommitmentsRoute
   AppFocusRoute: typeof AppFocusRoute
   AppInboxRoute: typeof AppInboxRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -275,6 +295,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppCalendarRoute: AppCalendarRoute,
+  AppCommitmentsRoute: AppCommitmentsRoute,
   AppFocusRoute: AppFocusRoute,
   AppInboxRoute: AppInboxRoute,
   AppSettingsRoute: AppSettingsRoute,

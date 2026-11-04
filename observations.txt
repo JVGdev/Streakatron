@@ -1,1 +1,2 @@
-- Quests should have a one-time-a-day rerrol for each.
+- Be able to create new area directly from area selector on new project popup. This should actually be a thing for every selector if fitting.
+- Be able to pin "tasks" or goals to appear in "destaque", probably at the home menu. Mostly to be used with ongoing tasks for example.
