@@ -20,10 +20,10 @@ function InboxPage() {
   const done = tasks.filter((t) => t.completedAt);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
+    <div className="max-w-3xl space-y-5">
       <PageHeader
         title="Inbox"
-        description="Capture now, sort later: open a task to give it a project. Press C anywhere to add one."
+        description="Capture now, sort later. Press C anywhere to add one."
       />
       <QuickAdd
         input={{ projectId: null, position: 'top' }}
@@ -33,6 +33,7 @@ function InboxPage() {
       <TaskListView
         tasks={tasks}
         showProject={false}
+        triage
         options={{ ...DEFAULT_LIST, project: 'inbox', sort: 'board', group: 'none' }}
         empty="Inbox zero. Everything has a home."
       />

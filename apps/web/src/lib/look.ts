@@ -143,3 +143,5 @@ export const CATEGORY_DOT = {
   in_progress: 'bg-amber-500',
   done: 'bg-green-500',
 } as const;
+
+export const EFFORT_LABEL = { S: 'Small', M: 'Medium', L: 'Large' } as const;

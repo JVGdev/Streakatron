@@ -166,7 +166,7 @@ export function Board({
         setDragLanes(null);
       }}
     >
-      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 md:-mx-8 md:snap-none md:px-8">
+      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4 md:-mx-10 md:snap-none md:px-10">
         {columns.map((column, i) => (
           <Lane
             key={column.id}
@@ -220,7 +220,7 @@ function Lane({
   return (
     <section
       aria-label={column.title}
-      className="flex max-h-[calc(100dvh-14rem)] w-[85vw] shrink-0 snap-start flex-col rounded-xl bg-muted/50 sm:w-72"
+      className="flex max-h-[calc(100dvh-14rem)] w-[85vw] shrink-0 snap-start flex-col rounded-3xl bg-muted sm:w-72"
     >
       <ColumnHeader column={column} index={index} columns={columns} count={ids.length} />
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
@@ -312,9 +312,9 @@ function Card({
   return (
     <div
       className={cn(
-        'group cursor-grab touch-manipulation rounded-lg border bg-card p-3 shadow-xs transition-shadow select-none hover:shadow-sm active:cursor-grabbing',
-        overlay && 'rotate-1 shadow-lg',
-        isNext && !done && 'border-primary/50',
+        'group cursor-grab touch-manipulation rounded-2xl border-2 bg-card p-3 shadow-ledge transition-colors select-none hover:border-input active:cursor-grabbing',
+        overlay && 'rotate-2 shadow-lg',
+        isNext && !done && 'border-ember/60 hover:border-ember',
       )}
     >
       <div className="flex items-start gap-2.5">
@@ -329,7 +329,7 @@ function Card({
         </div>
         {isNext && !done && (
           <span title={project.nextAction?.pinned ? 'Next action (pinned)' : 'Next action'}>
-            <Pin className="size-3.5 text-primary" aria-label="Next action" />
+            <Pin className="size-3.5 text-ember" aria-label="Next action" />
           </span>
         )}
       </div>
@@ -389,7 +389,7 @@ function ColumnHeader({
           }}
         />
       ) : (
-        <h3 className="min-w-0 flex-1 truncate text-sm font-semibold">{column.title}</h3>
+        <h3 className="min-w-0 flex-1 truncate text-base">{column.title}</h3>
       )}
       <span className="text-xs text-muted-foreground tabular-nums">{count}</span>
       <DropdownMenu>
@@ -474,7 +474,7 @@ function AddColumn({ projectId }: { projectId: string }) {
   }
 
   return (
-    <div className="grid w-64 shrink-0 content-start gap-2 rounded-xl bg-muted/50 p-3">
+    <div className="grid w-64 shrink-0 content-start gap-2 rounded-3xl bg-muted p-3">
       <Input
         autoFocus
         placeholder="Column title"

@@ -64,6 +64,11 @@ The full decisions log, with rationale, alternatives and status, lives in **`.cl
 | D18 | Daily backups checked hourly, named by the owner's day |
 | D19 | Deleting: tasks/goals soft-deleted with Undo; projects/areas into a snapshot; 30 days to restore |
 | D20 | Board rules: "done" follows the column category; next action prefers in-progress tasks |
+| D21 | Mentions: TipTap nodes by id; links rewritten with every description save |
+| D22 | Goal and area sheets; editors start from freshly fetched data |
+| D23 | Search: full-text with prefixes, typo-tolerant titles |
+| D24 | UI polish rules: one page width, no desktop top bar, unbuilt pages hidden, day picker, completion pop |
+| D25 | Visual identity: B's structure, C's colors, A's icons and quest-complete screen, rounded type (Fredoka + Nunito); applied to the app (rarity colors open) |
 
 Rejected ideas are listed at the end of the decisions log so they aren't proposed again.
 
@@ -491,7 +496,7 @@ Each phase ends with a usable app. **Phase 3 completion = MVP = start using it d
 - [ ] Server-side user day from timezone + day-start hour; rate-limited timezone changes (D17)
 - [ ] Game events returned on every write response; UI toasts/animations (subtle)
 - [ ] Focus sessions: timer UI, presets, attach to task/project, persistence across reloads, end notification + sound
-- [ ] Today view: header (level/XP/streaks/freezes/weekly target), capped focus list, start-focus button
+- [ ] Today view: header (level/XP/streaks/freezes/weekly target), capped focus list, start-focus button *(focus list without habits done early in the 2026-11-04 polish pass, D24: `lib/focus.ts`)*
 - [ ] Quest engine with **type registry** (D10): weighted picks with waiting time, sizing from your own days, one reroll per quest per day, board bonus, resting types, nothing for idle projects
 - [ ] MVP quest types: quick (with daily cap), daily, time, weekly (basic), comeback, **make + follow-up with soft cap** (D16)
 - [ ] Incremental quest evaluation (only quests an activity can affect); `quest_completed` activity logged for future loot; offered/rerolled/expired logged for fit stats

@@ -1,6 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { ChevronRight, Keyboard, LogOut, Plus, Search, Settings } from 'lucide-react';
+import {
+  ChevronRight,
+  ChevronsUpDown,
+  Keyboard,
+  LogOut,
+  Plus,
+  Search,
+  Settings,
+} from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { CommandPalette } from '@/components/command-palette';
@@ -52,48 +60,50 @@ export function AppShell({
   return (
     <ProjectStatusProvider>
       <div className="flex min-h-dvh">
-        <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
-          <div className="px-5 py-5">
+        <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r-2 border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
+          <div className="px-5 pt-6 pb-5">
             <Logo />
           </div>
           <button
             onClick={() => openPalette('search')}
-            className="mx-3 mb-3 flex items-center gap-2 rounded-md border border-sidebar-border bg-background/60 px-3 py-1.5 text-sm text-muted-foreground hover:bg-background"
+            className="mx-3 mb-4 flex items-center gap-2 rounded-xl border-2 border-sidebar-border bg-card/70 px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-card"
           >
             <Search className="size-4" />
             <span className="flex-1 text-left">Find or add…</span>
             <kbd className="font-mono text-[10px]">{isMac ? '⌘K' : 'Ctrl K'}</kbd>
           </button>
-          <nav className="flex flex-col gap-0.5 px-3" aria-label="Main">
-            {NAV.map(({ to, label, icon: Icon }) => (
+          <nav className="flex flex-col gap-1 px-3" aria-label="Main">
+            {NAV.filter((n) => !n.later).map(({ to, label, icon: Icon }) => (
               <Link
                 key={to}
                 to={to}
-                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                activeProps={{
-                  className: 'bg-sidebar-accent !text-sidebar-accent-foreground',
-                }}
+                className="group flex items-center gap-3 rounded-2xl px-3.5 py-2.5 font-display text-[17px] text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/70 data-[status=active]:bg-sidebar-accent data-[status=active]:font-semibold data-[status=active]:text-sidebar-accent-foreground data-[status=active]:shadow-ledge"
                 activeOptions={{ exact: to !== '/projects' }}
               >
-                <Icon className="size-4" />
+                <Icon className="size-5 stroke-[2.6] text-muted-foreground group-data-[status=active]:text-ember" />
                 <span className="flex-1">{label}</span>
                 {to === '/inbox' && inboxCount > 0 && (
-                  <span className="text-xs text-muted-foreground tabular-nums">{inboxCount}</span>
+                  <span className="grid h-6 min-w-6 place-items-center rounded-full bg-primary px-1.5 font-sans text-xs font-bold text-primary-foreground tabular-nums">
+                    {inboxCount}
+                  </span>
                 )}
               </Link>
             ))}
           </nav>
           <AreaTree />
+          <div className="border-t-2 border-sidebar-border p-3">
+            <UserMenu me={me} wide />
+          </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b bg-background/85 px-4 backdrop-blur md:px-8">
-            <Logo className="md:invisible" />
+          {/* Phones only: on desktop the sidebar holds the logo, search and account. */}
+          <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b bg-background/85 px-4 backdrop-blur md:hidden">
+            <Logo />
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="icon"
-                className="md:hidden"
                 aria-label="Find"
                 onClick={() => openPalette('search')}
               >
@@ -102,13 +112,16 @@ export function AppShell({
               <UserMenu me={me} />
             </div>
           </header>
-          <main className="flex-1 px-4 pt-6 pb-28 md:px-8 md:pb-10">{children}</main>
+          {/* One width for every page, so content never shifts sideways between pages or tabs. */}
+          <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-40 md:px-10 md:pt-10 md:pb-12">
+            {children}
+          </main>
         </div>
 
         {/* Phones: capture in one tap, above the bottom bar. */}
         <Button
           size="icon"
-          className="fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 size-12 rounded-full shadow-lg md:hidden"
+          className="fixed right-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 size-14 rounded-full md:hidden"
           aria-label="New task"
           onClick={() => openPalette('capture')}
         >
@@ -116,21 +129,20 @@ export function AppShell({
         </Button>
 
         <nav
-          className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+          className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t-2 bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
           aria-label="Main"
         >
-          {NAV.filter((n) => n.phone).map(({ to, label, icon: Icon }) => (
+          {NAV.filter((n) => n.phone && !n.later).map(({ to, label, icon: Icon }) => (
             <Link
               key={to}
               to={to}
-              className="relative flex flex-col items-center gap-1 py-2 text-[11px] font-medium text-muted-foreground"
-              activeProps={{ className: '!text-primary' }}
+              className="relative flex flex-col items-center gap-1 py-2 font-display text-xs text-muted-foreground data-[status=active]:font-semibold data-[status=active]:text-primary"
               activeOptions={{ exact: to !== '/projects' }}
             >
-              <Icon className="size-5" />
+              <Icon className="size-5 stroke-[2.6]" />
               {label}
               {to === '/inbox' && inboxCount > 0 && (
-                <span className="absolute top-1 left-[calc(50%+6px)] rounded-full bg-primary px-1 text-[9px] leading-4 text-primary-foreground">
+                <span className="absolute top-1 left-[calc(50%+6px)] min-w-4 rounded-full bg-primary px-1 text-center font-sans text-[10px] leading-4 font-bold text-primary-foreground">
                   {inboxCount}
                 </span>
               )}
@@ -158,8 +170,8 @@ function AreaTree() {
 
   return (
     <div className="mt-5 flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center justify-between px-6 pb-1">
-        <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+      <div className="flex items-center justify-between px-6 pb-1.5">
+        <span className="text-xs font-extrabold tracking-[0.08em] text-muted-foreground uppercase">
           Areas
         </span>
         <DropdownMenu>
@@ -207,7 +219,7 @@ function AreaBranch({ area, projects }: { area: Area; projects: Project[] }) {
   const [open, setOpen] = useState(true);
   return (
     <div className="mt-0.5">
-      <div className="group flex items-center rounded-md hover:bg-sidebar-accent">
+      <div className="group flex items-center rounded-xl hover:bg-sidebar-accent/70">
         <button
           className="grid size-7 place-items-center text-muted-foreground"
           aria-label={open ? `Collapse ${area.title}` : `Expand ${area.title}`}
@@ -219,14 +231,14 @@ function AreaBranch({ area, projects }: { area: Area; projects: Project[] }) {
         <Link
           to="/projects"
           hash={area.id}
-          className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-2 text-sm font-medium"
+          className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-2 text-sm font-bold"
         >
           <EntityIcon icon={area.icon} color={area.color} size="sm" />
           <span className="truncate">{area.title}</span>
         </Link>
       </div>
       {open && (
-        <div className="ml-3.5 border-l border-sidebar-border pl-1">
+        <div className="ml-3.5 border-l-2 border-sidebar-border pl-1">
           {projects.map((p) => (
             <ProjectLink key={p.id} project={p} />
           ))}
@@ -250,10 +262,9 @@ function ProjectLink({ project }: { project: Project }) {
       to="/projects/$projectId"
       params={{ projectId: project.id }}
       className={cn(
-        'flex items-center gap-2 rounded-md px-3 py-1.5 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent',
+        'flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-semibold text-sidebar-foreground/85 hover:bg-sidebar-accent/70 data-[status=active]:bg-sidebar-accent data-[status=active]:font-bold data-[status=active]:text-sidebar-accent-foreground data-[status=active]:shadow-ledge',
         project.status === 'parked' && 'text-muted-foreground',
       )}
-      activeProps={{ className: 'bg-sidebar-accent !text-sidebar-accent-foreground font-medium' }}
     >
       <EntityIcon icon={project.icon} color={project.color} size="sm" />
       <span className="min-w-0 flex-1 truncate">{project.title}</span>
@@ -264,7 +275,7 @@ function ProjectLink({ project }: { project: Project }) {
   );
 }
 
-function UserMenu({ me }: { me: Me }) {
+function UserMenu({ me, wide }: { me: Me; wide?: boolean }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const initials = me.user.name
@@ -285,16 +296,35 @@ function UserMenu({ me }: { me: Me }) {
     await navigate({ to: '/sign-in' });
   }
 
+  const avatar = (
+    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-glow font-display text-xs font-semibold text-glow-foreground">
+      {initials || '?'}
+    </span>
+  );
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="rounded-full" aria-label="Account">
-          <span className="grid size-8 place-items-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
-            {initials || '?'}
-          </span>
-        </Button>
+        {wide ? (
+          <button
+            className="flex w-full items-center gap-2.5 rounded-xl p-1.5 text-left text-sm hover:bg-sidebar-accent"
+            aria-label="Account"
+          >
+            {avatar}
+            <span className="min-w-0 flex-1 truncate font-bold">{me.user.name}</span>
+            <ChevronsUpDown className="size-4 text-muted-foreground" />
+          </button>
+        ) : (
+          <Button variant="ghost" size="icon" className="rounded-full" aria-label="Account">
+            {avatar}
+          </Button>
+        )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent
+        align={wide ? 'start' : 'end'}
+        side={wide ? 'top' : 'bottom'}
+        className="w-56"
+      >
         <DropdownMenuLabel className="font-normal">
           <div className="text-sm font-semibold">{me.user.name}</div>
           <div className="truncate text-xs text-muted-foreground">{me.user.email}</div>

@@ -13,9 +13,9 @@ export function ComingSoon({
   phase: string;
 }) {
   return (
-    <div className="mx-auto max-w-3xl">
-      <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
-      <div className="mt-6 flex flex-col items-center rounded-xl border border-dashed px-6 py-16 text-center">
+    <div className="max-w-3xl">
+      <h1 className="font-display text-3xl font-semibold tracking-tight">{title}</h1>
+      <div className="mt-6 flex flex-col items-center rounded-3xl border-2 border-dashed px-6 py-16 text-center">
         <span className="grid size-12 place-items-center rounded-full bg-accent text-accent-foreground">
           <Icon className="size-6" />
         </span>

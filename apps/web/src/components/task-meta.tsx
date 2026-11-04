@@ -1,6 +1,7 @@
 import { CalendarClock, CalendarDays, ListChecks, Target } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { formatDayShort } from '@/lib/days';
+import { EFFORT_LABEL } from '@/lib/look';
 import type { Goal, Project, Task } from '@/lib/queries';
 import { isOverdue } from '@/lib/task-list';
 import { cn } from '@/lib/utils';
@@ -19,7 +20,7 @@ function Chip({
     <span
       title={title}
       className={cn(
-        'inline-flex items-center gap-1 rounded-md text-xs text-muted-foreground [&>svg]:size-3.5',
+        'inline-flex items-center gap-1 rounded-md text-xs font-semibold text-muted-foreground [&>svg]:size-3.5',
         className,
       )}
     >
@@ -28,16 +29,33 @@ function Chip({
   );
 }
 
-const EFFORT_LABEL = { S: 'Small', M: 'Medium', L: 'Large' } as const;
+const EFFORT_LEVEL = { S: 1, M: 2, L: 3 } as const;
+
+/** Effort as one to three rising bars: quieter than a letter, readable at a glance. */
+export function EffortBars({ effort, className }: { effort: 'S' | 'M' | 'L'; className?: string }) {
+  const level = EFFORT_LEVEL[effort];
+  return (
+    <span className={cn('inline-flex h-3 items-end gap-0.5', className)} aria-hidden>
+      {[1, 2, 3].map((i) => (
+        <span
+          key={i}
+          className={cn(
+            'w-[3px] rounded-full',
+            i <= level ? 'bg-current' : 'bg-current opacity-25',
+          )}
+          style={{ height: `${4 + i * 3}px` }}
+        />
+      ))}
+    </span>
+  );
+}
 
 export function EffortBadge({ effort }: { effort: 'S' | 'M' | 'L' }) {
   return (
-    <span
-      title={`Effort: ${EFFORT_LABEL[effort]}`}
-      className="grid h-5 min-w-5 place-items-center rounded border px-1 text-[10px] font-bold text-muted-foreground"
-    >
-      {effort}
-    </span>
+    <Chip title={`Effort: ${EFFORT_LABEL[effort]}`}>
+      <EffortBars effort={effort} />
+      <span className="sr-only">Effort: {EFFORT_LABEL[effort]}</span>
+    </Chip>
   );
 }
 
@@ -66,7 +84,10 @@ export function TaskMeta({
       {task.dueDate && (
         <Chip
           title={`Due ${task.dueDate}`}
-          className={cn(late && 'font-semibold text-destructive', done && 'line-through')}
+          className={cn(
+            late && 'rounded-full bg-destructive/10 px-2 py-0.5 font-bold text-destructive',
+            done && 'line-through',
+          )}
         >
           <CalendarDays />
           {formatDayShort(task.dueDate, today)}

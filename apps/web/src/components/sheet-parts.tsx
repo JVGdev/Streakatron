@@ -67,7 +67,7 @@ export function TitleField({
         onChange={(e) => onChange(e.target.value.replace(/\n/g, ' '))}
         onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
         className={cn(
-          'min-h-0 resize-none border-transparent px-1 py-1 text-lg font-semibold shadow-none focus-visible:border-input dark:bg-transparent',
+          'min-h-0 resize-none border-transparent px-1 py-1 font-display text-2xl font-semibold tracking-tight md:text-2xl shadow-none focus-visible:border-input dark:bg-transparent',
           struck && 'text-muted-foreground line-through',
         )}
       />

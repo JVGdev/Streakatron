@@ -35,7 +35,7 @@ function TasksPage() {
   const { data: tasks = [], isPending } = useQuery(tasksQuery({ status }));
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5">
+    <div className="space-y-5">
       <PageHeader title="All tasks" description="Every task, filtered and grouped your way." />
       <TaskListControls
         options={options}
