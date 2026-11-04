@@ -14,6 +14,7 @@ import {
 } from '@streakatron/shared/structure';
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   check,
   date,
   index,
@@ -71,6 +72,8 @@ export const projects = pgTable(
     title: text().notNull(),
     ...rich(),
     status: text({ enum: PROJECT_STATUSES }).notNull().default('active'),
+    /** Required (D32: a course, an obligation): outside the active limit, never offered for parking. */
+    required: boolean().notNull().default(false),
     statusChangedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     /** A pinned next action; null means the board decides (pickNextAction). */
     nextActionTaskId: text().references((): AnyPgColumn => tasks.id, { onDelete: 'set null' }),
@@ -123,6 +126,8 @@ export const goals = pgTable(
     period: text({ enum: GOAL_PERIODS }),
     dueDate: day(),
     status: text({ enum: GOAL_STATUSES }).notNull().default('open'),
+    /** Featured on Today since then (D33); shown while the goal is open. */
+    spotlightedAt: timestamp({ withTimezone: true }),
     sortOrder: integer().notNull().default(0),
     /** Soft delete: undoable, purged after 30 days. */
     deletedAt: timestamp({ withTimezone: true }),
@@ -158,6 +163,8 @@ export const tasks = pgTable(
     scheduledDate: day(),
     sortOrder: integer().notNull().default(0),
     completedAt: timestamp({ withTimezone: true }),
+    /** Featured on Today since then (D33); shown while the task is open. */
+    spotlightedAt: timestamp({ withTimezone: true }),
     /** Soft delete: undoable, purged after 30 days. */
     deletedAt: timestamp({ withTimezone: true }),
     ...timestamps,

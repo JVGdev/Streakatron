@@ -154,6 +154,7 @@ async function lockLimit(tx: Tx, userId: string): Promise<number> {
   return row?.limit ?? 3;
 }
 
+/** The active projects that count toward the limit (required ones don't, D32). */
 async function activeProjects(conn: Conn, userId: string, except?: string) {
   return conn
     .select({ id: projects.id, title: projects.title, color: projects.color, icon: projects.icon })
@@ -162,6 +163,7 @@ async function activeProjects(conn: Conn, userId: string, except?: string) {
       and(
         eq(projects.userId, userId),
         eq(projects.status, 'active'),
+        eq(projects.required, false),
         except ? ne(projects.id, except) : undefined,
       ),
     )
@@ -187,7 +189,9 @@ export async function hasRoomForActive(tx: Tx, userId: string) {
   const [row] = await tx
     .select({ n: count() })
     .from(projects)
-    .where(and(eq(projects.userId, userId), eq(projects.status, 'active')));
+    .where(
+      and(eq(projects.userId, userId), eq(projects.status, 'active'), eq(projects.required, false)),
+    );
   return (row?.n ?? 0) < limit;
 }
 
@@ -195,7 +199,7 @@ export async function createProject(userId: string, input: ProjectCreate) {
   return db.transaction(async (tx) => {
     await assertArea(tx, userId, input.areaId);
     const status = input.status ?? 'active';
-    if (status === 'active') await assertRoomForActive(tx, userId);
+    if (status === 'active' && !input.required) await assertRoomForActive(tx, userId);
 
     const id = newId('project');
     const sortOrder = await edgeOrder(
@@ -213,6 +217,7 @@ export async function createProject(userId: string, input: ProjectCreate) {
       title: input.title,
       areaId: input.areaId ?? null,
       status,
+      required: input.required ?? false,
       color: input.color,
       icon: input.icon,
       startDate: input.startDate ?? null,
@@ -239,6 +244,10 @@ export async function updateProject(userId: string, id: string, patch: ProjectPa
   return db.transaction(async (tx) => {
     const project = await ownedProject(tx, userId, id, true);
     if (patch.areaId !== undefined) await assertArea(tx, userId, patch.areaId);
+    // An active project that stops being required counts toward the limit again.
+    if (patch.required === false && project.required && project.status === 'active') {
+      await assertRoomForActive(tx, userId, id);
+    }
     if (patch.nextActionTaskId) {
       const [task] = await tx
         .select({ id: tasks.id })
@@ -251,12 +260,13 @@ export async function updateProject(userId: string, id: string, patch: ProjectPa
             isNull(tasks.parentTaskId),
             isNull(tasks.completedAt),
             isNull(tasks.deletedAt),
+            sql`not exists (select 1 from board_columns c where c.id = ${tasks.columnId} and c.category = 'waiting')`,
           ),
         );
       if (!task) {
         throw invalid(
           'invalid_next_action',
-          'The next action must be an open task of this project.',
+          'The next action must be an open task of this project, not a waiting one.',
         );
       }
     }
@@ -315,7 +325,9 @@ export async function setProjectStatus(userId: string, id: string, input: Projec
             : `A ${project.status} project can’t become ${input.status}.`,
         );
       }
-      if (input.status === 'active') await assertRoomForActive(tx, userId, id);
+      if (input.status === 'active' && !project.required) {
+        await assertRoomForActive(tx, userId, id);
+      }
       await setStatus(tx, id, input.status);
     }
     return projectViews(tx, userId, changed);

@@ -9,6 +9,8 @@ import {
   Pencil,
   Plus,
   RotateCcw,
+  Star,
+  StarOff,
   Target,
   Timer,
   Trash2,
@@ -35,7 +37,7 @@ import { DayField } from '@/components/day-field';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useOpenSheet } from '@/hooks/use-open-task';
-import { useStructureActions } from '@/lib/actions';
+import { useSpotlightActions, useStructureActions } from '@/lib/actions';
 import { countdown, formatMinutes } from '@/lib/days';
 import type { Goal, Task } from '@/lib/queries';
 import { cn } from '@/lib/utils';
@@ -110,6 +112,7 @@ function GoalRow({
   onEdit: () => void;
 }) {
   const actions = useStructureActions();
+  const spotlight = useSpotlightActions();
   const openSheet = useOpenSheet();
   const done = tasks.filter((t) => t.completedAt).length;
   const setStatus = (status: GoalStatus) => void actions.updateGoal(goal, { status });
@@ -136,6 +139,9 @@ function GoalRow({
           </button>
           {goal.status !== 'open' && (
             <Badge variant="secondary">{goal.status === 'achieved' ? 'Achieved' : 'Dropped'}</Badge>
+          )}
+          {goal.status === 'open' && goal.spotlightedAt && (
+            <Star className="size-3.5 fill-glow text-glow" aria-label="In the spotlight" />
           )}
         </div>
         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -170,6 +176,10 @@ function GoalRow({
               <DropdownMenuItem onSelect={() => setStatus('dropped')}>
                 <CircleOff />
                 Drop it
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void spotlight.set(goal, !goal.spotlightedAt)}>
+                {goal.spotlightedAt ? <StarOff /> : <Star />}
+                {goal.spotlightedAt ? 'Remove from spotlight' : 'Spotlight on Today'}
               </DropdownMenuItem>
             </>
           ) : (

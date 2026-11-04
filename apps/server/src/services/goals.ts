@@ -18,7 +18,7 @@ import { ownedProject } from './projects';
 type GoalRow = typeof goals.$inferSelect;
 
 /** Goals as the API returns them: the row, and a time goal's progress this period. */
-async function views(conn: Conn, userId: string, rows: GoalRow[]) {
+export async function goalViews(conn: Conn, userId: string, rows: GoalRow[]) {
   const timed = rows.filter((g) => g.kind === 'time' && g.targetMinutes && g.period);
   const s = timed.length ? await daySettings(conn, userId) : null;
   const today = s ? userDay(new Date(), s) : '';
@@ -51,7 +51,7 @@ async function views(conn: Conn, userId: string, rows: GoalRow[]) {
 }
 
 const view = async (conn: Conn, userId: string, row: GoalRow) =>
-  (await views(conn, userId, [row]))[0]!;
+  (await goalViews(conn, userId, [row]))[0]!;
 
 export async function listGoals(conn: Conn, userId: string, projectId: string) {
   const rows = await conn
@@ -59,7 +59,7 @@ export async function listGoals(conn: Conn, userId: string, projectId: string) {
     .from(goals)
     .where(and(eq(goals.userId, userId), eq(goals.projectId, projectId), isNull(goals.deletedAt)))
     .orderBy(asc(goals.sortOrder), asc(goals.createdAt));
-  return views(conn, userId, rows);
+  return goalViews(conn, userId, rows);
 }
 
 async function ownedGoal(conn: Conn, userId: string, id: string, { deleted = false } = {}) {

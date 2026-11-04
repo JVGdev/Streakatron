@@ -189,7 +189,7 @@ export async function restoreSnapshot(userId: string, id: string) {
         if (!area) areaId = null;
       }
       let status = project.status;
-      if (status === 'active' && !(await hasRoomForActive(tx, userId))) {
+      if (status === 'active' && !project.required && !(await hasRoomForActive(tx, userId))) {
         status = 'parked';
         parked.push(project.title);
       }

@@ -52,7 +52,9 @@ import {
 import { useOpenSheet } from '@/hooks/use-open-task';
 import { useStructureActions } from '@/lib/actions';
 import { countdown } from '@/lib/days';
+import { RequiredBadge } from '@/components/project-status';
 import { STATUS_LABEL } from '@/lib/look';
+import { countsTowardLimit } from '@/lib/project-status';
 import { areasQuery, meQuery, projectsQuery, type Area, type Project } from '@/lib/queries';
 import { editArea, newArea, newProject } from '@/lib/ui-store';
 import { cn } from '@/lib/utils';
@@ -80,7 +82,8 @@ function ProjectsPage() {
   const open = areas.filter((a) => !a.archivedAt);
   const archived = areas.filter((a) => a.archivedAt);
   const loose = projects.filter((p) => !p.areaId || !areas.some((a) => a.id === p.areaId));
-  const active = projects.filter((p) => p.status === 'active').length;
+  const active = projects.filter(countsTowardLimit).length;
+  const required = projects.filter((p) => p.status === 'active' && p.required).length;
   const limit = me?.settings.activeProjectLimit ?? 3;
 
   function onDragEnd({ active, over }: DragEndEvent) {
@@ -100,6 +103,7 @@ function ProjectsPage() {
             <span className={cn(active >= limit && 'font-medium text-foreground')}>
               {active} of {limit} active
             </span>
+            {required > 0 && ` (+${required} required)`}
             {' · '}A short active list is the point: park what can wait.
           </>
         }
@@ -368,6 +372,7 @@ function ProjectCard({ project: p, today }: { project: Project; today: string })
           )}
         </div>
         {p.status !== 'active' && <Badge variant="secondary">{STATUS_LABEL[p.status]}</Badge>}
+        {p.required && p.status !== 'archived' && <RequiredBadge />}
       </div>
       {p.status === 'active' && (
         <div className="flex min-h-5 items-center gap-1.5 text-sm">

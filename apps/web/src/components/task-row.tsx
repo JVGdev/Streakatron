@@ -1,18 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { FolderInput } from 'lucide-react';
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { useQuickCreate } from '@/hooks/use-quick-create';
 import { useOpenTask } from '@/hooks/use-open-task';
 import { useTaskActions } from '@/lib/actions';
 import { projectsQuery, type Goal, type Project, type Task } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { ComboPicker } from './combo-picker';
 import { EntityIcon } from './entity-icon';
 import { TaskCheck } from './task-check';
 import { TaskMeta } from './task-meta';
@@ -28,6 +23,7 @@ export function TaskRow({
   goal,
   triage,
   tile,
+  actions,
 }: {
   task: Task;
   today: string;
@@ -37,6 +33,8 @@ export function TaskRow({
   triage?: boolean;
   /** A roomy card of its own, with a big check (Today). */
   tile?: boolean;
+  /** Buttons at the end of the row (Spotlight's focus and remove). */
+  actions?: ReactNode;
 }) {
   const open = useOpenTask();
   const tasks = useTaskActions();
@@ -88,22 +86,38 @@ export function TaskRow({
         </div>
       </div>
       {triage && !done && <MoveToProject task={task} />}
+      {actions && (
+        <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+          {actions}
+        </div>
+      )}
     </div>
   );
 }
 
 function MoveToProject({ task }: { task: Task }) {
   const tasks = useTaskActions();
+  const quick = useQuickCreate();
   const { data: projects = [] } = useQuery(projectsQuery);
   // Active projects first, then parked ones.
   const open = [
     ...projects.filter((p) => p.status === 'active'),
     ...projects.filter((p) => p.status === 'parked'),
   ];
-  if (!open.length) return null;
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <ComboPicker
+      value={null}
+      align="end"
+      searchPlaceholder="Move to a project, or make one…"
+      options={open.map((p) => ({
+        value: p.id,
+        label: p.title,
+        icon: <EntityIcon icon={p.icon} color={p.color} size="sm" />,
+        hint: p.status === 'parked' ? 'parked' : undefined,
+      }))}
+      onChange={(projectId) => void tasks.update(task, { projectId })}
+      create={{ noun: 'project', run: (t) => quick.project(t) }}
+      trigger={
         <Button
           variant="ghost"
           size="sm"
@@ -114,24 +128,7 @@ function MoveToProject({ task }: { task: Task }) {
           <FolderInput />
           <span className="max-sm:sr-only">Move to…</span>
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-          Move to project
-        </DropdownMenuLabel>
-        {open.map((p) => (
-          <DropdownMenuItem
-            key={p.id}
-            onSelect={() => void tasks.update(task, { projectId: p.id })}
-          >
-            <EntityIcon icon={p.icon} color={p.color} size="sm" />
-            <span className="truncate">{p.title}</span>
-            {p.status === 'parked' && (
-              <span className="ml-auto text-[10px] text-muted-foreground uppercase">parked</span>
-            )}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      }
+    />
   );
 }

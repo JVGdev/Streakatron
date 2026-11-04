@@ -20,6 +20,7 @@ import { countdown, formatDayShort, formatMinutes } from '@/lib/days';
 import { onRowsKeyDown } from '@/lib/rows';
 import { goalQuery, meQuery, projectsQuery, tasksQuery, type Goal } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { SpotlightToggle } from './spotlight';
 import { Backlinks } from './backlinks';
 import { EntityIcon } from './entity-icon';
 import { GoalForm, TimeGoalProgress } from './goals-panel';
@@ -111,6 +112,9 @@ function GoalEditor({ goal }: { goal: Goal }) {
             what="goal"
             struck={goal.status === 'achieved'}
           />
+          {goal.status === 'open' && (
+            <SpotlightToggle item={{ id: goal.id, title }} on={!!goal.spotlightedAt} />
+          )}
         </div>
 
         <dl className="grid grid-cols-[7rem_1fr] items-center gap-x-3 gap-y-2.5 text-sm">

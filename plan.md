@@ -549,12 +549,12 @@ Shaped by the use case below and the gaps from brainstormed use cases (D32). **E
 **Done when:** the four Japanese commitments run for a day: Duolingo ticked (10 XP, active day, its streak), Anki filled with +N to 20, Listening with typed minutes, a 50-minute session on "Course class" counts one class and 50 minutes toward "4 hours of Japanese a week".
 
 #### 4b — Today & boards
-- [ ] **Spotlight** on Today (D33): tasks and goals, at most 4, from sheets, menus and the palette; not repeated in the focus list
-- [ ] **Waiting** column category (D32): never the next action, off Today, back as "follow up" on its scheduled date; a "Waiting" column offered on new boards
-- [ ] **Required** projects (D32): option in the project dialog and menu; outside the active limit; never offered for parking; "Required" badge
-- [ ] **Create from any selector** (`observations.txt`, D31): every picker of an existing thing offers "New … “typed text”" when it fits — area in the project dialog, project in the task sheet / Move to… / focus attach, goal in the task sheet, commitment in focus attach, and the mention picker (moved from §12)
-- [ ] Small fixes from the use case: new-project dialog preselects the area; accessible names on icon and color pickers; project tabs from the URL
-- [ ] UI review (D32)
+- [x] **Spotlight** on Today (D33): tasks and goals, at most 4, from sheets, menus and the palette; not repeated in the focus list
+- [x] **Waiting** column category (D32): never the next action, off Today, back as "follow up" on its scheduled date; a "Waiting" column offered on new boards
+- [x] **Required** projects (D32): option in the project dialog and menu; outside the active limit; never offered for parking; "Required" badge
+- [x] **Create from any selector** (`observations.txt`, D31): every picker of an existing thing offers "New … “typed text”" when it fits — area in the project dialog, project in the task sheet / Move to… / focus attach, goal in the task sheet, commitment in focus attach, and the mention picker (moved from §12)
+- [x] Small fixes from the use case: new-project dialog preselects the area; accessible names on icon and color pickers; project tabs from the URL
+- [x] UI review (D32)
 
 **Done when:** "Learn katakana" stays in Spotlight for weeks; "Waiting for the acceptance letter" never becomes the next action and comes back on its follow-up date; a required course doesn't count toward the limit; a new area is made from the project dialog.
 

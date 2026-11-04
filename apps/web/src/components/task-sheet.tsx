@@ -23,7 +23,7 @@ import { useOpenTask } from '@/hooks/use-open-task';
 import { useStructureActions, useTaskActions } from '@/lib/actions';
 import { ApiError } from '@/lib/api';
 import { useAutosave } from '@/lib/autosave';
-import { CATEGORY_DOT, EFFORT_LABEL } from '@/lib/look';
+import { CATEGORY_DOT, EFFORT_LABEL, STATUS_LABEL } from '@/lib/look';
 import {
   meQuery,
   projectQuery,
@@ -34,6 +34,9 @@ import {
   type TaskDetail,
 } from '@/lib/queries';
 import { cn } from '@/lib/utils';
+import { SpotlightToggle } from './spotlight';
+import { ComboPicker } from './combo-picker';
+import { useQuickCreate } from '@/hooks/use-quick-create';
 import { Backlinks } from './backlinks';
 import { DayField } from './day-field';
 import { EntityIcon } from './entity-icon';
@@ -114,8 +117,11 @@ function TaskEditor({ task }: { task: TaskDetail }) {
     { what: 'the task' },
   );
 
+  const quick = useQuickCreate();
   const pinned = project?.nextAction?.pinned && project.nextAction.id === task.id;
-  const canPin = !!project && !isSubtask && task.completedAt === null;
+  const waiting = task.status === 'waiting';
+  // A waiting task is never the next action (D32).
+  const canPin = !!project && !isSubtask && task.completedAt === null && !waiting;
 
   return (
     <div className="flex min-h-full flex-col">
@@ -144,30 +150,43 @@ function TaskEditor({ task }: { task: TaskDetail }) {
           <SheetTitle className="sr-only">{task.title}</SheetTitle>
           <SheetDescription className="sr-only">Task details</SheetDescription>
           <TitleField value={title} onChange={setTitle} what="task" struck={!!task.completedAt} />
+          {!task.completedAt && <SpotlightToggle item={task} on={!!task.spotlightedAt} />}
         </div>
 
-        <div className="grid grid-cols-[6.5rem_1fr] items-center gap-x-2 gap-y-1 text-sm">
+        <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-x-2 gap-y-1 text-sm">
           <Label className="text-muted-foreground">Project</Label>
-          <Select
-            value={task.projectId ?? INBOX}
-            disabled={isSubtask}
-            onValueChange={(v) => void tasks.update(task, { projectId: v === INBOX ? null : v })}
-          >
-            <SelectTrigger className={PROPERTY} size="sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={INBOX}>Inbox</SelectItem>
-              {projects
-                .filter((p) => p.status !== 'archived' || p.id === task.projectId)
-                .map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    <EntityIcon icon={p.icon} color={p.color} size="sm" />
-                    {p.title}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
+          {isSubtask ? (
+            <span className="flex h-8 items-center gap-2 px-3 text-muted-foreground">
+              {project ? (
+                <>
+                  <EntityIcon icon={project.icon} color={project.color} size="sm" />
+                  {project.title}
+                </>
+              ) : (
+                'Inbox'
+              )}
+            </span>
+          ) : (
+            <ComboPicker
+              aria-label="Project"
+              size="sm"
+              className={PROPERTY}
+              value={task.projectId ?? INBOX}
+              onChange={(v) => void tasks.update(task, { projectId: v === INBOX ? null : v })}
+              options={[
+                { value: INBOX, label: 'Inbox' },
+                ...projects
+                  .filter((p) => p.status !== 'archived' || p.id === task.projectId)
+                  .map((p) => ({
+                    value: p.id,
+                    label: p.title,
+                    icon: <EntityIcon icon={p.icon} color={p.color} size="sm" />,
+                    hint: p.status === 'active' ? undefined : STATUS_LABEL[p.status],
+                  })),
+              ]}
+              create={{ noun: 'project', run: (t) => quick.project(t) }}
+            />
+          )}
 
           {page && !isSubtask && (
             <>
@@ -179,29 +198,27 @@ function TaskEditor({ task }: { task: TaskDetail }) {
           {page && (
             <>
               <Label className="text-muted-foreground">Goal</Label>
-              <Select
+              <ComboPicker
+                aria-label="Goal"
+                size="sm"
+                className={PROPERTY}
                 value={
                   task.goalId && page.goals.some((g) => g.id === task.goalId) ? task.goalId : NONE
                 }
-                onValueChange={(v) => void tasks.update(task, { goalId: v === NONE ? null : v })}
-              >
-                <SelectTrigger className={PROPERTY} size="sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NONE}>No goal</SelectItem>
-                  {page.goals.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(v) => void tasks.update(task, { goalId: v === NONE ? null : v })}
+                options={[
+                  { value: NONE, label: 'No goal' },
+                  ...page.goals
+                    .filter((g) => g.status === 'open' || g.id === task.goalId)
+                    .map((g) => ({ value: g.id, label: g.title })),
+                ]}
+                create={{ noun: 'goal', run: (t) => quick.goal(t, page.project.id) }}
+              />
             </>
           )}
 
           <Label className="text-muted-foreground">Effort</Label>
-          <div className="flex gap-1" role="radiogroup" aria-label="Effort">
+          <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Effort">
             {[...EFFORTS, null].map((e) => (
               <Button
                 key={e ?? 'none'}
@@ -238,12 +255,12 @@ function TaskEditor({ task }: { task: TaskDetail }) {
           />
 
           <Label htmlFor="task-scheduled" className="text-muted-foreground">
-            Scheduled
+            {waiting ? 'Follow up' : 'Scheduled'}
           </Label>
           <DayField
             id="task-scheduled"
             value={task.scheduledDate}
-            placeholder="Not scheduled"
+            placeholder={waiting ? 'When to check on it' : 'Not scheduled'}
             onChange={(scheduledDate) => void tasks.update(task, { scheduledDate })}
           />
         </div>

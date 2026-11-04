@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import { useStructureActions } from '@/lib/actions';
 import { meQuery, projectsQuery, snapshotsQuery, type Me } from '@/lib/queries';
+import { countsTowardLimit } from '@/lib/project-status';
 
 export const Route = createFileRoute('/_app/settings')({
   component: SettingsPage,
@@ -414,7 +415,7 @@ function ProjectLimit() {
   const [busy, setBusy] = useState(false);
   const n = Number(value);
   const valid = Number.isInteger(n) && n >= 1 && n <= 20;
-  const active = projects.filter((p) => p.status === 'active').length;
+  const active = projects.filter(countsTowardLimit).length;
 
   return (
     <Card>

@@ -48,6 +48,7 @@ import { primeAudio } from './sound';
 import { refreshEntities } from './entities';
 import { attempt, report } from './report';
 import { cachedTask, dropTasks, mergeTasks, refreshAfterTaskWrite } from './task-cache';
+import { setUi } from './ui-store';
 
 const columnsOf = (qc: QueryClient, projectId: string | null) =>
   projectId ? qc.getQueryData<ProjectPage>(['project', projectId])?.columns : undefined;
@@ -339,13 +340,14 @@ export function structureActions(qc: QueryClient) {
 
     createColumn: (projectId: string, title: string, category: ColumnCategory) =>
       attempt(async () => {
-        await call(
+        const column = await call(
           api.projects[':id'].columns.$post({
             param: { id: projectId },
             json: { title, category },
           }),
         );
         refreshStructure(qc, projectId);
+        return column;
       }),
 
     updateColumn: (column: BoardColumn, patch: { title?: string; category?: ColumnCategory }) =>
@@ -481,6 +483,46 @@ function settleCommitment(qc: QueryClient, detail?: CommitmentDetail) {
   }
   void qc.invalidateQueries({ queryKey: ['commitments'] });
   refreshEntities(qc);
+}
+
+// --- Spotlight (D33) -------------------------------------------------------------------------
+
+/**
+ * Feature a task or goal on Today, or take it off. A full spotlight opens the dialog that asks
+ * which one to drop (it calls this again with `replace`). Resolves to whether it changed.
+ */
+export function spotlightActions(qc: QueryClient) {
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: ['spotlight'] });
+    void qc.invalidateQueries({ queryKey: ['tasks'] });
+    void qc.invalidateQueries({ queryKey: ['project'] });
+    void qc.invalidateQueries({ queryKey: ['goal'] });
+  };
+  return {
+    set: async (item: { id: string; title: string }, on: boolean, replace?: string) => {
+      try {
+        await call(api.spotlight.$post({ json: { id: item.id, on, replace } }));
+        refresh();
+        toast.success(on ? `“${item.title}” is in the spotlight` : 'Removed from the spotlight');
+        return true;
+      } catch (err) {
+        if (err instanceof ApiError && err.code === 'spotlight_full') {
+          const { items } = err.details as {
+            items: { id: string; kind: 'task' | 'goal'; title: string }[];
+          };
+          setUi({ spotlightFull: { add: item, items } });
+        } else {
+          report(err);
+        }
+        return false;
+      }
+    },
+  };
+}
+
+export function useSpotlightActions() {
+  const qc = useQueryClient();
+  return useMemo(() => spotlightActions(qc), [qc]);
 }
 
 export function commitmentActions(qc: QueryClient) {

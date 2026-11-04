@@ -112,6 +112,18 @@ const fetchGoal = (id: string) => call(api.goals[':id'].$get({ param: { id } }))
 export const goalQuery = (id: string) =>
   queryOptions({ queryKey: ['goal', id], queryFn: () => fetchGoal(id) });
 
+// --- Spotlight (D33) -------------------------------------------------------------------------
+
+const fetchSpotlight = () => call(api.spotlight.$get());
+export type SpotlightItem = Awaited<ReturnType<typeof fetchSpotlight>>['items'][number];
+export type SpotlightGoal = NonNullable<SpotlightItem['goal']>;
+
+/** What's featured on Today, oldest first: task ids (tasks come from the task lists) and goals. */
+export const spotlightQuery = queryOptions({
+  queryKey: ['spotlight'],
+  queryFn: async () => (await fetchSpotlight()).items,
+});
+
 // --- Commitments (D31) -----------------------------------------------------------------------
 
 const fetchCommitments = (archived: boolean) =>

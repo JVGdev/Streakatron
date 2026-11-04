@@ -28,6 +28,7 @@ const STATUS_TEXT: Record<StatusFilter, string> = {
   open: 'Open',
   todo: 'To do',
   in_progress: 'In progress',
+  waiting: 'Waiting',
   done: 'Done',
   all: 'All statuses',
 };

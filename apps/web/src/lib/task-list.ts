@@ -3,7 +3,7 @@
 import { addDays, daysBetween, startOfWeek } from '@streakatron/shared/time';
 import type { Project, Task } from './queries';
 
-export const STATUS_FILTERS = ['open', 'todo', 'in_progress', 'done', 'all'] as const;
+export const STATUS_FILTERS = ['open', 'todo', 'in_progress', 'waiting', 'done', 'all'] as const;
 export type StatusFilter = (typeof STATUS_FILTERS)[number];
 
 export const DUE_FILTERS = ['any', 'overdue', 'today', 'week', 'none'] as const;
@@ -104,7 +104,12 @@ export interface TaskGroup {
   tasks: Task[];
 }
 
-const STATUS_LABEL = { todo: 'To do', in_progress: 'In progress', done: 'Done' } as const;
+const STATUS_LABEL = {
+  todo: 'To do',
+  in_progress: 'In progress',
+  waiting: 'Waiting',
+  done: 'Done',
+} as const;
 
 function dueBucket(t: Task, today: string): [number, string] {
   const day = dayOf(t);
@@ -139,7 +144,7 @@ export function groupTasks(
     } else if (group === 'status') {
       key = t.status;
       label = STATUS_LABEL[t.status];
-      rank = ['in_progress', 'todo', 'done'].indexOf(t.status);
+      rank = ['in_progress', 'todo', 'waiting', 'done'].indexOf(t.status);
     } else {
       [rank, label] = dueBucket(t, ctx.today);
       key = label;

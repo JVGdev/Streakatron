@@ -6,8 +6,11 @@
 export const PROJECT_STATUSES = ['active', 'parked', 'completed', 'archived'] as const;
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 
-/** A board column maps to one of these, so the rest of the app knows what "done" means. */
-export const COLUMN_CATEGORIES = ['todo', 'in_progress', 'done'] as const;
+/**
+ * A board column maps to one of these, so the rest of the app knows what "done" means. Waiting
+ * (D32): blocked on someone else; never the next action, back on Today on its follow-up date.
+ */
+export const COLUMN_CATEGORIES = ['todo', 'in_progress', 'waiting', 'done'] as const;
 export type ColumnCategory = (typeof COLUMN_CATEGORIES)[number];
 
 /** A task's status: its column's category, or todo/done for inbox tasks and subtasks. */
@@ -83,6 +86,12 @@ export const DEFAULT_COLUMNS: { title: string; category: ColumnCategory }[] = [
   { title: 'Done', category: 'done' },
 ];
 
+/** The column a board without one is offered (D32): tasks blocked on someone else. */
+export const WAITING_COLUMN = { title: 'Waiting', category: 'waiting' } as const;
+
+/** Spotlight on Today (D33): tasks and goals the user features, capped so it stays a highlight. */
+export const SPOTLIGHT_MAX = 4;
+
 // --- Project lifecycle (D5) ------------------------------------------------------------------
 
 /** Where a project can go from each status. Activating is also subject to the active limit. */
@@ -147,32 +156,37 @@ export function firstColumnOf<C extends BoardColumnLike>(
   return [...columns].sort(bySortOrder).find((c) => c.category === category);
 }
 
-/** The leftmost column that isn't done (where reopened and new tasks go). */
+/** The leftmost to-do or in-progress column (where reopened and new tasks go). */
 export function firstOpenColumn<C extends BoardColumnLike>(columns: readonly C[]): C | undefined {
   return firstColumnOf(columns, 'todo') ?? firstColumnOf(columns, 'in_progress');
 }
 
 /**
  * Whether a board may become `columns`: it needs a done column (so tasks can be finished) and a
- * column that isn't done (so they can be open).
+ * to-do or in-progress column (where new and reopened tasks go; waiting isn't one).
  */
 export function boardProblem(columns: readonly { category: ColumnCategory }[]): string | null {
   if (!columns.some((c) => c.category === 'done')) return 'A board needs a done column.';
-  if (!columns.some((c) => c.category !== 'done')) return 'A board needs a column for open tasks.';
+  if (!columns.some((c) => c.category === 'todo' || c.category === 'in_progress')) {
+    return 'A board needs a to-do or in-progress column for open tasks.';
+  }
   return null;
 }
 
 /**
- * A project's next action: the pinned task while it is open, else the top open task on the board,
- * looking at in-progress columns before to-do ones (what you're already doing comes first), each
- * left to right and top to bottom. Subtasks are never picked.
+ * A project's next action: the pinned task while it is open (and not waiting), else the top open
+ * task on the board, looking at in-progress columns before to-do ones (what you're already doing
+ * comes first), each left to right and top to bottom. Subtasks and waiting tasks are never picked.
  */
 export function pickNextAction(
   pinnedId: string | null,
   columns: readonly BoardColumnLike[],
   tasks: readonly BoardTaskLike[],
 ): string | null {
-  const open = tasks.filter((t) => t.completedAt == null && t.parentTaskId === null);
+  const waiting = new Set(columns.filter((c) => c.category === 'waiting').map((c) => c.id));
+  const open = tasks.filter(
+    (t) => t.completedAt == null && t.parentTaskId === null && !waiting.has(t.columnId ?? ''),
+  );
   if (pinnedId && open.some((t) => t.id === pinnedId)) return pinnedId;
 
   const sorted = [...columns].sort(bySortOrder);

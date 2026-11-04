@@ -5,6 +5,7 @@ import {
   checkedOrder,
   firstColumnOf,
   firstOpenColumn,
+  focusList,
   goalPeriodRange,
   pickNextAction,
   placeAt,
@@ -12,6 +13,7 @@ import {
   todayItems,
   type BoardColumnLike,
   type BoardTaskLike,
+  type FocusListTask,
 } from '.';
 
 describe('placeAt', () => {
@@ -97,7 +99,13 @@ describe('columns', () => {
     expect(boardProblem(columns)).toBeNull();
     expect(boardProblem([{ category: 'todo' }, { category: 'in_progress' }])).toMatch(/done/);
     expect(boardProblem([{ category: 'done' }])).toMatch(/open/);
+    expect(boardProblem([{ category: 'waiting' }, { category: 'done' }])).toMatch(/open/);
     expect(boardProblem([])).not.toBeNull();
+  });
+
+  it('never lands new or reopened tasks in a waiting column', () => {
+    const waitingFirst = [{ id: 'w', category: 'waiting' as const, sortOrder: 0 }, ...columns];
+    expect(firstOpenColumn(waitingFirst)?.id).toBe('todo');
   });
 });
 
@@ -130,6 +138,14 @@ describe('next action', () => {
     ];
     expect(pickNextAction(null, columns, tasks)).toBeNull();
     expect(pickNextAction(null, columns, [])).toBeNull();
+  });
+
+  it('never picks a waiting task, even pinned', () => {
+    const board = [...columns, { id: 'wait', category: 'waiting' as const, sortOrder: 9 }];
+    const tasks = [task('t1', 'wait', 0), task('t2', 'todo', 5)];
+    expect(pickNextAction(null, board, tasks)).toBe('t2');
+    expect(pickNextAction('t1', board, tasks)).toBe('t2');
+    expect(pickNextAction(null, board, tasks.slice(0, 1))).toBeNull();
   });
 });
 
@@ -193,6 +209,36 @@ describe('today’s items', () => {
       'late',
       'duolingo',
       'next',
+    ]);
+  });
+
+  it('brings waiting tasks back only as follow-ups, and leaves spotlighted tasks out', () => {
+    const today = '2026-11-04';
+    const t = (id: string, over: Partial<FocusListTask> = {}): FocusListTask => ({
+      id,
+      projectId: null,
+      completedAt: null,
+      dueDate: null,
+      scheduledDate: null,
+      ...over,
+    });
+    const items = focusList(
+      [
+        t('letter', { status: 'waiting', scheduledDate: '2026-11-04' }),
+        t('later', { status: 'waiting', scheduledDate: '2026-11-20' }),
+        t('stale', { status: 'waiting', dueDate: '2026-11-01' }),
+        t('nodate', { status: 'waiting' }),
+        t('next', { projectId: 'p', status: 'waiting' }),
+        t('katakana', { dueDate: today, spotlightedAt: '2026-10-01T00:00:00Z' }),
+        t('today', { dueDate: today }),
+      ],
+      [{ id: 'p', status: 'active', nextAction: { id: 'next' } }],
+      today,
+    );
+    expect(items.map((i) => [i.task.id, i.reason])).toEqual([
+      ['today', 'today'],
+      ['stale', 'follow_up'],
+      ['letter', 'follow_up'],
     ]);
   });
 });
