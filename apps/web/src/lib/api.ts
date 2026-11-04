@@ -3,8 +3,8 @@
 //
 //   const me = await call(api.me.$get());
 
-import type { AppType } from '@streaktron/server';
-import { apiErrorSchema } from '@streaktron/shared/schemas';
+import type { AppType } from '@streakatron/server';
+import { apiErrorSchema } from '@streakatron/shared/schemas';
 import { hc, type ClientResponse } from 'hono/client';
 import type { SuccessStatusCode } from 'hono/utils/http-status';
 

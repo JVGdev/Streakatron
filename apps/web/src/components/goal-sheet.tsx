@@ -1,7 +1,7 @@
 // A goal's details, in a side sheet opened by the `goal` search param from anywhere (a mention
 // chip, a backlink, the palette, the goals panel). Title and description save as you type.
 
-import type { RichDoc } from '@streaktron/shared/rich';
+import type { RichDoc } from '@streakatron/shared/rich';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { Check, CircleOff, Pencil, RotateCcw, Target, Timer, Trash2 } from 'lucide-react';

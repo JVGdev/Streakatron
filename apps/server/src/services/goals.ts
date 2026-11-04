@@ -1,9 +1,9 @@
 // Goals of a project: outcomes (optionally with a deadline) and commitments (focus minutes per
 // week or month; progress arrives with focus sessions in Phase 3).
 
-import type { GoalCreate, GoalPatch } from '@streaktron/shared/schemas';
-import { goalShapeProblem } from '@streaktron/shared/schemas';
-import { newId } from '@streaktron/shared/ids';
+import type { GoalCreate, GoalPatch } from '@streakatron/shared/schemas';
+import { goalShapeProblem } from '@streakatron/shared/schemas';
+import { newId } from '@streakatron/shared/ids';
 import { and, asc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { db } from '../db/client';
 import { goals } from '../db/schema';

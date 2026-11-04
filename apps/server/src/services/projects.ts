@@ -1,14 +1,14 @@
 // Projects: lifecycle with the hard active-project limit (D5), next actions, deletion into a
 // snapshot.
 
-import type { ProjectCreate, ProjectPatch, ProjectStatusInput } from '@streaktron/shared/schemas';
-import { newId } from '@streaktron/shared/ids';
+import type { ProjectCreate, ProjectPatch, ProjectStatusInput } from '@streakatron/shared/schemas';
+import { newId } from '@streakatron/shared/ids';
 import {
   canTransition,
   DEFAULT_COLUMNS,
   pickNextAction,
   type ProjectStatus,
-} from '@streaktron/shared/structure';
+} from '@streakatron/shared/structure';
 import { and, asc, count, eq, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { areas, boardColumns, projects, tasks, userSettings } from '../db/schema';

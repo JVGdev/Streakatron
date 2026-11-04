@@ -1,5 +1,5 @@
 {
-  "name": "@streaktron/web",
+  "name": "@streakatron/web",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,7 +14,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@fontsource-variable/fredoka": "^5.3.0",
     "@fontsource-variable/nunito": "^5.3.0",
-    "@streaktron/shared": "workspace:*",
+    "@streakatron/shared": "workspace:*",
     "@tanstack/react-query": "^5.105.3",
     "@tanstack/react-router": "^1.170.46",
     "@tiptap/core": "^3.32.2",
@@ -39,7 +39,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@streaktron/server": "workspace:*",
+    "@streakatron/server": "workspace:*",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/router-plugin": "^1.168.48",
     "@types/node": "^26.6.6",

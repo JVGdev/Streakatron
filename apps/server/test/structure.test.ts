@@ -1,5 +1,5 @@
-import { newId } from '@streaktron/shared/ids';
-import { docFromText } from '@streaktron/shared/rich';
+import { newId } from '@streakatron/shared/ids';
+import { docFromText } from '@streakatron/shared/rich';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from '../src/db/client';
