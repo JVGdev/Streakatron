@@ -1,6 +1,7 @@
 {
   "name": "@streakatron/server",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "exports": {
     ".": "./src/app.ts"

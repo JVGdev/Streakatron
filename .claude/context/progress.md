@@ -106,3 +106,7 @@
 - **Checked in a real browser** (headless Chromium from the scratchpad, production build on :3101, throwaway `streakatron_e2e3c` database with 150 days of seeded history, dropped after): a generated board, a reroll, a daily quest's complete screen, the board-cleared screen (+25 bonus), a make quest's follow-up and its progress, quick quests, Stats (light, dark, hover and keyboard tooltips), the quest settings, phone layouts. No console errors. 280 tests, typecheck, lint and format pass.
 - **Decision:** D30.
 - **Committed and deployed (same day, at the user's request):** branch `phase-3-mvp` merged into `main` (not pushed); the Docker app rebuilt after a manual `pg_dump`; health OK locally and over Tailscale, all 8 migrations applied.
+
+### 2026-11-04 — License (D35)
+- **The user** chose a proprietary license. Added `LICENSE` (all rights reserved, © 2026 João Vitor Giacomolli), `"license": "UNLICENSED"` in all four `package.json` files, a License section in the README, and D35.
+- **Next:** 4a Commitments.

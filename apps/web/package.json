@@ -1,6 +1,7 @@
 {
   "name": "@streakatron/web",
   "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "scripts": {
     "dev": "vite",

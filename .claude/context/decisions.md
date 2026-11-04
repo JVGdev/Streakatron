@@ -194,6 +194,11 @@ The canonical record of what was decided, why, and what was considered instead. 
   - **Stats shows the heatmap** (a year; active days darker with focus: none, < 30, 30–89, 90+ min), with hover/keyboard tooltips, a legend and a table view; the four ember steps are validated as an ordinal ramp in light and dark.
 - **Why:** The rules in plan.md §5 with Quire's lessons (sized from your days, nothing for idle things, count every kind of effort, make quests don't outpace filling in); a placeholder keeps the Arcade screen's shape without building loot before it's needed (FIT-12).
 
+### D35 · Proprietary license, all rights reserved (2026-11-04, the user)
+- **Decision:** `LICENSE` is an "all rights reserved" notice; every `package.json` says `"license": "UNLICENSED"` (npm's marker for proprietary code), and the README links the license.
+- **Alternatives:** AGPL-3.0, MIT, Apache-2.0.
+- **Why:** the repo is private and Streakatron may become a product; proprietary keeps every option open, and it can still be open-sourced later (the reverse isn't possible once code is released).
+
 ---
 
 ## Rejected ideas (don't propose again)
