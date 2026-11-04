@@ -121,7 +121,7 @@ export function FocusWatcher() {
       if (serverNow() - plannedAt > 60_000) return;
       playFocusChime();
       const what = `${session.plannedMinutes} minutes of focus done.`;
-      notify('Time’s up', `${what} Keep going, or finish and take a break.`);
+      notify('Time’s up', `${what} Keep going, or finish and take a break.`, `focus-${session.id}`);
       toast(`Time’s up: ${what}`, { description: 'Overtime counts too, until you finish.' });
     };
     const timer = setTimeout(ring, Math.max(0, plannedAt - serverNow()));

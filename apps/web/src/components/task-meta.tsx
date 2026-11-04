@@ -1,8 +1,10 @@
-import { CalendarClock, CalendarDays, ListChecks, Target } from 'lucide-react';
+import { wallClock } from '@streakatron/shared/time';
+import { useQuery } from '@tanstack/react-query';
+import { Bell, CalendarClock, CalendarDays, ListChecks, Target } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { formatDayShort } from '@/lib/days';
+import { formatDayShort, formatRemindAt } from '@/lib/days';
 import { EFFORT_LABEL } from '@/lib/look';
-import type { Goal, Project, Task } from '@/lib/queries';
+import { meQuery, type Goal, type Project, type Task } from '@/lib/queries';
 import { isOverdue } from '@/lib/task-list';
 import { cn } from '@/lib/utils';
 import { EntityIcon } from './entity-icon';
@@ -71,8 +73,17 @@ export function TaskMeta({
   project?: Project;
   goal?: Goal;
 }) {
+  const { data: me } = useQuery(meQuery);
   const late = isOverdue(task, today);
   const done = task.completedAt !== null;
+  // Upcoming ones, and today's (a reminder from an earlier day is spent).
+  const remind =
+    !done &&
+    task.remindAt &&
+    me &&
+    wallClock(new Date(task.remindAt), me.settings.timezone).date >= today
+      ? formatRemindAt(task.remindAt, me.settings.timezone, today)
+      : null;
   return (
     <>
       {project && (
@@ -97,6 +108,12 @@ export function TaskMeta({
         <Chip title={`Scheduled for ${task.scheduledDate}`}>
           <CalendarClock />
           {formatDayShort(task.scheduledDate, today)}
+        </Chip>
+      )}
+      {remind && (
+        <Chip title={`Reminder: ${remind}`}>
+          <Bell />
+          {remind.replace(/^Today at /, '')}
         </Chip>
       )}
       {task.subtasks.total > 0 && (

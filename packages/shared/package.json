@@ -13,7 +13,8 @@
     "./game": "./src/game/index.ts",
     "./focus": "./src/focus/index.ts",
     "./quests": "./src/quests/index.ts",
-    "./commitments": "./src/commitments/index.ts"
+    "./commitments": "./src/commitments/index.ts",
+    "./reminders": "./src/reminders/index.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"

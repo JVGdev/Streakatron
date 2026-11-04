@@ -28,6 +28,7 @@ export function DayField({
   placeholder = 'No date',
   className,
   outlined,
+  clearable = true,
   'aria-label': ariaLabel,
 }: {
   id?: string;
@@ -37,6 +38,8 @@ export function DayField({
   className?: string;
   /** Inside forms: looks like the other inputs. */
   outlined?: boolean;
+  /** Offer "Clear date" (off where a day is required). */
+  clearable?: boolean;
   'aria-label'?: string;
 }) {
   const { data: me } = useQuery(meQuery);
@@ -131,7 +134,7 @@ export function DayField({
           />
         </PopoverContent>
       </Popover>
-      {value && (
+      {value && clearable && (
         <Button
           type="button"
           variant="ghost"

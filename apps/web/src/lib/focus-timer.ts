@@ -42,19 +42,31 @@ export function askNotifications() {
   void Notification.requestPermission().catch(() => undefined);
 }
 
-/** Show a notification when allowed and the page isn't in front (the toast covers that case). */
-export function notify(title: string, body: string) {
+/**
+ * Show a notification when allowed and the page isn't in front (the toast covers that case).
+ * Through the service worker when there is one (phones allow no other way); `tag` matches the
+ * server's push for the same thing, so the two replace each other instead of stacking (D38).
+ */
+export function notify(title: string, body: string, tag = 'streakatron-focus') {
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   if (document.visibilityState === 'visible' && document.hasFocus()) return;
-  try {
-    const n = new Notification(title, { body, icon: '/favicon.svg', tag: 'streakatron-focus' });
-    n.onclick = () => {
-      window.focus();
-      n.close();
-    };
-  } catch {
-    // Some browsers only allow notifications from a service worker; the chime still plays.
-  }
+  const options = { body, tag, icon: '/icons/icon-192.png', data: { url: location.pathname } };
+  const fallback = () => {
+    try {
+      const n = new Notification(title, options);
+      n.onclick = () => {
+        window.focus();
+        n.close();
+      };
+    } catch {
+      // Not allowed outside a service worker here; the chime still plays.
+    }
+  };
+  if (!('serviceWorker' in navigator)) return fallback();
+  void navigator.serviceWorker
+    .getRegistration()
+    .then((reg) => (reg ? reg.showNotification(title, options) : fallback()))
+    .catch(fallback);
 }
 
 // --- Per-browser memory ----------------------------------------------------------------------

@@ -25,6 +25,7 @@ import {
   statsRoutes,
 } from './routes/misc';
 import { projectRoutes } from './routes/projects';
+import { pushRoutes, reminderRoutes } from './routes/push';
 import { questRoutes } from './routes/quests';
 import { setupRoutes } from './routes/setup';
 import { spotlightRoutes } from './routes/spotlight';
@@ -45,6 +46,8 @@ const api = new Hono()
   .route('/tasks', taskRoutes)
   .route('/commitments', commitmentRoutes)
   .route('/spotlight', spotlightRoutes)
+  .route('/push', pushRoutes)
+  .route('/reminders', reminderRoutes)
   .route('/search', searchRoutes)
   .route('/entities', entityRoutes)
   .route('/snapshots', snapshotRoutes)

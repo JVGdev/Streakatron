@@ -11,6 +11,7 @@ import { ArrowUp, FolderKanban, Plus, Shapes, X } from 'lucide-react';
 import { useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { MinutesField } from '@/components/focus-timer';
+import { NotificationsCard } from '@/components/notifications-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -39,6 +40,7 @@ function SettingsPage() {
     <div className="max-w-2xl space-y-6">
       <PageHeader title="Settings" />
       <YourDay />
+      <NotificationsCard />
       <FocusPresets />
       <QuestSettings />
       <ProjectLimit />

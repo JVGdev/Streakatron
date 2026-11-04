@@ -7,6 +7,7 @@ import { db } from '../db/client';
 import { commitments, goals, tasks } from '../db/schema';
 import { RESTORE_DAYS } from '../services/common';
 import { purgeOrphanLinks } from '../services/links';
+import { pruneReminderLog } from '../services/reminders';
 import { purgeExpiredSnapshots } from '../services/snapshots';
 
 export async function runPurge(now = new Date()) {
@@ -25,6 +26,7 @@ export async function runPurge(now = new Date()) {
     .returning({ id: commitments.id });
   const snapshots = await purgeExpiredSnapshots();
   const links = await purgeOrphanLinks();
+  await pruneReminderLog(now);
   return {
     tasks: goneTasks.length,
     goals: goneGoals.length,

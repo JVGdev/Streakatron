@@ -39,6 +39,7 @@ import { ComboPicker } from './combo-picker';
 import { useQuickCreate } from '@/hooks/use-quick-create';
 import { Backlinks } from './backlinks';
 import { DayField } from './day-field';
+import { TaskReminderField } from './reminder-field';
 import { EntityIcon } from './entity-icon';
 import { RichEditor } from './rich-editor';
 import { SheetBar, TitleField } from './sheet-parts';
@@ -263,6 +264,21 @@ function TaskEditor({ task }: { task: TaskDetail }) {
             placeholder={waiting ? 'When to check on it' : 'Not scheduled'}
             onChange={(scheduledDate) => void tasks.update(task, { scheduledDate })}
           />
+
+          {(task.remindAt || !task.completedAt) && (
+            <>
+              <Label htmlFor="task-remind" className="text-muted-foreground">
+                Remind
+              </Label>
+              <TaskReminderField
+                key={task.remindAt ?? 'none'}
+                id="task-remind"
+                value={task.remindAt}
+                suggestedDay={task.scheduledDate ?? task.dueDate}
+                onChange={(remindAt) => void tasks.update(task, { remindAt })}
+              />
+            </>
+          )}
         </div>
 
         <div className="grid gap-1.5">

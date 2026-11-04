@@ -25,6 +25,13 @@ import {
   commitmentShapeProblem,
   normalizeSchedule,
 } from '../commitments';
+import {
+  CLOCK_RE,
+  DEFAULT_NOTIFICATION_SETTINGS,
+  REMINDER_LIMITS,
+  reminderProblem,
+  type CommitmentReminder,
+} from '../reminders';
 
 export const dateString = z.string().refine(isDateString, 'Expected a YYYY-MM-DD day');
 
@@ -71,6 +78,47 @@ export const questSettingsSchema = z.object({
   timeQuestMaxMinutes: z.int().min(5).max(600),
 });
 
+// --- Reminders (D38) -------------------------------------------------------------------------
+
+export const clockTime = z.string().regex(CLOCK_RE, 'Expected a time, HH:MM');
+
+export const commitmentReminderSchema = z
+  .discriminatedUnion('kind', [
+    z.object({ kind: z.literal('once'), at: clockTime }),
+    z.object({
+      kind: z.literal('repeat'),
+      from: clockTime,
+      everyMinutes: z
+        .int()
+        .min(REMINDER_LIMITS.everyMinutes.min)
+        .max(REMINDER_LIMITS.everyMinutes.max),
+      until: clockTime,
+    }),
+  ])
+  .superRefine((r, ctx) => {
+    const problem = reminderProblem(r as CommitmentReminder);
+    if (problem) ctx.addIssue({ code: 'custom', message: problem });
+  });
+
+export const notificationSettingsSchema = z.object({
+  focusEnded: z.boolean(),
+  streakNudgeAt: clockTime.nullable(),
+});
+
+/** A browser's push subscription (`PushSubscription.toJSON()`); the server names the device. */
+export const pushSubscribeSchema = z.object({
+  endpoint: z.url().max(2000),
+  keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }),
+});
+export type PushSubscribeInput = z.input<typeof pushSubscribeSchema>;
+
+/** "Snooze 1 h" on a task's or a commitment's reminder. */
+export const snoozeSchema = z.object({
+  id: z
+    .string()
+    .refine((s) => isId(s, 'task') || isId(s, 'commitment'), 'Expected a task or commitment id'),
+});
+
 export const userSettingsSchema = z.object({
   timezone: timeZone,
   dayStartHour: z.int().min(0).max(23),
@@ -80,6 +128,7 @@ export const userSettingsSchema = z.object({
   weeklyActiveDayTarget: z.int().min(1).max(7),
   focusPresets: z.array(focusPresetSchema).min(1).max(6),
   questSettings: questSettingsSchema,
+  notifications: notificationSettingsSchema,
 });
 export type UserSettings = z.infer<typeof userSettingsSchema>;
 
@@ -94,6 +143,7 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
     { focusMinutes: 50, breakMinutes: 10 },
   ],
   questSettings: { restingTypes: [], timeQuestMinMinutes: 15, timeQuestMaxMinutes: 180 },
+  notifications: DEFAULT_NOTIFICATION_SETTINGS,
 };
 
 // --- Structure: areas, projects, columns, goals, tasks --------------------------------------
@@ -254,6 +304,8 @@ const taskFields = {
   /** null: the inbox. */
   projectId: idOf('project').nullable(),
   goalId: idOf('goal').nullable(),
+  /** A reminder at this instant (D32); null: none. */
+  remindAt: z.iso.datetime({ offset: true }).nullable(),
 };
 
 export const taskCreateSchema = z.object({
@@ -264,6 +316,7 @@ export const taskCreateSchema = z.object({
   scheduledDate: optionalDay.optional(),
   projectId: taskFields.projectId.optional(),
   goalId: taskFields.goalId.optional(),
+  remindAt: taskFields.remindAt.optional(),
   /** A subtask (one level): it joins its parent's project. */
   parentTaskId: idOf('task').optional(),
   /** Board column; by default the project's leftmost open column. */
@@ -308,6 +361,8 @@ const commitmentFields = {
   period: z.enum(COMMITMENT_PERIODS),
   /** Day commitments: the weekdays; null (or all seven) is every day. */
   schedule: commitmentSchedule.nullable(),
+  /** null: no reminder (D31, D38). */
+  reminder: commitmentReminderSchema.nullable(),
 };
 
 export const commitmentCreateSchema = z
@@ -320,6 +375,7 @@ export const commitmentCreateSchema = z
     unit: commitmentFields.unit.optional(),
     period: commitmentFields.period.default('day'),
     schedule: commitmentFields.schedule.optional(),
+    reminder: commitmentFields.reminder.optional(),
   })
   .superRefine((c, ctx) => {
     // Checked as it will be stored: a daily check's target is 1, a week has no weekdays.
@@ -384,6 +440,7 @@ export const settingsPatchSchema = userSettingsSchema
     weeklyActiveDayTarget: true,
     focusPresets: true,
     questSettings: true,
+    notifications: true,
   })
   .partial()
   .refine(
