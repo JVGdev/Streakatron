@@ -16,6 +16,8 @@ import {
   type GoalPeriod,
 } from '../structure';
 import { isDateString, isValidTimeZone } from '../time';
+import { FOCUS_LIMITS } from '../focus';
+import { RESTABLE_QUEST_TYPES } from '../quests';
 
 export const dateString = z.string().refine(isDateString, 'Expected a YYYY-MM-DD day');
 
@@ -50,13 +52,14 @@ export type SetupInput = z.infer<typeof setupSchema>;
 // --- User settings ---------------------------------------------------------------------------
 
 export const focusPresetSchema = z.object({
-  focusMinutes: z.int().min(1).max(240),
-  breakMinutes: z.int().min(0).max(60),
+  focusMinutes: z.int().min(FOCUS_LIMITS.plannedMinutes.min).max(FOCUS_LIMITS.plannedMinutes.max),
+  breakMinutes: z.int().min(FOCUS_LIMITS.breakMinutes.min).max(FOCUS_LIMITS.breakMinutes.max),
 });
+export type FocusPreset = z.infer<typeof focusPresetSchema>;
 
 export const questSettingsSchema = z.object({
   /** Quest types turned off by the user (every type but comeback can rest). */
-  restingTypes: z.array(z.string()).max(20),
+  restingTypes: z.array(z.enum(RESTABLE_QUEST_TYPES)).max(RESTABLE_QUEST_TYPES.length),
   timeQuestMinMinutes: z.int().min(5).max(600),
   timeQuestMaxMinutes: z.int().min(5).max(600),
 });
@@ -295,5 +298,56 @@ export const resolveQuerySchema = z.object({
   ids: commaList.pipe(z.array(linkableId).min(1).max(MAX_RESOLVE_IDS)),
 });
 
-export const settingsPatchSchema = userSettingsSchema.pick({ activeProjectLimit: true }).partial();
+export const settingsPatchSchema = userSettingsSchema
+  .pick({
+    activeProjectLimit: true,
+    timezone: true,
+    dayStartHour: true,
+    weekStart: true,
+    weeklyActiveDayTarget: true,
+    focusPresets: true,
+    questSettings: true,
+  })
+  .partial()
+  .refine(
+    (v) =>
+      !v.questSettings ||
+      v.questSettings.timeQuestMinMinutes <= v.questSettings.timeQuestMaxMinutes,
+    {
+      message: 'The shortest time quest can’t be longer than the longest',
+      path: ['questSettings'],
+    },
+  );
+
+/** The time zone can change once this often, so days can't be farmed by hopping zones (D17). */
+export const TIMEZONE_CHANGE_DAYS = 7;
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
+
+// --- Focus sessions --------------------------------------------------------------------------
+
+/** Start a session, on a task (its project comes along), a project, or nothing. */
+export const focusStartSchema = focusPresetSchema
+  .extend({
+    taskId: idOf('task').optional(),
+    projectId: idOf('project').optional(),
+  })
+  .refine((v) => !(v.taskId && v.projectId), 'Attach a task or a project, not both');
+export type FocusStart = z.infer<typeof focusStartSchema>;
+
+/** After a session: its one-line note. */
+export const focusPatchSchema = z.object({
+  note: z.string().trim().max(FOCUS_LIMITS.noteLength).nullable(),
+});
+export type FocusPatch = z.infer<typeof focusPatchSchema>;
+
+// --- Stats -----------------------------------------------------------------------------------
+
+/** A span of the user's days (at most about 400). */
+export const heatmapQuerySchema = z
+  .object({ from: dateString.optional(), to: dateString.optional() })
+  .refine((v) => !v.from || !v.to || v.from <= v.to, 'from must not be after to')
+  .refine(
+    (v) => !v.from || !v.to || (Date.parse(v.to) - Date.parse(v.from)) / 86_400_000 <= 400,
+    'At most 400 days at a time',
+  );
+export type HeatmapQuery = z.infer<typeof heatmapQuerySchema>;

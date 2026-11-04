@@ -4,7 +4,7 @@ Streakatron is a web app that helps people stay consistent with studies and pers
 
 ## Current status
 
-- **Phase:** Phases 0 (Foundation), 1 (Structure & views) and 2 (Linking system) done 2026-11-03; **next up is Phase 3 (Today + gamification core = MVP)**.
+- **Phase:** Phases 0–2 done 2026-11-03. **Phase 3 (MVP) done 2026-11-04 in three slices (D27): 3a activity log, XP, levels, streaks; 3b focus sessions (D29); 3c quests and heatmap (D30). Next: Phase 4, after the user tries the MVP.**
 - **Run it:** `pnpm db:up && pnpm dev` (README has setup, scripts, Tailscale and backups).
 - **Repository:** https://github.com/JVGdev/streaktron (private), branch `main`.
 - Detailed status and session history: `.claude/context/progress.md`.
@@ -47,7 +47,7 @@ Read the relevant context file before working on an area; read `plan.md` section
 - References are FK columns with explicit `ON DELETE`; `jsonb` only for leaf data.
 - Day arithmetic only on `YYYY-MM-DD` values; the user's day comes from their stored timezone + day-start hour.
 - Game rules are pure functions in `packages/shared/game`, exhaustively unit-tested; the server is the only place they run for real.
-- Write responses carry a `game` block with the events they caused.
+- Write responses carry a `game` block with the events they caused: counting mutations call `logActivity` inside their transaction, routes wrap the service in `withGame`, and the client's `call()` hands the block to `GameMoments` (D28).
 - One client autosave helper (`useAutosave`) and one optimistic-update merge rule (`lib/task-cache.ts`); writes go through `lib/actions.ts`.
 - Game evaluation errors never fail a committed write (log and retry).
 - Failed API responses are always `{ error: { code, message, details? } }` (throw `HttpError` on the server); the web app calls the API only through `call()` in `apps/web/src/lib/api.ts`.

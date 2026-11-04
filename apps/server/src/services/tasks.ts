@@ -24,6 +24,7 @@ import {
   type Conn,
   type Tx,
 } from './common';
+import { logActivity } from './game';
 import { writeLinks } from './links';
 import { ownedProject, unpinClosed } from './projects';
 
@@ -198,6 +199,14 @@ export async function createTask(userId: string, input: TaskCreate) {
       ...richColumns(input.description),
     });
     await writeLinks(tx, userId, id, input.description);
+    if (completedAt) {
+      await logDoneness(
+        tx,
+        userId,
+        [{ id, effort: input.effort ?? null, parentTaskId: null, projectId }],
+        true,
+      );
+    }
     return taskView(tx, userId, id);
   });
 }
@@ -220,6 +229,10 @@ export async function updateTask(userId: string, id: string, patch: TaskPatch) {
       // Its subtasks come along; goals are per project, so theirs are dropped.
       await tx.update(tasks).set({ projectId, goalId: null }).where(eq(tasks.parentTaskId, id));
       await unpinIfPinned(tx, task);
+      // Out of the inbox: triage (quick quests read it).
+      if (task.projectId === null && projectId && !task.completedAt) {
+        await logActivity(tx, userId, [{ type: 'task_triaged', entityId: id }]);
+      }
     }
 
     const targetProject = moving ? projectId : task.projectId;
@@ -280,6 +293,7 @@ export async function completeTask(userId: string, id: string) {
     }
     await tx.update(tasks).set(values).where(eq(tasks.id, id));
     await unpinClosed(tx, [task.projectId]);
+    await logDoneness(tx, userId, [task], true);
     return taskView(tx, userId, id);
   });
 }
@@ -289,6 +303,7 @@ export async function reopenTask(userId: string, id: string) {
     const task = await ownedTask(tx, userId, id);
     if (!task.completedAt) return taskView(tx, userId, id);
     const values: Partial<TaskRow> = { completedAt: null };
+    await logDoneness(tx, userId, [task], false);
     if (task.projectId && !task.parentTaskId) {
       const columns = await projectColumns(tx, task.projectId);
       const current = columns.find((c) => c.id === task.columnId);
@@ -335,6 +350,7 @@ export async function moveTask(userId: string, id: string, move: TaskMove) {
       .where(eq(tasks.id, id));
     await writeOrder(tx, tasks, userId, order);
     if (done) await unpinClosed(tx, [task.projectId]);
+    if (done !== (task.completedAt !== null)) await logDoneness(tx, userId, [task], done);
     return taskView(tx, userId, id);
   });
 }
@@ -404,16 +420,58 @@ export async function moveColumnTasks(tx: Tx, userId: string, from: string, to: 
     .where(and(inColumn(to.id)))
     .orderBy(asc(tasks.sortOrder));
   const ids = moving.map((t) => t.id);
-  await setDoneness(tx, ids, to.category === 'done');
+  await setDoneness(tx, userId, ids, to.category === 'done');
   await tx.update(tasks).set({ columnId: to.id }).where(inArray(tasks.id, ids));
   await writeOrder(tx, tasks, userId, [...staying.map((t) => t.id), ...ids]);
 }
 
 /** Complete (keeping earlier completion times) or reopen these tasks. */
-export async function setDoneness(tx: Tx, ids: string[], done: boolean) {
+export async function setDoneness(tx: Tx, userId: string, ids: string[], done: boolean) {
   if (!ids.length) return;
+  const changing = await tx
+    .select({
+      id: tasks.id,
+      effort: tasks.effort,
+      parentTaskId: tasks.parentTaskId,
+      projectId: tasks.projectId,
+    })
+    .from(tasks)
+    .where(
+      and(
+        inArray(tasks.id, ids),
+        isNull(tasks.deletedAt),
+        done ? isNull(tasks.completedAt) : isNotNull(tasks.completedAt),
+      ),
+    );
   await tx
     .update(tasks)
     .set({ completedAt: done ? sql`coalesce(${tasks.completedAt}, now())` : null })
     .where(inArray(tasks.id, ids));
+  await logDoneness(tx, userId, changing, done);
+}
+
+/** Log tasks becoming done or open again (the game reads completions, D8). */
+function logDoneness(
+  tx: Tx,
+  userId: string,
+  changed: Pick<TaskRow, 'id' | 'effort' | 'parentTaskId' | 'projectId'>[],
+  done: boolean,
+) {
+  return logActivity(
+    tx,
+    userId,
+    changed.map((t) =>
+      done
+        ? {
+            type: 'task_completed' as const,
+            entityId: t.id,
+            payload: {
+              effort: t.effort,
+              subtask: t.parentTaskId !== null,
+              projectId: t.projectId,
+            },
+          }
+        : { type: 'task_reopened' as const, entityId: t.id },
+    ),
+  );
 }

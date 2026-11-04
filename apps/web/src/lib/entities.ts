@@ -5,7 +5,7 @@
 //
 // Chips on screen ask for their ids at the same moment; `load` gathers the ids asked for in one
 // tick into one `/api/entities/resolve` call. Writes that change titles or states call
-// `refreshEntities`, which refetches the chips and backlinks on screen.
+// `refreshEntities`, which refetches the chips, backlinks and quests on screen.
 
 import { MAX_RESOLVE_IDS } from '@streakatron/shared/schemas';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
@@ -74,6 +74,8 @@ export const backlinksQuery = (id: string) =>
 export function refreshEntities(qc: QueryClient) {
   void qc.invalidateQueries({ queryKey: ['entity'] });
   void qc.invalidateQueries({ queryKey: ['backlinks'] });
+  // Quests name tasks, projects and goals, and these writes move their progress.
+  void qc.invalidateQueries({ queryKey: ['quests'] });
 }
 
 export const KIND_LABEL = {

@@ -1,6 +1,8 @@
+import { TIMEZONE_CHANGE_DAYS, type SettingsPatch } from '@streakatron/shared/schemas';
 import { eq, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { users, userSettings } from '../db/schema';
+import { HttpError } from '../http/errors';
 
 /** Whether any account exists yet (none: the app shows first-run setup). */
 export async function hasAnyUser(): Promise<boolean> {
@@ -24,4 +26,39 @@ export async function getOwnerSettings() {
     .orderBy(users.createdAt)
     .limit(1);
   return row ?? null;
+}
+
+/** Change settings. A new time zone is allowed once every `TIMEZONE_CHANGE_DAYS` (D17). */
+export async function updateSettings(userId: string, patch: SettingsPatch) {
+  return db.transaction(async (tx) => {
+    const [current] = await tx
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId))
+      .for('update');
+    if (!current) throw new HttpError(500, 'missing_settings', 'Your settings are missing.');
+    const values: Partial<typeof userSettings.$inferInsert> = { ...patch };
+    if (patch.timezone === undefined || patch.timezone === current.timezone) {
+      delete values.timezone;
+    } else {
+      const now = new Date();
+      const last = current.timezoneChangedAt;
+      const next = last && new Date(last.getTime() + TIMEZONE_CHANGE_DAYS * 86_400_000);
+      if (next && next > now) {
+        throw new HttpError(
+          429,
+          'timezone_locked',
+          `The time zone can change once a week. Next change: ${next.toISOString().slice(0, 10)}.`,
+          { nextChangeAt: next.toISOString() },
+        );
+      }
+      values.timezoneChangedAt = now;
+    }
+    if (Object.keys(values).length) {
+      await tx.update(userSettings).set(values).where(eq(userSettings.userId, userId));
+    }
+    const [row] = await tx.select().from(userSettings).where(eq(userSettings.userId, userId));
+    const { userId: _, createdAt: __, updatedAt: ___, ...settings } = row!;
+    return settings;
+  });
 }

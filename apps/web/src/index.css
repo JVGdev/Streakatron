@@ -39,6 +39,11 @@
   --input: #e2dfdb;
   --ring: #f05a1a;
   --ledge: #e6e3df;
+  /* Heatmap: one hue (ember), validated as an ordinal ramp against the card (light end ≥ 2:1). */
+  --heat-1: #f7955c;
+  --heat-2: #ec6a28;
+  --heat-3: #c94a10;
+  --heat-4: #8a2d07;
   --sidebar: #f3f1ee;
   --sidebar-foreground: #1d1b19;
   --sidebar-primary: #f05a1a;
@@ -74,6 +79,11 @@
   --input: #3a3532;
   --ring: #f26a2e;
   --ledge: #0c0b0a;
+  /* Dark: its own steps, low near the surface and brighter with more (validated on the card). */
+  --heat-1: #8a3a17;
+  --heat-2: #c0501c;
+  --heat-3: #f06a2a;
+  --heat-4: #ffab78;
   --sidebar: #191715;
   --sidebar-foreground: #f5f3f0;
   --sidebar-primary: #f05a1a;

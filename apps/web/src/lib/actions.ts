@@ -8,10 +8,12 @@
 import type {
   AreaCreate,
   AreaPatch,
+  FocusStart,
   GoalCreate,
   GoalPatch,
   ProjectCreate,
   ProjectPatch,
+  SettingsPatch,
   TaskCreate,
   TaskPatch,
 } from '@streakatron/shared/schemas';
@@ -25,8 +27,20 @@ import {
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { toast } from 'sonner';
-import { api, call } from './api';
-import type { Area, BoardColumn, Goal, Project, ProjectPage, Task, TaskDetail } from './queries';
+import { api, call, ApiError } from './api';
+import { askNotifications, endBreak, markSeen, syncServerClock } from './focus-timer';
+import type {
+  Area,
+  BoardColumn,
+  FocusSession,
+  FocusState,
+  Goal,
+  Project,
+  ProjectPage,
+  Task,
+  TaskDetail,
+} from './queries';
+import { primeAudio } from './sound';
 import { refreshEntities } from './entities';
 import { attempt, report } from './report';
 import { cachedTask, dropTasks, mergeTasks, refreshAfterTaskWrite } from './task-cache';
@@ -423,10 +437,14 @@ export function structureActions(qc: QueryClient) {
         return res;
       }),
 
-    updateSettings: (activeProjectLimit: number) =>
+    /** Settings change the user's day and the week's rules, so the game is read again. */
+    updateSettings: (patch: SettingsPatch) =>
       attempt(async () => {
-        await call(api.settings.$patch({ json: { activeProjectLimit } }));
+        const settings = await call(api.settings.$patch({ json: patch }));
         void qc.invalidateQueries({ queryKey: ['me'] });
+        void qc.invalidateQueries({ queryKey: ['game'] });
+        void qc.invalidateQueries({ queryKey: ['quests'] });
+        return settings;
       }),
   };
 }
@@ -444,4 +462,84 @@ function undoToast(qc: QueryClient, message: string, snapshotId: string) {
 export function useStructureActions() {
   const qc = useQueryClient();
   return useMemo(() => structureActions(qc), [qc]);
+}
+
+// --- Focus -----------------------------------------------------------------------------------
+
+/** Focus-session writes. Each answers the timer's whole state, which replaces the cache. */
+export function focusActions(qc: QueryClient) {
+  const settle = (state: FocusState) => {
+    syncServerClock(state.now);
+    qc.setQueryData<FocusState>(['focus'], state);
+    void qc.invalidateQueries({ queryKey: ['quests'] });
+    return state;
+  };
+  return {
+    /** From a click: also unlocks the chime and asks for notifications. Resolves to whether it started. */
+    start: async (input: FocusStart) => {
+      primeAudio();
+      askNotifications();
+      try {
+        const state = settle(await call(api.focus.start.$post({ json: input })));
+        endBreak();
+        if (state.last) markSeen(state.last.id);
+        return true;
+      } catch (err) {
+        if (err instanceof ApiError && err.code === 'focus_open') {
+          void qc.invalidateQueries({ queryKey: ['focus'] });
+          toast('A focus session is already going.');
+        } else {
+          report(err);
+        }
+        return false;
+      }
+    },
+    pause: () => attempt(async () => settle(await call(api.focus.pause.$post()))),
+    resume: () =>
+      attempt(async () => {
+        primeAudio();
+        return settle(await call(api.focus.resume.$post()));
+      }),
+    finish: () => attempt(async () => settle(await call(api.focus.finish.$post()))),
+    abandon: () =>
+      attempt(async () => {
+        const state = settle(await call(api.focus.abandon.$post()));
+        if (state.last) markSeen(state.last.id);
+        return state;
+      }),
+    /** Autosave's sender for the note on a finished session: throws. */
+    saveNote: async (id: string, note: string) => {
+      const session = await call(
+        api.focus[':id'].$patch({ param: { id }, json: { note: note.trim() || null } }),
+      );
+      qc.setQueryData<FocusState>(['focus'], (old) =>
+        old?.last?.id === id ? { ...old, last: session as FocusSession } : old,
+      );
+      return session;
+    },
+  };
+}
+
+export function useFocusActions() {
+  const qc = useQueryClient();
+  return useMemo(() => focusActions(qc), [qc]);
+}
+
+// --- Quests ----------------------------------------------------------------------------------
+
+export function questActions(qc: QueryClient) {
+  return {
+    /** Trade a quest for another of its type (once per quest). */
+    reroll: (id: string) =>
+      attempt(async () => {
+        const board = await call(api.quests[':id'].reroll.$post({ param: { id } }));
+        qc.setQueryData(['quests'], board);
+        return board;
+      }),
+  };
+}
+
+export function useQuestActions() {
+  const qc = useQueryClient();
+  return useMemo(() => questActions(qc), [qc]);
 }

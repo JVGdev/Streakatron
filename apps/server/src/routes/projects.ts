@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { db } from '../db/client';
 import { requireUser, type AuthedEnv } from '../http/session';
 import { validate } from '../http/validate';
+import { withGame } from '../services/game';
 import { createColumn, listColumns, reorderColumns } from '../services/board';
 import { listGoals } from '../services/goals';
 import {
@@ -42,17 +43,29 @@ export const projectRoutes = new Hono<AuthedEnv>()
     return c.json({ project, columns, goals });
   })
   .patch('/:id', param, validate('json', projectPatchSchema), async (c) =>
-    c.json(await updateProject(c.get('user').id, c.req.valid('param').id, c.req.valid('json'))),
+    c.json(
+      await withGame(
+        c.get('user').id,
+        () => updateProject(c.get('user').id, c.req.valid('param').id, c.req.valid('json')),
+        { touches: ['project'] },
+      ),
+    ),
   )
   /** Lifecycle; 409 `active_limit` (with the active projects) when over the limit (D5). */
   .post('/:id/status', param, validate('json', projectStatusSchema), async (c) =>
-    c.json({
-      projects: await setProjectStatus(
+    c.json(
+      await withGame(
         c.get('user').id,
-        c.req.valid('param').id,
-        c.req.valid('json'),
+        async () => ({
+          projects: await setProjectStatus(
+            c.get('user').id,
+            c.req.valid('param').id,
+            c.req.valid('json'),
+          ),
+        }),
+        { touches: ['project'] },
       ),
-    }),
+    ),
   )
   .delete('/:id', param, async (c) =>
     c.json(await deleteProject(c.get('user').id, c.req.valid('param').id)),
