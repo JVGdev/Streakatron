@@ -2,15 +2,15 @@
 
 ## Status
 
-- **Current phase:** Phases 0–3 done → **Phase 3 is the MVP** (3a, 3b and 3c all uncommitted on `main`). Next: Phase 4 (habits, calendar, countdowns, weekly review, reminders) once the user has tried the MVP.
+- **Current phase:** Phases 0–3 done → **Phase 3 is the MVP**, committed and merged (`phase-3-mvp`) and deployed to the Docker app on 2026-11-04. Next: Phase 4 (habits, calendar, countdowns, weekly review, reminders) once the user has tried the MVP.
 - **Code:** monorepo with server, web and shared packages; 280 tests passing. **Repository:** https://github.com/JVGdev/streaktron (private, `main`).
 - **Running over Tailscale:** the Docker app is served at `https://hills.tail99ef4d.ts.net:8443` (port 8443, because the root of that address serves Quire on :8788; never replace it). Verified from the laptop over HTTPS (page, sign-in with a Secure cookie, `/me`); not yet opened from the phone.
 - **Open questions:** deferred by the user (plan.md §13). D19–D24, D28, and D29's and D30's details are Claude's choices to confirm when convenient.
-- **The Docker app on :8443 still runs Phase 1.** Rebuilding it (`docker compose up -d --build`) applies migrations `0003_links` through `0007_quests` to the real database on start (new tables, generated search columns; no data changes).
+- **The Docker app on :8443 runs Phase 3 (the MVP)** since 2026-11-04: migrations `0003_links` through `0007_quests` applied to the real database (new tables, generated search columns; no data changes). A dump from just before is kept as `data/backups/streakatron-pre-phase3-20261104-1804.dump` (the backup job never prunes it). The game starts from this deploy (D27).
 
 ## Next steps
 
-1. The user tries the **MVP** (3a + 3b + 3c) when they're ready: complete tasks, run focus sessions, do quests, check Stats and the quest settings. Everything is uncommitted on `main`. Rebuilding the Docker app applies `0005_activity`, `0006_focus` and `0007_quests` (new tables only). The game starts from that deploy (D27: no backfill).
+1. The user tries the **MVP** (3a + 3b + 3c) when they're ready: complete tasks, run focus sessions, do quests, check Stats and the quest settings. It's committed and deployed on :8443.
 2. **Phase 4** (habits, calendar events and view, countdowns, weekly review, Web Push reminders), after the user's feedback on the MVP.
 3. Still open: loot rarity colors and sound (D25), the real loot box visual (D30, Phase 5); the user confirms or changes D19–D24, D28, and D29's and D30's details.
 
@@ -105,4 +105,4 @@
 - **Bugs found and fixed on the way:** parking a project didn't cancel its "get back to" quest (that template now listens to project changes); two make quests met by one new task each spawned a follow-up (now one per thing); the reroll button covered the progress numbers; heatmap tooltips were clipped by the scroll area (now drawn outside it, below the cell for the top rows); the grid was a few pixels too wide for the card.
 - **Checked in a real browser** (headless Chromium from the scratchpad, production build on :3101, throwaway `streakatron_e2e3c` database with 150 days of seeded history, dropped after): a generated board, a reroll, a daily quest's complete screen, the board-cleared screen (+25 bonus), a make quest's follow-up and its progress, quick quests, Stats (light, dark, hover and keyboard tooltips), the quest settings, phone layouts. No console errors. 280 tests, typecheck, lint and format pass.
 - **Decision:** D30.
-
+- **Committed and deployed (same day, at the user's request):** branch `phase-3-mvp` merged into `main` (not pushed); the Docker app rebuilt after a manual `pg_dump`; health OK locally and over Tailscale, all 8 migrations applied.
