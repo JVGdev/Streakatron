@@ -525,6 +525,41 @@ export function useSpotlightActions() {
   return useMemo(() => spotlightActions(qc), [qc]);
 }
 
+// --- Reminders (D38) -------------------------------------------------------------------------
+
+const clock = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
+
+export function reminderActions(qc: QueryClient) {
+  const refresh = () => {
+    void qc.invalidateQueries({ queryKey: ['tasks'] });
+    void qc.invalidateQueries({ queryKey: ['commitments'] });
+  };
+  return {
+    /** "Snooze 1 h": a task's reminder moves an hour out; a commitment's next one comes then. */
+    snooze: (id: string) =>
+      attempt(async () => {
+        const { until } = await call(api.reminders.snooze.$post({ json: { id } }));
+        refresh();
+        toast(`Snoozed until ${clock.format(new Date(until))}`);
+      }),
+
+    /** A reminder toast's button (the app was in front when it came): Done or +1. */
+    act: async (action: string, target: { kind: 'task' | 'commitment'; id: string }) => {
+      if (action === 'snooze') return reminderActions(qc).snooze(target.id);
+      if (target.kind === 'commitment') return commitmentActions(qc).log(target.id, 1);
+      return attempt(async () => {
+        await call(api.tasks[':id'].complete.$post({ param: { id: target.id } }));
+        void qc.invalidateQueries();
+      });
+    },
+  };
+}
+
+export function useReminderActions() {
+  const qc = useQueryClient();
+  return useMemo(() => reminderActions(qc), [qc]);
+}
+
 export function commitmentActions(qc: QueryClient) {
   return {
     create: (input: CommitmentCreate) =>

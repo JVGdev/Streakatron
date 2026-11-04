@@ -1,7 +1,7 @@
 // Showing days. A `YYYY-MM-DD` day is formatted at noon UTC, read in UTC, so no local offset can
 // turn it into its neighbour.
 
-import { daysBetween } from '@streakatron/shared/time';
+import { daysBetween, wallClock } from '@streakatron/shared/time';
 
 const long = new Intl.DateTimeFormat('en-US', {
   weekday: 'long',
@@ -53,3 +53,10 @@ export const formatMinutes = (m: number) => {
   const rest = m % 60;
   return h ? (rest ? `${h} h ${rest} min` : `${h} h`) : `${rest} min`;
 };
+
+/** When a task reminds, the way the app says days: "Tomorrow at 15:30" (D38). */
+export function formatRemindAt(iso: string, timeZone: string, today: string): string {
+  const w = wallClock(new Date(iso), timeZone);
+  const time = `${String(w.hour).padStart(2, '0')}:${String(w.minute).padStart(2, '0')}`;
+  return w.date === today ? `Today at ${time}` : `${formatDayShort(w.date, today)} at ${time}`;
+}

@@ -133,13 +133,13 @@ export function timeZoneOffsetMs(instant: Date, timeZone: string): number {
 }
 
 /**
- * The instant a clock in `timeZone` shows `day` at `hour`:00. A time skipped by a DST jump
+ * The instant a clock in `timeZone` shows `day` at `hour`:`minute`. A time skipped by a DST jump
  * resolves to the moment after the jump; a time that happens twice resolves to the first one.
  */
-export function zonedTime(day: DateString, hour: number, timeZone: string): Date {
+export function zonedTime(day: DateString, hour: number, timeZone: string, minute = 0): Date {
   assertDate(day);
   const [y, mo, d] = day.split('-').map(Number) as [number, number, number];
-  const wall = Date.UTC(y, mo - 1, d, hour);
+  const wall = Date.UTC(y, mo - 1, d, hour, minute);
   const first = wall - timeZoneOffsetMs(new Date(wall), timeZone);
   const second = wall - timeZoneOffsetMs(new Date(first), timeZone);
   if (second === first) return new Date(first);

@@ -33,6 +33,7 @@ import { Backlinks } from './backlinks';
 import { doneToday } from '@/lib/commitments';
 import { CommitmentControl, LogPopover } from './commitment-row';
 import { EntityIcon } from './entity-icon';
+import { CommitmentReminderField } from './reminder-field';
 import { RichEditor } from './rich-editor';
 import { SheetBar, TitleField } from './sheet-parts';
 
@@ -72,6 +73,8 @@ export function CommitmentSheet({ commitmentId }: { commitmentId: string | undef
 }
 
 const time = new Intl.DateTimeFormat('en', { hour: 'numeric', minute: '2-digit' });
+
+const clock = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
 
 function CommitmentEditor({ commitment: c }: { commitment: CommitmentDetail }) {
   const actions = useCommitmentActions();
@@ -208,6 +211,21 @@ function CommitmentEditor({ commitment: c }: { commitment: CommitmentDetail }) {
             {live.streak.current === 1 ? '' : 's'}
             {live.streak.longest > live.streak.current && (
               <span className="text-muted-foreground">· best {live.streak.longest}</span>
+            )}
+          </dd>
+          <dt className="text-muted-foreground">
+            <label htmlFor="commitment-sheet-reminder">Reminder</label>
+          </dt>
+          <dd className="grid min-w-0 gap-1">
+            <CommitmentReminderField
+              id="commitment-sheet-reminder"
+              value={live.reminder}
+              onChange={(reminder) => void actions.update(c.id, { reminder })}
+            />
+            {live.reminder && live.remindAgainAt && new Date(live.remindAgainAt) > new Date() && (
+              <span className="px-1 text-xs text-muted-foreground">
+                Snoozed until {clock.format(new Date(live.remindAgainAt))}
+              </span>
             )}
           </dd>
         </dl>

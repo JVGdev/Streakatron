@@ -47,6 +47,7 @@ const viewColumns = {
   sortOrder: tasks.sortOrder,
   completedAt: tasks.completedAt,
   spotlightedAt: tasks.spotlightedAt,
+  remindAt: tasks.remindAt,
   createdAt: tasks.createdAt,
   updatedAt: tasks.updatedAt,
   status: sql<TaskStatus>`case when ${tasks.completedAt} is not null then 'done' when ${boardColumns.category} in ('in_progress', 'waiting') then ${boardColumns.category} else 'todo' end`,
@@ -195,6 +196,7 @@ export async function createTask(userId: string, input: TaskCreate) {
       effort: input.effort ?? null,
       dueDate: input.dueDate ?? null,
       scheduledDate: input.scheduledDate ?? null,
+      remindAt: input.remindAt ? new Date(input.remindAt) : null,
       completedAt,
       sortOrder: await edgeOrder(tx, tasks, and(eq(tasks.userId, userId), scope), position),
       ...richColumns(input.description),
@@ -215,8 +217,9 @@ export async function createTask(userId: string, input: TaskCreate) {
 export async function updateTask(userId: string, id: string, patch: TaskPatch) {
   return db.transaction(async (tx) => {
     const task = await ownedTask(tx, userId, id);
-    const { description, projectId, goalId, ...rest } = patch;
+    const { description, projectId, goalId, remindAt, ...rest } = patch;
     const values: Partial<TaskRow> = defined({ ...rest, ...richColumns(description) });
+    if (remindAt !== undefined) values.remindAt = remindAt ? new Date(remindAt) : null;
 
     const moving = projectId !== undefined && projectId !== task.projectId;
     if (moving) {

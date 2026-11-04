@@ -8,6 +8,7 @@ import {
   ENTRY_SOURCES,
   type CommitmentSchedule,
 } from '@streakatron/shared/commitments';
+import type { CommitmentReminder } from '@streakatron/shared/reminders';
 import type { RichDoc } from '@streakatron/shared/rich';
 import { sql } from 'drizzle-orm';
 import {
@@ -55,6 +56,10 @@ export const commitments = pgTable(
     period: text({ enum: COMMITMENT_PERIODS }).notNull(),
     /** Day commitments: the weekdays; null is every day (and always null for weeks). */
     schedule: jsonb().$type<CommitmentSchedule>(),
+    /** Off (null), once at a time, or repeat until done (D31, D38); checked by the shared rules. */
+    reminder: jsonb().$type<CommitmentReminder>(),
+    /** "Snooze 1 h": nothing before this, then one reminder at it. */
+    remindAgainAt: timestamp({ withTimezone: true }),
     sortOrder: integer().notNull().default(0),
     archivedAt: timestamp({ withTimezone: true }),
     /** Soft delete: undoable, purged after 30 days. */

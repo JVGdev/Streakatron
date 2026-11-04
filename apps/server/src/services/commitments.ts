@@ -174,7 +174,7 @@ export type CommitmentDetail = Awaited<ReturnType<typeof getCommitment>>;
  * Where each live commitment stands today, for quests: those of no project or an active one (a
  * parked project's commitments rest with it, like its tasks).
  */
-export async function todayCommitments(tx: Tx, userId: string, today: DateString) {
+export async function todayCommitments(tx: Conn, userId: string, today: DateString) {
   const s = await daySettings(tx, userId);
   const rows = await tx
     .select({ c: commitments })
@@ -232,6 +232,7 @@ export async function createCommitment(userId: string, input: CommitmentCreate) 
       projectId: input.projectId ?? null,
       title: input.title,
       ...shape,
+      reminder: input.reminder ?? null,
       sortOrder: await edgeOrder(tx, commitments, live(userId), 'bottom'),
       ...richColumns(input.description),
     });
@@ -259,6 +260,8 @@ export async function updateCommitment(userId: string, id: string, patch: Commit
         ...defined(rest),
         ...shape,
         ...(archived === undefined ? {} : { archivedAt: archived ? new Date() : null }),
+        // A new reminder starts fresh: an old snooze doesn't hold it.
+        ...(rest.reminder === undefined ? {} : { remindAgainAt: null }),
         ...richColumns(description),
       })
       .where(eq(commitments.id, id));

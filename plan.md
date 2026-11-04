@@ -79,6 +79,10 @@ The full decisions log, with rationale, alternatives and status, lives in **`.cl
 | D32 | Use-case gaps placed (waiting, required projects, task reminders, recurring tasks, tentative dates, number goals, timezone moves, planned breaks); group projects to the backlog; the UI stays easy (defaults first, UI review per slice) |
 | D33 | Spotlight: up to 4 tasks or goals featured on Today; countdowns use it too |
 | D34 | Phase 4 in six slices: commitments (+ time-goal progress), Today & boards, reminders, calendar, recurring tasks, goals & review |
+| D35 | Proprietary license, all rights reserved |
+| D36 | Commitments as built in 4a |
+| D37 | Today & boards as built in 4b (Spotlight, waiting, required, create from pickers) |
+| D38 | Reminders as built in 4c: a minute job sends what's due once, with grace; snooze; push to every device; installable app |
 
 Rejected ideas are listed at the end of the decisions log so they aren't proposed again.
 
@@ -559,14 +563,14 @@ Shaped by the use case below and the gaps from brainstormed use cases (D32). **E
 **Done when:** "Learn katakana" stays in Spotlight for weeks; "Waiting for the acceptance letter" never becomes the next action and comes back on its follow-up date; a required course doesn't count toward the limit; a new area is made from the project dialog.
 
 #### 4c — Reminders
-- [ ] PWA: manifest, service worker (no offline data), install on phone and desktop over Tailscale HTTPS
-- [ ] Web Push: VAPID keys, subscriptions per device, a Settings card (enable on this device, test notification)
-- [ ] One reminder control (D32) reused by commitments, tasks and, later, events
-- [ ] Commitment reminders: off / once / repeat until done, scheduled server-side (pg-boss) in the user's timezone; skipped once met; never past the day's end
-- [ ] **Task reminders** at a date and time (D32)
-- [ ] Focus ended (with the tab closed) and opt-in "streak at risk" evening nudge (max one per day)
-- [ ] **Notification actions** (D32): Done, +1, Snooze 1 h — without opening the app
-- [ ] UI review (D32)
+- [x] PWA: manifest, service worker (no offline data), install on phone and desktop over Tailscale HTTPS *(D38; installing and receiving on the real PC and phone still to be checked after deploy)*
+- [x] Web Push: VAPID keys, subscriptions per device, a Settings card (enable on this device, test notification)
+- [x] One reminder control (D32) reused by commitments, tasks and, later, events
+- [x] Commitment reminders: off / once / repeat until done, scheduled server-side (pg-boss) in the user's timezone; skipped once met; never past the day's end
+- [x] **Task reminders** at a date and time (D32)
+- [x] Focus ended (with the tab closed) and opt-in "streak at risk" evening nudge (max one per day)
+- [x] **Notification actions** (D32): Done, +1, Snooze 1 h — without opening the app
+- [x] UI review (D32)
 
 **Done when:** Duolingo not done by 10:00 notifies the PC and the phone, again every 3 hours, none after it's ticked (also from the notification's Done); "check the visa status" reminds on its day and time.
 

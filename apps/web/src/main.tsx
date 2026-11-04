@@ -3,7 +3,9 @@ import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { toast } from 'sonner';
+import { reminderActions } from './lib/actions';
 import { ApiError, errorMessage } from './lib/api';
+import { listenToServiceWorker, registerServiceWorker } from './lib/push';
 import { setErrorHandler } from './lib/report';
 import { anyBusy, flushAll } from './lib/saver';
 import { followSystemTheme } from './lib/theme';
@@ -52,6 +54,14 @@ declare module '@tanstack/react-router' {
 }
 
 followSystemTheme();
+
+// The installable app and Web Push (D38).
+registerServiceWorker();
+listenToServiceWorker(
+  queryClient,
+  (url) => router.history.push(url),
+  (action, target) => reminderActions(queryClient).act(action, target),
+);
 
 // Whatever waits to be saved goes when the page is hidden (tab switched, app put away, closed).
 document.addEventListener('visibilitychange', () => {

@@ -8,6 +8,7 @@ import {
   type CommitmentMeasure,
   type CommitmentPeriod,
 } from '@streakatron/shared/commitments';
+import type { CommitmentReminder } from '@streakatron/shared/reminders';
 import { useQuery } from '@tanstack/react-query';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ import { useCommitmentActions } from '@/lib/actions';
 import { commitmentQuery, meQuery, projectsQuery, type CommitmentDetail } from '@/lib/queries';
 import { setUi, useUi } from '@/lib/ui-store';
 import { cn } from '@/lib/utils';
+import { CommitmentReminderField } from './reminder-field';
 
 export function CommitmentDialog() {
   const ui = useUi();
@@ -107,6 +109,7 @@ function CommitmentForm({
   const [projectId, setProjectId] = useState<string | null>(
     commitment ? commitment.projectId : startProject,
   );
+  const [reminder, setReminder] = useState<CommitmentReminder | null>(commitment?.reminder ?? null);
   const [busy, setBusy] = useState(false);
 
   const period: CommitmentPeriod = how === 'week' ? 'week' : 'day';
@@ -135,7 +138,7 @@ function CommitmentForm({
     e.preventDefault();
     if (!valid) return;
     setBusy(true);
-    const fields = { title, projectId, ...shape };
+    const fields = { title, projectId, reminder, ...shape };
     const saved = commitment
       ? await actions.update(commitment.id, fields)
       : await actions.create(fields);
@@ -249,6 +252,15 @@ function CommitmentForm({
           </Select>
         </div>
 
+        <div className="grid gap-1.5">
+          <Label htmlFor="commitment-reminder">Reminder</Label>
+          <CommitmentReminderField
+            id="commitment-reminder"
+            value={reminder}
+            onChange={setReminder}
+          />
+        </div>
+
         {valid && (
           <p className="text-sm text-muted-foreground">
             <span className="font-bold text-foreground">{targetText(shape, weekStart)}</span>.
@@ -269,7 +281,8 @@ function CommitmentForm({
   );
 }
 
-function Choice<T extends string>({
+/** A row of choices, one picked (the commitment dialog, the reminder control). */
+export function Choice<T extends string>({
   label,
   options,
   value,

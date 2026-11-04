@@ -165,12 +165,17 @@ export const tasks = pgTable(
     completedAt: timestamp({ withTimezone: true }),
     /** Featured on Today since then (D33); shown while the task is open. */
     spotlightedAt: timestamp({ withTimezone: true }),
+    /** A reminder at this instant (D32, D38); sent once while the task is open. */
+    remindAt: timestamp({ withTimezone: true }),
     /** Soft delete: undoable, purged after 30 days. */
     deletedAt: timestamp({ withTimezone: true }),
     ...timestamps,
   },
   (t) => [
     index().on(t.userId, t.projectId),
+    index('tasks_remind_at')
+      .on(t.remindAt)
+      .where(sql`${t.remindAt} is not null`),
     index().on(t.columnId, t.sortOrder),
     index().on(t.parentTaskId),
     index().on(t.goalId),

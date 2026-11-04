@@ -5,8 +5,9 @@ import { PgBoss } from 'pg-boss';
 import { env } from '../env';
 import { runBackup } from './backup';
 import { runPurge } from './purge';
+import { runReminders } from '../services/reminders';
 
-export const QUEUES = { backup: 'backup', purge: 'purge' } as const;
+export const QUEUES = { backup: 'backup', purge: 'purge', reminders: 'reminders' } as const;
 
 export async function startJobs(): Promise<PgBoss> {
   const boss = new PgBoss({ connectionString: env.DATABASE_URL, schema: 'pgboss' });
@@ -41,6 +42,15 @@ export async function startJobs(): Promise<PgBoss> {
     }
   });
   await boss.schedule(QUEUES.purge, '43 * * * *');
+
+  // Reminders (D38): every minute; a missed run is caught up by the next (each reminder has a
+  // grace), so no retries, and never two at once.
+  await boss.createQueue(QUEUES.reminders, { policy: 'exclusive', retryLimit: 0 });
+  await boss.work(QUEUES.reminders, async () => {
+    const sent = await runReminders();
+    if (sent) console.log(`[jobs] sent ${sent} reminder(s)`);
+  });
+  await boss.schedule(QUEUES.reminders, '* * * * *');
 
   return boss;
 }

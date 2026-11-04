@@ -85,6 +85,13 @@
       "when": 1793831973854,
       "tag": "0011_today_boards",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793833863894,
+      "tag": "0012_reminders",
+      "breakpoints": true
     }
   ]
 }

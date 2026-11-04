@@ -39,6 +39,11 @@ export default tseslint.config(
     },
   },
   {
+    // The service worker is plain JavaScript run by the browser (D38).
+    files: ['apps/web/public/sw.js'],
+    languageOptions: { globals: globals.serviceworker },
+  },
+  {
     // shadcn/ui components and route files export helpers next to components by design.
     files: ['apps/web/src/components/ui/**', 'apps/web/src/routes/**'],
     rules: { 'react-refresh/only-export-components': 'off' },

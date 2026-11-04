@@ -26,6 +26,10 @@ export const userSettings = pgTable(
       .$type<UserSettings['questSettings']>()
       .notNull()
       .default(d.questSettings),
+    notifications: jsonb()
+      .$type<UserSettings['notifications']>()
+      .notNull()
+      .default(d.notifications),
     ...timestamps,
   },
   (t) => [
