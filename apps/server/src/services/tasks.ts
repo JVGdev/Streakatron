@@ -46,9 +46,10 @@ const viewColumns = {
   scheduledDate: tasks.scheduledDate,
   sortOrder: tasks.sortOrder,
   completedAt: tasks.completedAt,
+  spotlightedAt: tasks.spotlightedAt,
   createdAt: tasks.createdAt,
   updatedAt: tasks.updatedAt,
-  status: sql<TaskStatus>`case when ${tasks.completedAt} is not null then 'done' when ${boardColumns.category} = 'in_progress' then 'in_progress' else 'todo' end`,
+  status: sql<TaskStatus>`case when ${tasks.completedAt} is not null then 'done' when ${boardColumns.category} in ('in_progress', 'waiting') then ${boardColumns.category} else 'todo' end`,
   subtasks: sql<{ total: number; done: number }>`(
     select json_build_object('total', count(*)::int, 'done', (count(*) filter (where s.completed_at is not null))::int)
     from tasks s where s.parent_task_id = ${tasks.id} and s.deleted_at is null

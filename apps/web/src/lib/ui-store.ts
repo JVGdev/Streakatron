@@ -1,5 +1,5 @@
 // App-wide UI state that any component (palette, shortcuts, sidebar) can open: the command
-// palette and the area, project and commitment dialogs.
+// palette, the area, project and commitment dialogs, and the "spotlight is full" dialog.
 
 import { useSyncExternalStore } from 'react';
 
@@ -11,6 +11,11 @@ export interface UiState {
   /** The commitment dialog: new (optionally in a project) or editing one. */
   commitmentDialog: null | { commitmentId?: string; projectId?: string | null };
   shortcuts: boolean;
+  /** The spotlight is full (D33): which one to drop for `add`. */
+  spotlightFull: null | {
+    add: { id: string; title: string };
+    items: { id: string; kind: 'task' | 'goal'; title: string }[];
+  };
 }
 
 let state: UiState = {
@@ -19,6 +24,7 @@ let state: UiState = {
   areaDialog: null,
   commitmentDialog: null,
   shortcuts: false,
+  spotlightFull: null,
 };
 const listeners = new Set<() => void>();
 

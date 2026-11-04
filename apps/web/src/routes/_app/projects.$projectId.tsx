@@ -11,6 +11,8 @@ import {
   Pencil,
   Pin,
   PinOff,
+  ShieldCheck,
+  ShieldOff,
   Trash2,
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
@@ -52,6 +54,7 @@ import { useAutosave } from '@/lib/autosave';
 import { countdown, formatDayShort } from '@/lib/days';
 import { STATUS_LABEL } from '@/lib/look';
 import { useProjectStatus } from '@/lib/project-status';
+import { RequiredBadge } from '@/components/project-status';
 import {
   areasQuery,
   meQuery,
@@ -71,8 +74,23 @@ import {
 import { editProject } from '@/lib/ui-store';
 import { cn } from '@/lib/utils';
 
+const VIEWS = ['board', 'list', 'overview'] as const;
+
+/** `?tab=goals` (and other spellings people link with) opens the matching view. */
+const TAB_ALIAS: Record<string, (typeof VIEWS)[number]> = {
+  board: 'board',
+  kanban: 'board',
+  list: 'list',
+  tasks: 'list',
+  overview: 'overview',
+  goals: 'overview',
+  details: 'overview',
+  commitments: 'overview',
+};
+
 const search = z.object({
-  view: z.enum(['board', 'list', 'overview']).optional(),
+  view: z.enum(VIEWS).optional(),
+  tab: z.string().optional(),
   status: z.enum(STATUS_FILTERS).optional(),
   due: z.enum(DUE_FILTERS).optional(),
   sort: z.enum(SORTS).optional(),
@@ -121,7 +139,7 @@ function ProjectPage() {
   if (!page) return null;
   // The list in the projects query is refreshed with every task write; prefer it.
   const project = projects.find((p) => p.id === projectId) ?? page.project;
-  const view = s.view ?? 'board';
+  const view = s.view ?? TAB_ALIAS[s.tab?.toLowerCase() ?? ''] ?? 'board';
   const listOptions: ListOptions = {
     ...DEFAULT_LIST,
     group: 'status',
@@ -138,7 +156,10 @@ function ProjectPage() {
       <Tabs
         value={view}
         onValueChange={(v) =>
-          void navigate({ search: (prev) => ({ ...prev, view: v as typeof view }), replace: true })
+          void navigate({
+            search: (prev) => ({ ...prev, view: v as typeof view, tab: undefined }),
+            replace: true,
+          })
         }
       >
         <TabsList>
@@ -214,6 +235,12 @@ function ProjectHeader({ project, today }: { project: Project; today: string }) 
               Projects
             </Link>
           )}
+          {project.required && (
+            <>
+              <span>·</span>
+              <RequiredBadge />
+            </>
+          )}
           {project.dueDate && (
             <>
               <span>·</span>
@@ -260,6 +287,14 @@ function ProjectHeader({ project, today }: { project: Project; today: string }) 
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() =>
+                void actions.updateProject(project.id, { required: !project.required })
+              }
+            >
+              {project.required ? <ShieldOff /> : <ShieldCheck />}
+              {project.required ? 'Not required' : 'Mark as required'}
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => editProject(project.id)}>
               <Pencil />
               Edit details

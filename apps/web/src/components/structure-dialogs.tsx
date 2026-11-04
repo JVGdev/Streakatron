@@ -9,6 +9,10 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { EntityIcon } from '@/components/entity-icon';
 import { ColorPicker, IconPicker } from '@/components/look-pickers';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ComboPicker } from '@/components/combo-picker';
+import { useQuickCreate } from '@/hooks/use-quick-create';
+import { countsTowardLimit } from '@/lib/project-status';
 import {
   Dialog,
   DialogContent,
@@ -163,16 +167,28 @@ function ProjectForm({
   const actions = useStructureActions();
   const navigate = useNavigate();
   const { data: me } = useQuery(meQuery);
+  const quick = useQuickCreate();
   const limit = me?.settings.activeProjectLimit ?? 3;
-  const activeCount = projects.filter((p) => p.status === 'active').length;
+  const activeCount = projects.filter(countsTowardLimit).length;
   const full = activeCount >= limit;
+  const openAreas = areas.filter((a) => !a.archivedAt || a.id === project?.areaId);
 
   const [title, setTitle] = useState(project?.title ?? '');
-  const [area, setArea] = useState(project?.areaId ?? areaId ?? NO_AREA);
+  // Opened from an area: that one; otherwise the only area, if there's just one (D31).
+  const [area, setArea] = useState(
+    project
+      ? (project.areaId ?? NO_AREA)
+      : areaId !== undefined
+        ? (areaId ?? NO_AREA)
+        : openAreas.length === 1
+          ? openAreas[0]!.id
+          : NO_AREA,
+  );
   const [color, setColor] = useState<ColorKey>(
     project?.color ?? areas.find((a) => a.id === (areaId ?? ''))?.color ?? 'orange',
   );
   const [icon, setIcon] = useState<IconKey>(project?.icon ?? 'rocket');
+  const [required, setRequired] = useState(project?.required ?? false);
   const [status, setStatus] = useState<'active' | 'parked'>(full ? 'parked' : 'active');
   const [startDate, setStartDate] = useState(project?.startDate ?? '');
   const [dueDate, setDueDate] = useState(project?.dueDate ?? '');
@@ -191,6 +207,7 @@ function ProjectForm({
       icon,
       startDate: startDate || null,
       dueDate: dueDate || null,
+      required,
     };
     if (project) {
       const ok = await actions.updateProject(project.id, fields);
@@ -205,8 +222,6 @@ function ProjectForm({
       void navigate({ to: '/projects/$projectId', params: { projectId: created.id } });
     }
   }
-
-  const openAreas = areas.filter((a) => !a.archivedAt || a.id === project?.areaId);
 
   return (
     <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
@@ -232,19 +247,20 @@ function ProjectForm({
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Area">
-            <Select value={area} onValueChange={setArea}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={NO_AREA}>No area</SelectItem>
-                {openAreas.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ComboPicker
+              aria-label="Area"
+              value={area}
+              onChange={setArea}
+              options={[
+                { value: NO_AREA, label: 'No area' },
+                ...openAreas.map((a) => ({
+                  value: a.id,
+                  label: a.title,
+                  icon: <EntityIcon icon={a.icon} color={a.color} size="sm" />,
+                })),
+              ]}
+              create={{ noun: 'area', run: (t) => quick.area(t, { title: t, color }) }}
+            />
           </Field>
           {!project && (
             <Field label="Status">
@@ -253,7 +269,7 @@ function ProjectForm({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active" disabled={full}>
+                  <SelectItem value="active" disabled={full && !required}>
                     Active
                   </SelectItem>
                   <SelectItem value="parked">Parked</SelectItem>
@@ -262,12 +278,28 @@ function ProjectForm({
             </Field>
           )}
         </div>
-        {!project && full && (
+        {!project && full && !required && (
           <p className="-mt-2 text-xs text-muted-foreground">
             You have {activeCount} active project{activeCount === 1 ? '' : 's'}, your limit. This
             one starts parked; activate it when you park another.
           </p>
         )}
+        <label className="-mt-1 flex items-start gap-2.5 text-sm">
+          <Checkbox
+            className="mt-0.5"
+            checked={required}
+            onCheckedChange={(c) => {
+              setRequired(c === true);
+              if (c === true && !project) setStatus('active');
+            }}
+          />
+          <span>
+            <span className="font-medium">Required</span>
+            <span className="block text-xs text-muted-foreground">
+              A course or obligation you can’t park. It doesn’t count toward your active limit.
+            </span>
+          </span>
+        </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Start date" htmlFor="project-start">
             <DayField

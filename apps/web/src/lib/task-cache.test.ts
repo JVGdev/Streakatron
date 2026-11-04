@@ -17,6 +17,7 @@ const task = (over: Partial<Task> = {}): Task => ({
   scheduledDate: null,
   sortOrder: n,
   completedAt: null,
+  spotlightedAt: null,
   createdAt: `2026-11-03T10:00:${String(n).padStart(2, '0')}.000Z`,
   updatedAt: '2026-11-03T10:00:00.000Z',
   status: 'todo',

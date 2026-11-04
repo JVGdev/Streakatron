@@ -22,6 +22,8 @@ import { StarterKit } from '@tiptap/starter-kit';
 import type { SuggestionOptions, SuggestionProps } from '@tiptap/suggestion';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
+import { Plus } from 'lucide-react';
+import { taskActions } from '@/lib/actions';
 import { KIND_LABEL } from '@/lib/entities';
 import { picker } from '@/lib/picker';
 import { searchQuery, type SearchHit } from '@/lib/queries';
@@ -143,12 +145,20 @@ function mentionSuggestion(
       return hits.filter((h) => h.id !== selfId).slice(0, PICKER_SIZE);
     },
     render: () => {
+      // "New task “typed”" (D31): an inbox task, mentioned at once.
+      const create = async (title: string) => {
+        const task = await taskActions(qc).create({ title, position: 'top' });
+        return task ? { id: task.id, label: task.title } : undefined;
+      };
       let component: ReactRenderer<PickerHandle, PickerProps> | null = null;
       let unmount: (() => void) | null = null;
       return {
         onStart: (props) => {
           picker.open = true;
-          component = new ReactRenderer(MentionPicker, { props, editor: props.editor });
+          component = new ReactRenderer(MentionPicker, {
+            props: { ...props, create },
+            editor: props.editor,
+          });
           const el = component.element as HTMLElement;
           el.className = 'z-[60]';
           // Inside a modal sheet or dialog, the list must live in it: outside, the modal would
@@ -157,7 +167,7 @@ function mentionSuggestion(
           host.appendChild(el);
           unmount = props.mount(el);
         },
-        onUpdate: (props) => component?.updateProps(props),
+        onUpdate: (props) => component?.updateProps({ ...props, create }),
         onKeyDown: ({ event }) => component?.ref?.onKeyDown(event) ?? false,
         onExit: () => {
           picker.open = false;
@@ -171,33 +181,59 @@ function mentionSuggestion(
   };
 }
 
-type PickerProps = SuggestionProps<SearchHit, MentionNodeAttrs> & { ref?: Ref<PickerHandle> };
+type PickerProps = SuggestionProps<SearchHit, MentionNodeAttrs> & {
+  ref?: Ref<PickerHandle>;
+  create?: (title: string) => Promise<{ id: string; label: string } | undefined>;
+};
 interface PickerHandle {
   onKeyDown: (event: KeyboardEvent) => boolean;
 }
 
-function MentionPicker({ items, query, command, loading, ref }: PickerProps) {
-  const [active, setActive] = useState(0);
+/** A typed title that could be a new task's: a few words, not the end of a sentence. */
+const looksLikeTitle = (q: string) =>
+  q.trim().length > 0 && q.trim().split(/\s+/).length <= 6 && !/[.,;:!?]\s*$/.test(q);
+
+function MentionPicker({ items, query, command, loading, create, ref }: PickerProps) {
+  // With matches, the first one is ready for Enter. With none, nothing is: making a task takes
+  // an arrow key or a click, so Enter at the end of a sentence stays a new line.
+  const [active, setActive] = useState(items.length ? 0 : -1);
   const [prevItems, setPrevItems] = useState(items);
+  const [busy, setBusy] = useState(false);
   if (prevItems !== items) {
     setPrevItems(items);
-    setActive(0);
+    setActive(items.length ? 0 : -1);
   }
-  const pick = (hit: SearchHit | undefined) => hit && command({ id: hit.id, label: hit.title });
+  const typed = query.trim();
+  const canCreate =
+    !!create &&
+    !loading &&
+    looksLikeTitle(query) &&
+    !items.some((h) => h.title.trim().toLowerCase() === typed.toLowerCase());
+  const count = items.length + (canCreate ? 1 : 0);
+
+  async function pick(i: number) {
+    const hit = items[i];
+    if (hit) return command({ id: hit.id, label: hit.title });
+    if (!canCreate || busy) return;
+    setBusy(true);
+    const made = await create!(typed);
+    setBusy(false);
+    if (made) command(made);
+  }
 
   useImperativeHandle(ref, () => ({
     onKeyDown: (event) => {
-      if (!items.length) return false;
-      if (event.key === 'ArrowDown') setActive((i) => (i + 1) % items.length);
-      else if (event.key === 'ArrowUp') setActive((i) => (i - 1 + items.length) % items.length);
-      else if (event.key === 'Enter' || event.key === 'Tab') pick(items[active]);
+      if (!count) return false;
+      if (event.key === 'ArrowDown') setActive((i) => (i + 1) % count);
+      else if (event.key === 'ArrowUp') setActive((i) => (i - 1 + count) % count);
+      else if ((event.key === 'Enter' || event.key === 'Tab') && active >= 0) void pick(active);
       else return false;
       return true;
     },
   }));
 
-  // Once a query with spaces matches nothing, the person has moved on: stay out of the way.
-  if (!items.length && (loading || query.includes(' '))) return null;
+  // Once nothing matches and it doesn't read like a title, the person has moved on.
+  if (!count && (loading || query.includes(' '))) return null;
 
   return (
     <div
@@ -206,7 +242,7 @@ function MentionPicker({ items, query, command, loading, ref }: PickerProps) {
       aria-label="Link to"
     >
       {items.length === 0 ? (
-        <p className="px-2 py-1.5 text-muted-foreground">Nothing called “{query}”</p>
+        !canCreate && <p className="px-2 py-1.5 text-muted-foreground">Nothing called “{query}”</p>
       ) : (
         <>
           {!query.trim() && (
@@ -225,7 +261,7 @@ function MentionPicker({ items, query, command, loading, ref }: PickerProps) {
               onMouseEnter={() => setActive(i)}
               onMouseDown={(e) => {
                 e.preventDefault(); // keep the editor's focus and selection
-                pick(hit);
+                void pick(i);
               }}
             >
               <RefIcon entity={hit} />
@@ -240,6 +276,27 @@ function MentionPicker({ items, query, command, loading, ref }: PickerProps) {
             </button>
           ))}
         </>
+      )}
+      {canCreate && (
+        <button
+          type="button"
+          role="option"
+          aria-selected={active === items.length}
+          disabled={busy}
+          className={cn(
+            'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left',
+            active === items.length && 'bg-accent text-accent-foreground',
+          )}
+          onMouseEnter={() => setActive(items.length)}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            void pick(items.length);
+          }}
+        >
+          <Plus className="size-4 text-muted-foreground" />
+          <span className="min-w-0 flex-1 truncate">New task “{typed}”</span>
+          <span className="shrink-0 text-xs text-muted-foreground">Inbox</span>
+        </button>
       )}
     </div>
   );

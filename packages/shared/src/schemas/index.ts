@@ -150,6 +150,8 @@ export const projectCreateSchema = z.object({
   areaId: idOf('area').nullable().optional(),
   /** New projects start active, or parked; activating still respects the active limit. */
   status: z.enum(['active', 'parked']).default('active'),
+  /** Required (D32): outside the active limit. */
+  required: z.boolean().optional(),
   description: description.optional(),
   color: color.optional(),
   icon: icon.optional(),
@@ -169,6 +171,8 @@ export const projectPatchSchema = z
     dueDate: optionalDay,
     /** Pin a task as the next action, or null to go back to the automatic one. */
     nextActionTaskId: idOf('task').nullable(),
+    /** Turning it off on an active project needs room under the limit. */
+    required: z.boolean(),
   })
   .partial();
 export type ProjectPatch = z.infer<typeof projectPatchSchema>;
@@ -193,6 +197,14 @@ export const columnDeleteQuerySchema = z.object({
   /** Where the column's tasks go; by default the leftmost other column of the same category. */
   moveTo: idOf('boardColumn').optional(),
 });
+
+/** Feature a task or goal on Today (D33), or take it off; `replace` makes room when it's full. */
+export const spotlightSchema = z.object({
+  id: z.union([idOf('task'), idOf('goal')]),
+  on: z.boolean(),
+  replace: z.union([idOf('task'), idOf('goal')]).optional(),
+});
+export type SpotlightInput = z.infer<typeof spotlightSchema>;
 
 const goalFields = {
   title,

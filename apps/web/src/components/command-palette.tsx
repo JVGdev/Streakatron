@@ -14,6 +14,8 @@ import {
   Repeat,
   Settings,
   Shapes,
+  Star,
+  StarOff,
   Sun,
   Timer,
   type LucideIcon,
@@ -24,11 +26,13 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { useOpenEntity, useOpenSheet, useOpenTask } from '@/hooks/use-open-task';
 import { isMac } from '@/hooks/use-hotkeys';
 import { progressText } from '@streakatron/shared/commitments';
-import { useCommitmentActions, useTaskActions } from '@/lib/actions';
+import { useCommitmentActions, useSpotlightActions, useTaskActions } from '@/lib/actions';
 import {
   commitmentsQuery,
+  goalQuery,
   projectsQuery,
   searchQuery,
+  taskQuery,
   type Commitment,
   type Project,
   type SearchHit,
@@ -94,6 +98,25 @@ function Palette({ mode, close }: { mode: 'search' | 'capture'; close: () => voi
   });
   const currentId = useCurrentProjectId();
   const current = projects.find((p) => p.id === currentId);
+  // The task or goal whose sheet is open can be spotlighted from here (D33).
+  const spotlight = useSpotlightActions();
+  const sheet = useRouterState({
+    select: (s) => s.location.search as { task?: string; goal?: string },
+  });
+  const { data: sheetTask } = useQuery({
+    ...taskQuery(sheet.task ?? ''),
+    enabled: mode === 'search' && !!sheet.task,
+  });
+  const { data: sheetGoal } = useQuery({
+    ...goalQuery(sheet.goal ?? ''),
+    enabled: mode === 'search' && !sheet.task && !!sheet.goal,
+  });
+  const featurable =
+    sheetTask && !sheetTask.completedAt
+      ? sheetTask
+      : sheetGoal && sheetGoal.status === 'open'
+        ? sheetGoal
+        : undefined;
   const active = projects.filter((p) => p.status === 'active' && p.id !== currentId);
 
   async function capture(projectId: string | null, title: string) {
@@ -155,6 +178,18 @@ function Palette({ mode, close }: { mode: 'search' | 'capture'; close: () => voi
       icon: Repeat,
       run: run(() => newCommitment(currentId ?? null)),
     },
+    ...(featurable
+      ? [
+          {
+            id: 'spotlight',
+            label: featurable.spotlightedAt
+              ? `Remove “${featurable.title}” from the spotlight`
+              : `Spotlight “${featurable.title}” on Today`,
+            icon: featurable.spotlightedAt ? StarOff : Star,
+            run: run(() => void spotlight.set(featurable, !featurable.spotlightedAt)),
+          },
+        ]
+      : []),
     {
       id: 'go-today',
       label: 'Go to Today',

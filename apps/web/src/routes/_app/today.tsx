@@ -6,6 +6,7 @@ import { CommitmentRow } from '@/components/commitment-row';
 import { doneToday } from '@/lib/commitments';
 import { ProgressStrip } from '@/components/progress-strip';
 import { QuestBoard } from '@/components/quest-board';
+import { SpotlightSection } from '@/components/spotlight';
 import { TaskRow } from '@/components/task-row';
 import { Button } from '@/components/ui/button';
 import { clockText, sessionLabel, useFocus, useQuickFocus } from '@/hooks/use-focus';
@@ -19,6 +20,7 @@ import {
   meQuery,
   projectsQuery,
   questsQuery,
+  spotlightQuery,
   tasksQuery,
   type Commitment,
   type Project,
@@ -33,6 +35,7 @@ export const Route = createFileRoute('/_app/today')({
       context.queryClient.ensureQueryData(projectsQuery),
       context.queryClient.ensureQueryData(tasksQuery({ status: 'open' })),
       context.queryClient.ensureQueryData(commitmentsQuery()),
+      context.queryClient.prefetchQuery(spotlightQuery),
       context.queryClient.prefetchQuery(gameQuery),
       context.queryClient.prefetchQuery(focusQuery),
       context.queryClient.prefetchQuery(questsQuery),
@@ -43,6 +46,7 @@ export const Route = createFileRoute('/_app/today')({
 const REASON_LABEL: Record<FocusReason | 'commitment', string> = {
   overdue: 'Overdue',
   today: 'Today',
+  follow_up: 'Follow up',
   commitment: 'Commitments',
   next: 'Up next',
 };
@@ -69,6 +73,12 @@ function TodayPage() {
   const shown = all ? items : items.slice(0, FOCUS_VISIBLE);
   const byProject = new Map(projects.map((p) => [p.id, p]));
   const hasActive = projects.some((p) => p.status === 'active');
+  // With nothing urgent, "Start focus" goes to the first spotlighted task.
+  const spotlit = tasks.find(
+    (t) => t.spotlightedAt && (!t.projectId || byProject.get(t.projectId)?.status === 'active'),
+  );
+  const top: TodayItem | undefined =
+    items[0] ?? (spotlit ? { kind: 'task', task: spotlit, reason: 'next' } : undefined);
 
   return (
     <div className="max-w-3xl space-y-8">
@@ -81,7 +91,9 @@ function TodayPage() {
         </p>
       </header>
 
-      <FocusLauncher top={items[0]} minutes={me.settings.focusPresets[0]?.focusMinutes} />
+      <FocusLauncher top={top} minutes={me.settings.focusPresets[0]?.focusMinutes} />
+
+      <SpotlightSection tasks={tasks} projects={projects} today={me.today} />
 
       <section
         aria-label="Today’s focus"

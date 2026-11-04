@@ -4,7 +4,7 @@
 import { autoFinishAt, formatClock, plannedEndAt } from '@streakatron/shared/focus';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useRouterState } from '@tanstack/react-router';
-import { Coffee, Pause, Play, Search, Timer, X } from 'lucide-react';
+import { Coffee, Pause, Play, Plus, Search, Timer, X } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { RefIcon } from '@/components/entity-icon';
@@ -31,6 +31,7 @@ import {
   useFocusMemory,
 } from '@/lib/focus-timer';
 import { clockText, sessionLabel, useBreak, useFocus } from '@/hooks/use-focus';
+import { useQuickCreate } from '@/hooks/use-quick-create';
 import { playBreakChime, playFocusChime } from '@/lib/sound';
 import { cn } from '@/lib/utils';
 
@@ -317,6 +318,22 @@ export function AttachPicker({
     staleTime: 10_000,
   });
   const choices = hits.filter((h) => !h.closed);
+  const quick = useQuickCreate();
+  const [busy, setBusy] = useState(false);
+  const typed = q.trim();
+  const exact = choices.some((h) => h.title.trim().toLowerCase() === typed.toLowerCase());
+
+  /** "New task / commitment / project “typed”", attached at once (D31). */
+  async function make(kind: Attachment['kind']) {
+    if (busy) return;
+    setBusy(true);
+    const id = await quick[kind](typed);
+    setBusy(false);
+    if (!id) return;
+    onChange({ kind, id, title: typed });
+    setOpen(false);
+    setQ('');
+  }
 
   return (
     <div className="flex items-center gap-2">
@@ -340,26 +357,45 @@ export function AttachPicker({
               onValueChange={setQ}
             />
             <CommandList>
-              <CommandEmpty>Nothing open matches.</CommandEmpty>
-              <CommandGroup heading={q ? 'Matches' : 'Recent'}>
-                {choices.map((h) => (
-                  <CommandItem
-                    key={h.id}
-                    value={h.id}
-                    onSelect={() => {
-                      onChange({ kind: h.kind as Attachment['kind'], id: h.id, title: h.title });
-                      setOpen(false);
-                      setQ('');
-                    }}
-                  >
-                    <RefIcon entity={h} />
-                    <span className="min-w-0 flex-1 truncate">{h.title}</span>
-                    {h.context && (
-                      <span className="truncate text-xs text-muted-foreground">{h.context}</span>
-                    )}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
+              {!typed && <CommandEmpty>Nothing open matches.</CommandEmpty>}
+              {choices.length > 0 && (
+                <CommandGroup heading={q ? 'Matches' : 'Recent'}>
+                  {choices.map((h) => (
+                    <CommandItem
+                      key={h.id}
+                      value={h.id}
+                      onSelect={() => {
+                        onChange({ kind: h.kind as Attachment['kind'], id: h.id, title: h.title });
+                        setOpen(false);
+                        setQ('');
+                      }}
+                    >
+                      <RefIcon entity={h} />
+                      <span className="min-w-0 flex-1 truncate">{h.title}</span>
+                      {h.context && (
+                        <span className="truncate text-xs text-muted-foreground">{h.context}</span>
+                      )}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+              {typed && !exact && (
+                <CommandGroup heading="Make it">
+                  {(['task', 'commitment', 'project'] as const).map((kind) => (
+                    <CommandItem
+                      key={kind}
+                      value={`__new-${kind}`}
+                      disabled={busy}
+                      onSelect={() => void make(kind)}
+                    >
+                      <Plus />
+                      <span className="min-w-0 flex-1 truncate">
+                        New {kind} “{typed}”
+                      </span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
             </CommandList>
           </Command>
         </PopoverContent>

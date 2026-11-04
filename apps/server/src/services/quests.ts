@@ -28,7 +28,7 @@ import {
   type QuestTemplate,
   type QuestType,
 } from '@streakatron/shared/quests';
-import { focusList } from '@streakatron/shared/structure';
+import { focusList, type TaskStatus } from '@streakatron/shared/structure';
 import {
   addDays,
   daysBetween,
@@ -40,6 +40,7 @@ import { and, asc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import {
   activity,
+  boardColumns,
   focusSessions,
   goals,
   projects,
@@ -181,11 +182,14 @@ async function gatherInput(
       completedAt: tasks.completedAt,
       dueDate: tasks.dueDate,
       scheduledDate: tasks.scheduledDate,
+      spotlightedAt: tasks.spotlightedAt,
+      status: sql<TaskStatus>`case when ${boardColumns.category} = 'waiting' then 'waiting' else 'todo' end`,
       effort: tasks.effort,
       createdAt: tasks.createdAt,
       subtasks: sql<number>`(select count(*)::int from tasks s where s.parent_task_id = ${tasks.id} and s.deleted_at is null)`,
     })
     .from(tasks)
+    .leftJoin(boardColumns, eq(boardColumns.id, tasks.columnId))
     .where(
       and(
         eq(tasks.userId, userId),
@@ -196,8 +200,14 @@ async function gatherInput(
     )
     .orderBy(asc(tasks.createdAt));
   const activeIds = new Set(active.map((p) => p.id));
-  const live = open.filter((t) => !t.projectId || activeIds.has(t.projectId));
-  const topItem = focusList(live, views, today)[0]?.task;
+  const resting = (t: (typeof open)[number]) => !!t.projectId && !activeIds.has(t.projectId);
+  const topItem = focusList(
+    open.filter((t) => !resting(t)),
+    views,
+    today,
+  )[0]?.task;
+  // Waiting tasks (D32) are someone else's move: no quests about them.
+  const live = open.filter((t) => !resting(t) && t.status !== 'waiting');
 
   const openGoals = new Map(
     (

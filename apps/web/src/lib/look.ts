@@ -136,11 +136,25 @@ export const STATUS_LABEL = {
   archived: 'Archived',
 } as const;
 
-export const CATEGORY_LABEL = { todo: 'To do', in_progress: 'In progress', done: 'Done' } as const;
+export const CATEGORY_LABEL = {
+  todo: 'To do',
+  in_progress: 'In progress',
+  waiting: 'Waiting',
+  done: 'Done',
+} as const;
+
+/** What each category means, for the column dialog. */
+export const CATEGORY_HINT = {
+  todo: 'Not started',
+  in_progress: 'Being worked on; comes first for the next action',
+  waiting: 'Blocked on someone else; back on Today on its follow-up date',
+  done: 'Finished; tasks here are completed',
+} as const;
 
 export const CATEGORY_DOT = {
   todo: 'bg-stone-400',
   in_progress: 'bg-amber-500',
+  waiting: 'bg-sky-500',
   done: 'bg-green-500',
 } as const;
 

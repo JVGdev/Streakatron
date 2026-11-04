@@ -25,11 +25,16 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { COLUMN_CATEGORIES, type ColumnCategory } from '@streakatron/shared/structure';
+import {
+  COLUMN_CATEGORIES,
+  WAITING_COLUMN,
+  type ColumnCategory,
+} from '@streakatron/shared/structure';
 import {
   ArrowLeft,
   ArrowRight,
   Check,
+  Hourglass,
   MoreHorizontal,
   Pencil,
   Pin,
@@ -49,7 +54,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useOpenTask } from '@/hooks/use-open-task';
 import { useStructureActions, useTaskActions } from '@/lib/actions';
-import { CATEGORY_DOT, CATEGORY_LABEL } from '@/lib/look';
+import { CATEGORY_DOT, CATEGORY_HINT, CATEGORY_LABEL } from '@/lib/look';
 import type { BoardColumn, Goal, Project, Task } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { QuickAdd } from './quick-add';
@@ -180,7 +185,7 @@ export function Board({
             today={today}
           />
         ))}
-        <AddColumn projectId={project.id} />
+        <AddColumn projectId={project.id} columns={columns} />
       </div>
       <DragOverlay dropAnimation={null}>
         {active && (
@@ -243,6 +248,11 @@ function Lane({
               />
             ) : null;
           })}
+          {column.category === 'waiting' && ids.length === 0 && (
+            <p className="px-2 py-1 text-xs text-muted-foreground">
+              Blocked on someone else. Give a task a follow-up date and it comes back on Today then.
+            </p>
+          )}
           {column.category !== 'done' && (
             <QuickAdd
               input={{ projectId: project.id, columnId: column.id }}
@@ -428,7 +438,7 @@ function ColumnHeader({
               }
             >
               <span className={cn('size-2 rounded-full', CATEGORY_DOT[c])} />
-              {CATEGORY_LABEL[c]}
+              <span title={CATEGORY_HINT[c]}>{CATEGORY_LABEL[c]}</span>
               {c === column.category && <Check className="ml-auto" />}
             </DropdownMenuItem>
           ))}
@@ -446,22 +456,53 @@ function ColumnHeader({
   );
 }
 
-function AddColumn({ projectId }: { projectId: string }) {
+function AddColumn({ projectId, columns }: { projectId: string; columns: BoardColumn[] }) {
   const actions = useStructureActions();
+  const hasWaiting = columns.some((c) => c.category === 'waiting');
+
+  /** The offered Waiting column goes just before the first done column. */
+  async function addWaiting() {
+    const made = await actions.createColumn(
+      projectId,
+      WAITING_COLUMN.title,
+      WAITING_COLUMN.category,
+    );
+    if (!made) return;
+    const ids = columns.map((c) => c.id);
+    const done = columns.findIndex((c) => c.category === 'done');
+    ids.splice(done === -1 ? ids.length : done, 0, made.id);
+    await actions.reorderColumns(projectId, ids);
+  }
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<ColumnCategory>('in_progress');
 
   if (!adding) {
     return (
-      <Button
-        variant="ghost"
-        className="h-11 w-60 shrink-0 justify-start text-muted-foreground"
-        onClick={() => setAdding(true)}
-      >
-        <Plus />
-        Add column
-      </Button>
+      <div className="grid w-60 shrink-0 content-start gap-1">
+        <Button
+          variant="ghost"
+          className="h-11 justify-start text-muted-foreground"
+          onClick={() => setAdding(true)}
+        >
+          <Plus />
+          Add column
+        </Button>
+        {/* Offered until the board has one (D32): tasks blocked on someone else. */}
+        {!hasWaiting && (
+          <Button
+            variant="ghost"
+            className="h-auto justify-start py-2 text-left whitespace-normal text-muted-foreground"
+            onClick={() => void addWaiting()}
+          >
+            <Hourglass />
+            <span>
+              Add a Waiting column
+              <span className="block text-xs font-normal">For tasks blocked on someone else</span>
+            </span>
+          </Button>
+        )}
+      </div>
     );
   }
 
@@ -493,6 +534,7 @@ function AddColumn({ projectId }: { projectId: string }) {
             size="sm"
             variant={category === c ? 'secondary' : 'ghost'}
             className="h-7 text-xs"
+            title={CATEGORY_HINT[c]}
             onClick={() => setCategory(c)}
           >
             <span className={cn('size-2 rounded-full', CATEGORY_DOT[c])} />

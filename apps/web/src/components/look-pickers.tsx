@@ -3,6 +3,9 @@ import { Check } from 'lucide-react';
 import { COLOR, ICON } from '@/lib/look';
 import { cn } from '@/lib/utils';
 
+/** "book-open" → "Book open": the name a screen reader says and a tooltip shows. */
+const label = (key: string) => key.charAt(0).toUpperCase() + key.slice(1).replace(/-/g, ' ');
+
 export function ColorPicker({
   value,
   onChange,
@@ -18,7 +21,8 @@ export function ColorPicker({
           type="button"
           role="radio"
           aria-checked={value === c}
-          aria-label={c}
+          aria-label={label(c)}
+          title={label(c)}
           onClick={() => onChange(c)}
           className={cn(
             'grid size-7 place-items-center rounded-full ring-offset-2 ring-offset-background transition',
@@ -53,7 +57,8 @@ export function IconPicker({
             type="button"
             role="radio"
             aria-checked={on}
-            aria-label={i}
+            aria-label={label(i)}
+            title={label(i)}
             onClick={() => onChange(i)}
             className={cn(
               'grid size-8 place-items-center rounded-md transition',

@@ -5,7 +5,9 @@ import type { ColorKey, IconKey } from '@streakatron/shared/structure';
 import { Link } from '@tanstack/react-router';
 import { useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
+import { ShieldCheck } from 'lucide-react';
 import { EntityIcon } from '@/components/entity-icon';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -20,6 +22,20 @@ import { ApiError } from '@/lib/api';
 import { STATUS_LABEL } from '@/lib/look';
 import { ProjectStatusContext as Ctx, type ChangeStatus as Change } from '@/lib/project-status';
 import { report } from '@/lib/report';
+
+/** A required project (D32): outside the active limit, never offered for parking. */
+export function RequiredBadge() {
+  return (
+    <Badge
+      variant="outline"
+      className="gap-1"
+      title="Required: doesn’t count toward your active limit"
+    >
+      <ShieldCheck />
+      Required
+    </Badge>
+  );
+}
 
 interface Over {
   project: { id: string; title: string };
