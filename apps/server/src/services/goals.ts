@@ -1,17 +1,57 @@
-// Goals of a project: outcomes (optionally with a deadline) and commitments (focus minutes per
-// week or month; progress arrives with focus sessions in Phase 3).
+// Goals of a project: outcomes (optionally with a deadline) and time goals (focus minutes per week
+// or month, D31). A time goal's progress is the focus on its project in the current period:
+// sessions on the project, its tasks or its commitments (all carry the project), from the log.
 
 import type { GoalCreate, GoalPatch } from '@streakatron/shared/schemas';
 import { goalShapeProblem } from '@streakatron/shared/schemas';
 import { newId } from '@streakatron/shared/ids';
-import { and, asc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { goalPeriodRange, timeGoalProgress } from '@streakatron/shared/structure';
+import { userDay } from '@streakatron/shared/time';
+import { and, asc, between, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { db } from '../db/client';
-import { goals } from '../db/schema';
+import { activity, goals } from '../db/schema';
 import { defined, edgeOrder, invalid, notFound, richColumns, type Conn } from './common';
+import { daySettings } from './game';
 import { writeLinks } from './links';
 import { ownedProject } from './projects';
 
-const view = ({ userId: _, deletedAt: __, ...g }: typeof goals.$inferSelect) => g;
+type GoalRow = typeof goals.$inferSelect;
+
+/** Goals as the API returns them: the row, and a time goal's progress this period. */
+async function views(conn: Conn, userId: string, rows: GoalRow[]) {
+  const timed = rows.filter((g) => g.kind === 'time' && g.targetMinutes && g.period);
+  const s = timed.length ? await daySettings(conn, userId) : null;
+  const today = s ? userDay(new Date(), s) : '';
+  const out = [];
+  for (const { userId: _, deletedAt: __, ...g } of rows) {
+    let progress = null;
+    if (s && g.kind === 'time' && g.targetMinutes && g.period) {
+      const range = goalPeriodRange(g.period, today, s.weekStart);
+      const [row] = await conn
+        .select({ m: sql<number>`coalesce(sum((${activity.payload}->>'minutes')::int), 0)::int` })
+        .from(activity)
+        .where(
+          and(
+            eq(activity.userId, userId),
+            eq(activity.type, 'focus_completed'),
+            sql`${activity.payload}->>'projectId' = ${g.projectId}`,
+            between(activity.localDate, range.start, range.end),
+          ),
+        );
+      progress = timeGoalProgress(
+        { targetMinutes: g.targetMinutes, period: g.period },
+        row?.m ?? 0,
+        today,
+        s.weekStart,
+      );
+    }
+    out.push({ ...g, progress });
+  }
+  return out;
+}
+
+const view = async (conn: Conn, userId: string, row: GoalRow) =>
+  (await views(conn, userId, [row]))[0]!;
 
 export async function listGoals(conn: Conn, userId: string, projectId: string) {
   const rows = await conn
@@ -19,7 +59,7 @@ export async function listGoals(conn: Conn, userId: string, projectId: string) {
     .from(goals)
     .where(and(eq(goals.userId, userId), eq(goals.projectId, projectId), isNull(goals.deletedAt)))
     .orderBy(asc(goals.sortOrder), asc(goals.createdAt));
-  return rows.map(view);
+  return views(conn, userId, rows);
 }
 
 async function ownedGoal(conn: Conn, userId: string, id: string, { deleted = false } = {}) {
@@ -57,13 +97,13 @@ export async function createGoal(userId: string, input: GoalCreate) {
       })
       .returning();
     await writeLinks(tx, userId, id, input.description);
-    return view(row!);
+    return view(tx, userId, row!);
   });
 }
 
 /** One goal (the goal sheet). */
 export async function getGoal(userId: string, id: string) {
-  return view(await ownedGoal(db, userId, id));
+  return view(db, userId, await ownedGoal(db, userId, id));
 }
 
 export async function updateGoal(userId: string, id: string, patch: GoalPatch) {
@@ -86,7 +126,7 @@ export async function updateGoal(userId: string, id: string, patch: GoalPatch) {
       .where(eq(goals.id, id))
       .returning();
     await writeLinks(tx, userId, id, description);
-    return view(row!);
+    return view(tx, userId, row!);
   });
 }
 
@@ -105,5 +145,5 @@ export async function restoreGoal(userId: string, id: string) {
     .set({ deletedAt: null })
     .where(and(eq(goals.id, id), isNotNull(goals.deletedAt)))
     .returning();
-  return view(row!);
+  return view(db, userId, row!);
 }

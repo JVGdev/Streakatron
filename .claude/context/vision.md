@@ -37,6 +37,7 @@ One question, answered every time the app opens: **"What's the smallest meaningf
 7. **Quests reward the work you actually do** — sized from your own days, never piling up work faster than it gets done.
 8. **Product-ready from day one, personal-scale for now.**
 9. **Dogfood early.** Use the MVP daily; let real use decide what comes next.
+10. **Easy to use as it grows.** New features arrive with good defaults and inside existing screens; every slice gets a UI review (D32).
 
 ## Where this came from
 

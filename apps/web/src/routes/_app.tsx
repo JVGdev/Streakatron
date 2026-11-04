@@ -4,13 +4,14 @@ import { AppShell } from '@/components/app-shell';
 import { ApiError } from '@/lib/api';
 import { meQuery } from '@/lib/queries';
 
-// Everything behind sign-in. `?task=tsk_…`, `?goal=gol_…` and `?area=are_…` open that sheet over
-// any page.
+// Everything behind sign-in. `?task=tsk_…`, `?goal=gol_…`, `?area=are_…` and `?commitment=cmt_…`
+// open that sheet over any page.
 export const Route = createFileRoute('/_app')({
   validateSearch: z.object({
     task: z.string().optional(),
     goal: z.string().optional(),
     area: z.string().optional(),
+    commitment: z.string().optional(),
   }),
   beforeLoad: async ({ context, location }) => {
     try {

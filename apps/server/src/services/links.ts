@@ -37,7 +37,8 @@ export async function writeLinks(
 }
 
 /**
- * Links whose source row no longer exists: purged tasks and goals, deleted projects and areas.
+ * Links whose source row no longer exists: purged tasks, goals and commitments, deleted projects
+ * and areas.
  * Restoring a snapshot writes its links again from the stored descriptions.
  */
 export async function purgeOrphanLinks(conn: Conn = db) {
@@ -45,6 +46,7 @@ export async function purgeOrphanLinks(conn: Conn = db) {
     delete from links l
      where not exists (select 1 from tasks where id = l.source_id)
        and not exists (select 1 from goals where id = l.source_id)
+       and not exists (select 1 from commitments where id = l.source_id)
        and not exists (select 1 from projects where id = l.source_id)
        and not exists (select 1 from areas where id = l.source_id)
   `);

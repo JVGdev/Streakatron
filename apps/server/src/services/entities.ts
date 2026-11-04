@@ -1,4 +1,4 @@
-// Every linkable thing (areas, projects, goals, tasks) as one list, for search, mention chips
+// Every linkable thing (areas, projects, goals, tasks, commitments) as one list, for search, mention chips
 // (`resolve`) and backlinks. One function per question (plan.md §11): "what is this id", "what
 // mentions it".
 
@@ -41,6 +41,13 @@ export function entitiesSql(userId: string, { withDeleted = false } = {}): SQL {
            t.description_text, t.description, t.search_vector, t.updated_at
       from tasks t left join projects p on p.id = t.project_id
      where t.user_id = ${userId} and ${live(sql`t.deleted_at`)}
+    union all
+    select 'commitment', c.id, c.title, p.title, c.project_id,
+           case when c.archived_at is null then 'active' else 'archived' end,
+           c.archived_at is not null, c.deleted_at is not null, null, null,
+           c.description_text, c.description, c.search_vector, c.updated_at
+      from commitments c left join projects p on p.id = c.project_id
+     where c.user_id = ${userId} and ${live(sql`c.deleted_at`)}
   `;
 }
 
@@ -66,7 +73,10 @@ export interface EntityRef {
   /** Where it lives: the area of a project, the project of a goal or task ("Inbox" for none). */
   context: string | null;
   projectId: string | null;
-  /** task: open/done · goal: open/achieved/dropped · project: its status · area: active/archived */
+  /**
+   * task: open/done · goal: open/achieved/dropped · project: its status · area and commitment:
+   * active/archived
+   */
   status: string;
   closed: boolean;
   /** Areas and projects have their own look; goals and tasks show their kind's icon. */
@@ -114,7 +124,7 @@ export async function resolveEntities(userId: string, ids: string[]) {
   }));
 }
 
-const KIND_ORDER = sql`case e.kind when 'task' then 0 when 'goal' then 1 when 'project' then 2 else 3 end`;
+const KIND_ORDER = sql`case e.kind when 'task' then 0 when 'goal' then 1 when 'commitment' then 2 when 'project' then 3 else 4 end`;
 
 /**
  * What mentions `targetId` (live sources only), with the line each mention is in. The target must

@@ -459,22 +459,36 @@ describe('board columns', () => {
 });
 
 describe('goals', () => {
-  it('need a target and period when they are commitments', async () => {
+  it('need a target and period when they are time goals', async () => {
     const p = await newProject('A');
     expect(
-      (await as.post('/api/goals', { projectId: p.id, title: 'G', kind: 'commitment' })).status,
+      (await as.post('/api/goals', { projectId: p.id, title: 'G', kind: 'time' })).status,
+    ).toBe(400);
+    // The old name is gone (D31).
+    expect(
+      (
+        await as.post('/api/goals', {
+          projectId: p.id,
+          title: 'G',
+          kind: 'commitment',
+          targetMinutes: 240,
+          period: 'week',
+        })
+      ).status,
     ).toBe(400);
     const g = await as.post('/api/goals', {
       projectId: p.id,
       title: '4 h a week',
-      kind: 'commitment',
+      kind: 'time',
       targetMinutes: 240,
       period: 'week',
     });
     expect(g.status).toBe(201);
+    expect(g.body.progress).toMatchObject({ minutes: 0, target: 240, met: false });
     const outcome = await as.patch(`/api/goals/${g.body.id}`, { kind: 'outcome' });
     expect(outcome.body).toMatchObject({ kind: 'outcome', targetMinutes: null, period: null });
-    expect((await as.patch(`/api/goals/${g.body.id}`, { kind: 'commitment' })).status).toBe(400);
+    expect(outcome.body.progress).toBeNull();
+    expect((await as.patch(`/api/goals/${g.body.id}`, { kind: 'time' })).status).toBe(400);
     expect((await as.patch(`/api/goals/${g.body.id}`, { status: 'achieved' })).body.status).toBe(
       'achieved',
     );

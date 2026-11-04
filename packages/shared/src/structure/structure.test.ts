@@ -5,8 +5,11 @@ import {
   checkedOrder,
   firstColumnOf,
   firstOpenColumn,
+  goalPeriodRange,
   pickNextAction,
   placeAt,
+  timeGoalProgress,
+  todayItems,
   type BoardColumnLike,
   type BoardTaskLike,
 } from '.';
@@ -127,5 +130,69 @@ describe('next action', () => {
     ];
     expect(pickNextAction(null, columns, tasks)).toBeNull();
     expect(pickNextAction(null, columns, [])).toBeNull();
+  });
+});
+
+describe('time goals', () => {
+  it('counts the week the user’s weeks run in', () => {
+    expect(goalPeriodRange('week', '2026-11-04')).toEqual({
+      start: '2026-11-02',
+      end: '2026-11-08',
+    });
+    expect(goalPeriodRange('week', '2026-11-04', 0)).toEqual({
+      start: '2026-11-01',
+      end: '2026-11-07',
+    });
+  });
+
+  it('counts calendar months, December included', () => {
+    expect(goalPeriodRange('month', '2026-02-10')).toEqual({
+      start: '2026-02-01',
+      end: '2026-02-28',
+    });
+    expect(goalPeriodRange('month', '2026-12-31')).toEqual({
+      start: '2026-12-01',
+      end: '2026-12-31',
+    });
+  });
+
+  it('gives progress and the pace still needed', () => {
+    // "4 hours of Japanese a week": 50 minutes on Wednesday, 5 days left.
+    expect(timeGoalProgress({ targetMinutes: 240, period: 'week' }, 50, '2026-11-04')).toEqual({
+      start: '2026-11-02',
+      end: '2026-11-08',
+      minutes: 50,
+      target: 240,
+      met: false,
+      daysLeft: 5,
+      perDay: 38,
+    });
+    expect(
+      timeGoalProgress({ targetMinutes: 240, period: 'week' }, 300, '2026-11-08'),
+    ).toMatchObject({ met: true, perDay: 0, daysLeft: 1 });
+  });
+});
+
+describe('today’s items', () => {
+  it('puts commitments between today’s tasks and next actions', () => {
+    const today = '2026-11-04';
+    const t = (id: string, over: Partial<{ dueDate: string; projectId: string }> = {}) => ({
+      id,
+      projectId: over.projectId ?? null,
+      completedAt: null,
+      dueDate: over.dueDate ?? null,
+      scheduledDate: null,
+    });
+    const items = todayItems(
+      [t('late', { dueDate: '2026-11-01' }), t('next', { projectId: 'p' })],
+      [{ id: 'p', status: 'active' as const, nextAction: { id: 'next' } }],
+      ['duolingo'],
+      today,
+    );
+    expect(items.map((i) => (i.kind === 'task' ? i.task.id : i.commitment))).toEqual([
+      'late',
+      'duolingo',
+      'next',
+    ]);
   });
 });

@@ -35,9 +35,17 @@ export type BoxTier = (typeof BOX_TIERS)[number];
 
 /** Every template, by type. A template is one kind of ask ("Finish your top Today item"). */
 export const QUEST_TEMPLATES = {
-  daily: ['top_item', 'next_action', 'stale_project', 'tasks_n', 'large_task', 'focus_sessions'],
+  daily: [
+    'top_item',
+    'next_action',
+    'stale_project',
+    'tasks_n',
+    'large_task',
+    'focus_sessions',
+    'commitments_due',
+  ],
   time: ['focus_today'],
-  quick: ['triage', 'pin_next', 'effort', 'focus_note'],
+  quick: ['triage', 'pin_next', 'effort', 'focus_note', 'log_commitment'],
   make: ['add_task', 'add_goal', 'subtasks'],
   followup: ['task_details', 'goal_details'],
   weekly: ['week_target', 'week_projects', 'week_focus'],
@@ -60,6 +68,7 @@ export const QUESTS = {
       stale_project: 35,
       large_task: 40,
       focus_sessions: 30,
+      commitments_due: 30,
     } as Record<string, number>,
     /** "Complete N tasks": N from your own days, within these. */
     tasks: { min: 2, max: 6, fallback: [2, 4] as const },
@@ -296,6 +305,12 @@ export function questTitle({ template, target, name }: QuestWords): string {
       return `Set the effort of “${n}”`;
     case 'focus_note':
       return 'Write a line about your last focus session';
+    case 'commitments_due':
+      return target === 1
+        ? 'Meet your commitment due today'
+        : `Meet every commitment due today (${target})`;
+    case 'log_commitment':
+      return 'Log one commitment';
     case 'add_task':
       return `Add a task to ${n}`;
     case 'add_goal':
@@ -332,6 +347,10 @@ export function questHint(template: QuestTemplate, missing?: readonly DetailPart
       return 'One task or a 10-minute focus session. Nice to see you.';
     case 'stale_project':
       return `Nothing happened there for ${QUESTS.staleProjectDays}+ days.`;
+    case 'commitments_due':
+      return 'Tick, add to or log minutes on each one on Today.';
+    case 'log_commitment':
+      return 'A tick, +1 or a few minutes on any commitment.';
     default:
       return null;
   }
@@ -398,6 +417,8 @@ export interface BoardInput {
   unpinnedProjects: readonly Candidate[];
   noEffortTasks: readonly Candidate[];
   lastFocusWithoutNote: { id: string } | null;
+  /** Commitments due today and not met yet (D31). */
+  commitmentsDue: number;
 }
 
 const rests = (input: BoardInput, type: QuestType) =>
@@ -483,6 +504,17 @@ function dailyCandidates(input: BoardInput, rand: () => number) {
     },
     weight: 0.8,
   });
+  if (input.commitmentsDue > 0) {
+    out.push({
+      item: {
+        type: 'daily',
+        template: 'commitments_due',
+        target: input.commitmentsDue,
+        xp: xp.commitments_due!,
+      },
+      weight: 1.2,
+    });
+  }
   return out;
 }
 
@@ -612,6 +644,12 @@ export function planQuick(
         xp,
         focusSessionId: input.lastFocusWithoutNote.id,
       },
+      weight: 1.2,
+    });
+  }
+  if (input.commitmentsDue > 0) {
+    options.push({
+      item: { type: 'quick', template: 'log_commitment', target: 1, xp },
       weight: 1.2,
     });
   }

@@ -194,10 +194,85 @@ The canonical record of what was decided, why, and what was considered instead. 
   - **Stats shows the heatmap** (a year; active days darker with focus: none, < 30, 30–89, 90+ min), with hover/keyboard tooltips, a legend and a table view; the four ember steps are validated as an ordinal ramp in light and dark.
 - **Why:** The rules in plan.md §5 with Quire's lessons (sized from your days, nothing for idle things, count every kind of effort, make quests don't outpace filling in); a placeholder keeps the Arcade screen's shape without building loot before it's needed (FIT-12).
 
+### D31 · Habits become Commitments; Phase 4 reordered around the "Studying Japanese" use case (2026-11-04, the user; details Claude's choice)
+- **Context:** The user created a real project (area *Intercâmbio*, project *Studying Japanese*) and found daily goals, reminders and a calendar essential. Claude rebuilt it on a throwaway database and played a day: a "daily" thing can only be a task that disappears once done (tomorrow's copy typed by hand, no history); the weekly time goal shows no progress after a focus session on the project; time spent in other apps (Duolingo, Anki, a course) can't be counted; no reminders, calendar or countdowns. The use case is plan.md Phase 4's acceptance scenario.
+- **Decision (the user):**
+  - **Habits are called Commitments.** One concept covers every kind of daily or weekly goal, and the user can set it up however they want: measured as **done / not done**, **an amount with a unit they name** (20 cards, 1 class) or **minutes**; **per day or per week**; on **every day**, **chosen weekdays**, or **N times a week**.
+  - **Minutes come from focus sessions started on that commitment, plus minutes typed in by hand** (for work done in other apps). Other sessions on its project don't fill it.
+  - **Time goals stay alongside commitments;** neither replaces the other. A time goal is total focus on a project; a commitment is one specific routine.
+  - **Reminders come before the calendar.** A commitment can **remind you repeatedly over the day until it's done**.
+  - **Create from any selector** (`observations.txt`, same day): pickers of existing things offer "New … “typed text”" where it fits, starting with the area selector in the new-project dialog; part of 4a.
+  - **Phase 4 order:** 4a Commitments · 4b Reminders (Web Push, installable app) · 4c Calendar and countdowns · 4d time-goal progress, weekly review, Review and Project quests. *Revised by D34: six slices, same order; slice letters in D31–D33 refer to this first split.*
+- **Details (Claude's choice, confirm when convenient):**
+  - **The goal kind "commitment" is renamed "time goal"** (UI and code, `kind: 'time'`, a migration), so "commitment" means one thing.
+  - **Internals use the new name:** `commitments` and `commitment_entries` tables, ID prefix `cmt_` (replaces the planned `hab_`), `/api/commitments`, `?commitment=` sheets; commitments are mentionable like goals.
+  - **Shape:** `measure` (check / count / minutes), `target`, `unit` (count only), `period` (day / week), `schedule` (day period: every day or chosen weekdays). "N times a week" is a week-period check with target N (counted as days with a check). Entries are summed per day (count, minutes; a check is one entry a day); each records its source (manual or a focus session).
+  - **Focus sessions can attach to a commitment** (or a task, or a project; one of them). On finish, minutes commitments get the credited minutes; check and count commitments offer "Mark done" / "+1", like "mark task done". A session on a commitment counts toward its project's time goals.
+  - **Streaks per commitment:** day period: consecutive scheduled days met (unscheduled days don't break it; today is pending); week period: consecutive weeks met. No freezes on commitment streaks at first; tune after dogfooding.
+  - **Game:** meeting a commitment's target earns **10 XP, once per commitment per period** (D15) and logs `commitment_met`; every entry logs `commitment_logged` (0 XP) for quests and stats. **Active day:** meeting a day-period commitment, or any entry on a week-period one. Partial day entries (+1 of 20 cards) don't make the day active.
+  - **Today:** commitments due today and not yet met sit between "today" tasks and next actions, with the control their measure needs (check, +1 / +N, log minutes, start focus); met ones collapse into a "done today" line.
+  - **Reminders (4b):** per commitment: off, once at a time, or repeat (from a time, every N hours, until a time), only on scheduled days, skipped once met, never past the day's end. The server schedules them (pg-boss, the user's timezone). They show as browser notifications while the app is open and as Web Push otherwise (service worker; HTTPS via Tailscale).
+  - **Small fixes the use case found** go in 4a: the new-project dialog preselects the area (opened from an area, or the only one); icon and color pickers get accessible names; project tabs open from the URL.
+- **Why:** The user's real setup needs routines that repeat, measure in different ways and nag until done; one flexible concept beats several narrow ones (D6: generic, not study-specific). Typed minutes keep effort done in other apps visible (FIT-2: count every kind of effort). Reminders first because without them a daily commitment is easy to forget; the calendar matters most once the course and exam dates exist.
+
+### D32 · Gaps from brainstormed use cases, "required" projects, and the UI stays easy (2026-11-04, the user; details Claude's choice)
+- **Context:** After D31, Claude brainstormed seven use cases aimed at parts of the app the Japanese one didn't touch: getting ready to leave (visa, documents), moving to Japan (timezones, travel), a full semester, finishing a course or textbook, an exam in 5 days, phone-only moments, and a group assignment.
+- **Decision (the user):**
+  - **Every gap found is in scope** except **shared group projects**, which go to the backlog as a suggestion **to be reworked later** (not rejected).
+  - **"Required" projects:** a project option that makes it an exception to a few rules meant for chosen projects (details below).
+  - **The UI has to stay easy and good to use** as these features land (rules below).
+- **Where each gap goes (Claude's choice, confirm when convenient; slice letters before D34's split — see D34 for the current ones):**
+  - **4a:** a **waiting** column category (tasks blocked on someone else: never the next action, not on Today, and back on Today as "follow up" on their scheduled date); **required** projects.
+  - **4b:** **task reminders** (a date and time on any task); **actions on notifications** (Done, +1, Snooze 1 h).
+  - **4c:** **recurring tasks** (a repeat rule on a task: every weekday X, monthly on day N, or N days after completion, which also covers "review this again in 2 days"; completing one creates the next with the next date, so each instance earns once, D15); **tentative dates** (a goal, event or countdown can be "a month" or "TBD": "~March 2027"); **day load** in the calendar's week view.
+  - **4d:** **number goals** (an outcome goal with a target and unit, "40 lessons", "800 words"; progress typed in or fed by a commitment with the same unit; pace to the deadline).
+  - **Phase 6, earlier if the departure comes first:** **moving timezones** (a move is its own action, outside the weekly limit, and the day of the switch can't break the streak); **planned breaks** (declared ahead, never after the fact; the streak neither grows nor breaks, quests and reminders pause; a yearly allowance so it can't replace showing up).
+  - **Backlog:** spreading tasks over the days until a deadline; file attachments (links in descriptions cover it for now); shared group projects.
+- **Required projects (Claude's choice):** don't count toward the active limit (D5 still caps the projects you *choose*), are never offered in "Park one to continue", show a small "Required" badge, and are listed apart in the weekly review's park/activate step. Everything else (quests, next action, stats) treats them like any active project.
+- **Keeping the UI easy (Claude's choice):**
+  - **Defaults first:** every new thing is made in one step with the common case (a commitment starts as "done / not done, every day, no reminder"); more options sit behind "More options", never in the first view.
+  - **Grow existing surfaces before adding pages:** a field in a sheet, a column type, a menu item; a new page only when a feature has its own daily use (commitments, calendar).
+  - **Same patterns everywhere:** one sheet, one picker (with create, D31), one date field, one reminder control reused by commitments, tasks and events.
+  - **Every slice ends with a UI review:** screenshots of the changed screens on desktop, phone and dark (as in the 2026-11-04 polish pass), checked for clutter and plain wording, before it's called done.
+- **Why:** The Japanese use case found what the plan missed for one project; these find what it misses for the user's next year (exchange paperwork, the move, a semester). Adding this much risks an "office tool" feel the user already disliked (D24, D25), so ease of use becomes a checked rule, not a hope.
+
+### D33 · Spotlight: tasks and goals featured on Today (2026-11-04, the user's idea; details Claude's choice)
+- **Decision (the user, `observations.txt`):** tasks or goals can be pinned so they're featured on the home screen, mostly for ongoing tasks (e.g. "Learn katakana", worked on for weeks).
+- **Details (Claude's choice, confirm when convenient):**
+  - **Called Spotlight**, not "pin": "pin" already means a project's next action (D20). "Spotlight on Today" / "Remove from spotlight" in the task and goal sheets, menus and the palette.
+  - **A Spotlight section at the top of Today**, above the focus list: tasks with their project and a one-click focus start; goals with their progress (tasks, time, numbers) and days left. **At most 4**, so it stays a highlight (principle 4); adding a fifth asks which one to drop.
+  - A task leaves the spotlight when it's completed or deleted; a goal when it's achieved, dropped or deleted. Spotlighted tasks aren't repeated in the focus list below.
+  - **Countdowns (4c) use the same section** instead of a separate widget: spotlighting an event or a dated goal shows "N days left" there (D32: one pattern).
+  - Built in **4a**, since Today changes for commitments anyway. *(4b since D34.)*
+- **Why:** Ongoing work has no due date and isn't always the next action, so it falls off Today; a small, capped spotlight keeps it in view without breaking "focus over abundance".
+
+### D34 · Phase 4 in six slices (2026-11-04, the user asked for a proper split; slices Claude's choice)
+- **Context:** With D31–D33, Phase 4 grew to about 30 items and 4a alone held 11 of mixed kinds.
+- **Decision:** six slices, keeping D31's order (commitments → reminders → calendar → the rest), each usable on its own with its own "done when" and a closing UI review (D32):
+  - **4a Commitments** — commitments, entries, focus on a commitment, Today/project/palette, the time-goal rename **and time-goal progress** (moved up from the old 4d: the use case's "4 h a week" needs it, and it's small once sessions can attach to commitments).
+  - **4b Today & boards** — Spotlight (D33), waiting column, required projects, create from any selector, the small fixes (moved out of the old 4a).
+  - **4c Reminders** — PWA, Web Push, one reminder control, commitment and task reminders, focus ended, streak at risk, notification actions.
+  - **4d Calendar & countdowns** — events (recurring), month/week views, drag to schedule, day load, tentative dates, countdowns in Spotlight, event reminders.
+  - **4e Recurring tasks** — on their own: they touch task completion and the next-instance logic, and reuse 4d's repeat rules.
+  - **4f Goals & weekly review** — number goals, weekly review, Review and Project quests (Project quests read goals and their numbers).
+  - "Weekly quests fully wired" is ticked: 3c built them (D30).
+- **Old → new letters:** old 4a → 4a + 4b · old 4b → 4c · old 4c → 4d + 4e · old 4d → 4a (time-goal progress) + 4f.
+- **Why:** one theme per slice keeps each session's change reviewable and testable against the use case; 4b's small changes to existing screens are separate from the new commitments model so neither hides the other's UI problems.
+
 ### D35 · Proprietary license, all rights reserved (2026-11-04, the user)
 - **Decision:** `LICENSE` is an "all rights reserved" notice; every `package.json` says `"license": "UNLICENSED"` (npm's marker for proprietary code), and the README links the license.
 - **Alternatives:** AGPL-3.0, MIT, Apache-2.0.
 - **Why:** the repo is private and Streakatron may become a product; proprietary keeps every option open, and it can still be open-sourced later (the reverse isn't possible once code is released).
+
+### D36 · Commitments as built in 4a (2026-11-04, Claude's choices, confirm when convenient)
+- A parked/completed/archived project's commitments rest with it (off Today, out of quests), like its tasks.
+- Deleting a project takes its commitments and entries into its snapshot; restore brings them back. Commitments themselves soft-delete (undo, purged after 30 days) and archive.
+- Entries are for today only (no backfilling yet). A weekly check takes one entry a day; met on N distinct days.
+- A finished session on a minutes commitment adds its minutes (any length); checks and amounts get "Mark done" / "+1" on the finish card, once per session.
+- `commitment_met` earns under `cmt_…:<period start>`; active day = `commitment_met`, or any `commitment_logged` on a weekly one.
+- Time-goal progress counts completed focus sessions (10+ min) on the project, its tasks or its commitments; typed minutes don't count.
+- "Meet every commitment due today": target = commitments scheduled today, offered while any is left; a weekly check ticked today counts as done.
+- Entry id prefix `cme_`; the `reminder` column waits for 4c; Commitments is in the phone bottom bar (five items).
 
 ---
 

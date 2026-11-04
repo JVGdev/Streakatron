@@ -21,6 +21,8 @@ import { ProjectStatusProvider } from '@/components/project-status';
 import { GlobalShortcuts } from '@/components/shortcuts';
 import { StructureDialogs } from '@/components/structure-dialogs';
 import { AreaSheet } from '@/components/area-sheet';
+import { CommitmentDialog } from '@/components/commitment-form';
+import { CommitmentSheet } from '@/components/commitment-sheet';
 import { GoalSheet } from '@/components/goal-sheet';
 import { TaskSheet } from '@/components/task-sheet';
 import { Button } from '@/components/ui/button';
@@ -53,7 +55,7 @@ export function AppShell({
 }: {
   me: Me;
   /** Which detail sheet is open (search params). */
-  sheets: { task?: string; goal?: string; area?: string };
+  sheets: { task?: string; goal?: string; area?: string; commitment?: string };
   children: ReactNode;
 }) {
   const { data: inbox } = useQuery(tasksQuery({ project: 'inbox', status: 'open' }));
@@ -139,7 +141,7 @@ export function AppShell({
         </Button>
 
         <nav
-          className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t-2 bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+          className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t-2 bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
           aria-label="Main"
         >
           {NAV.filter((n) => n.phone && !n.later).map(({ to, label, icon: Icon }) => (
@@ -164,6 +166,8 @@ export function AppShell({
       <TaskSheet taskId={sheets.task} />
       <GoalSheet goalId={sheets.goal} />
       <AreaSheet areaId={sheets.area} />
+      <CommitmentSheet commitmentId={sheets.commitment} />
+      <CommitmentDialog />
       <CommandPalette />
       <StructureDialogs />
       <GameMoments />

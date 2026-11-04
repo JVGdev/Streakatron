@@ -27,7 +27,7 @@ import {
 } from '@streakatron/shared/game';
 import { newId } from '@streakatron/shared/ids';
 import { userDay, type DateString } from '@streakatron/shared/time';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, or, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { activity, userSettings } from '../db/schema';
 import { HttpError } from '../http/errors';
@@ -47,6 +47,7 @@ interface Logged {
   xp: number;
   localDate: DateString;
   type: ActivityType;
+  payload: ActivityPayload;
 }
 
 interface Collected {
@@ -62,7 +63,8 @@ export function noteGameEvent(event: GameEvent) {
   collector.getStore()?.quests.push(event);
 }
 
-async function daySettings(conn: Conn, userId: string) {
+/** The user's day and week rules (time zone, day start, week start, weekly target). */
+export async function daySettings(conn: Conn, userId: string) {
   const [row] = await conn
     .select({
       timeZone: userSettings.timezone,
@@ -129,10 +131,29 @@ export async function logActivity(tx: Tx, userId: string, entries: NewActivity[]
   await tx.insert(activity).values(rows);
   collector
     .getStore()
-    ?.logged.push(...rows.map(({ id, xp, type, localDate }) => ({ id, xp, type, localDate })));
+    ?.logged.push(
+      ...rows.map(({ id, xp, type, localDate, payload }) => ({ id, xp, type, localDate, payload })),
+    );
 }
 
 // --- Reading ---------------------------------------------------------------------------------
+
+/**
+ * Activity that makes its day active (`countsAsActive` as SQL): the always-active types, plus
+ * entries on weekly commitments (D31).
+ */
+export const activeDayWhere = () =>
+  or(
+    inArray(activity.type, [...ACTIVE_DAY_TYPES]),
+    and(eq(activity.type, 'commitment_logged'), sql`${activity.payload}->>'period' = 'week'`),
+  );
+
+/** The same, for raw SQL over `activity` (unqualified columns). */
+export const activeDaySql = () =>
+  sql`(type in (${sql.join(
+    ACTIVE_DAY_TYPES.map((t) => sql`${t}`),
+    sql`, `,
+  )}) or (type = 'commitment_logged' and payload->>'period' = 'week'))`;
 
 /** Total XP, and the days that were active (each with the ids of the activity that made them). */
 async function readLog(userId: string) {
@@ -143,7 +164,7 @@ async function readLog(userId: string) {
   const active = await db
     .select({ id: activity.id, localDate: activity.localDate })
     .from(activity)
-    .where(and(eq(activity.userId, userId), inArray(activity.type, [...ACTIVE_DAY_TYPES])));
+    .where(and(eq(activity.userId, userId), activeDayWhere()));
   return { xp: total?.xp ?? 0, active };
 }
 
@@ -190,7 +211,7 @@ async function gameBlock(
 }
 
 /** What a write touched, for the quests it can affect (D30); `all` re-reads every open quest. */
-export type Touch = 'task' | 'focus' | 'goal' | 'project';
+export type Touch = 'task' | 'focus' | 'goal' | 'project' | 'commitment';
 
 export interface WithGameOptions {
   touches?: readonly Touch[] | 'all';
@@ -217,7 +238,7 @@ export async function withGame<T extends object>(
     }
   }
   const { logged, quests } = store;
-  if (!logged.length || !logged.some((l) => l.xp > 0 || countsAsActive(l.type))) {
+  if (!logged.length || !logged.some((l) => l.xp > 0 || countsAsActive(l.type, l.payload))) {
     return { ...result, game: null };
   }
   try {

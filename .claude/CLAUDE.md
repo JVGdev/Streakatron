@@ -4,7 +4,7 @@ Streakatron is a web app that helps people stay consistent with studies and pers
 
 ## Current status
 
-- **Phase:** Phases 0–2 done 2026-11-03. **Phase 3 (MVP) done 2026-11-04 in three slices (D27): 3a activity log, XP, levels, streaks; 3b focus sessions (D29); 3c quests and heatmap (D30). Next: Phase 4, after the user tries the MVP.**
+- **Phase:** Phases 0–2 done 2026-11-03. **Phase 3 (MVP) done 2026-11-04 in three slices (D27): 3a activity log, XP, levels, streaks; 3b focus sessions (D29); 3c quests and heatmap (D30). Phase 4 (D34) in progress: **4a Commitments built 2026-11-04 (D36, branch `phase-4a-commitments`, not committed); next 4b Today & boards.** Planned around the user's "Studying Japanese" use case (D31–D33), in six slices (D34): 4a Commitments (+ time-goal progress) · 4b Today & boards · 4c Reminders · 4d Calendar & countdowns · 4e Recurring tasks · 4f Goals & weekly review.**
 - **Run it:** `pnpm db:up && pnpm dev` (README has setup, scripts, Tailscale and backups).
 - **Repository:** https://github.com/JVGdev/Streakatron (private), branch `main`.
 - Detailed status and session history: `.claude/context/progress.md`.
@@ -39,11 +39,12 @@ Read the relevant context file before working on an area; read `plan.md` section
 - **When `observations.txt` has new content**, fold it into `plan.md` (right phase/section) and decisions.md if it decides something, then tell the user.
 - **Tick `plan.md` checkboxes** as tasks finish and **append a session entry to `progress.md`** at the end of meaningful work.
 - New ideas go to `plan.md` §12 (backlog), not into the current phase.
+- **Keep the UI easy as it grows (D32):** defaults first, options behind "More", grow existing screens before adding pages, reuse the same patterns; every slice ends with a screenshot UI review (desktop, phone, dark).
 - **Quire** (`~/Documentos/quire`) is the user's earlier personal app (Svelte 5 + Fastify + node:sqlite). It is a **reference only**: reuse its framework-agnostic logic and lessons (plan.md §11), never integrate with it.
 
 ## Code conventions
 
-- IDs: type-prefixed ULIDs (`tsk_`, `prj_`, `gol_`, `are_`, `hab_`, `evt_`…).
+- IDs: type-prefixed ULIDs (`tsk_`, `prj_`, `gol_`, `are_`, `cmt_`, `evt_`…).
 - References are FK columns with explicit `ON DELETE`; `jsonb` only for leaf data.
 - Day arithmetic only on `YYYY-MM-DD` values; the user's day comes from their stored timezone + day-start hour.
 - Game rules are pure functions in `packages/shared/game`, exhaustively unit-tested; the server is the only place they run for real.

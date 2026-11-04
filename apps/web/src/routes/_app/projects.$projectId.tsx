@@ -18,6 +18,7 @@ import { z } from 'zod';
 import type { RichDoc } from '@streakatron/shared/rich';
 import { Backlinks } from '@/components/backlinks';
 import { Board } from '@/components/board';
+import { CommitmentsPanel } from '@/components/commitments-panel';
 import { EntityIcon } from '@/components/entity-icon';
 import { GoalsPanel } from '@/components/goals-panel';
 import { QuickAdd } from '@/components/quick-add';
@@ -180,7 +181,10 @@ function ProjectPage() {
 
       {view === 'overview' && (
         <div className="grid gap-8 lg:grid-cols-[1fr_22rem]">
-          <GoalsPanel projectId={projectId} goals={page.goals} tasks={tasks} today={today} />
+          <div className="space-y-8">
+            <GoalsPanel projectId={projectId} goals={page.goals} tasks={tasks} today={today} />
+            <CommitmentsPanel projectId={projectId} />
+          </div>
           <Details key={project.id} project={project} today={today} />
         </div>
       )}

@@ -9,7 +9,6 @@
 // quest spawns its follow-up; a quick quest makes room for the next (3 rewarded a day); finishing
 // every daily quest logs the board bonus. Rows are never deleted: their statuses are the fit stats.
 
-import { ACTIVE_DAY_TYPES } from '@streakatron/shared/game';
 import { newId } from '@streakatron/shared/ids';
 import {
   followupTarget,
@@ -49,8 +48,9 @@ import {
   userSettings,
 } from '../db/schema';
 import { HttpError } from '../http/errors';
+import { todayCommitments } from './commitments';
 import { conflict, notFound, type Tx } from './common';
-import { logActivity, noteGameEvent, type Touch } from './game';
+import { activeDaySql, activeDayWhere, logActivity, noteGameEvent, type Touch } from './game';
 import { projectViews } from './projects';
 
 type QuestRow = typeof questInstances.$inferSelect;
@@ -68,15 +68,17 @@ const TRIGGERS: Record<QuestTemplate, readonly Touch[]> = {
   pin_next: ['project', 'task'],
   effort: ['task'],
   focus_note: ['focus'],
+  log_commitment: ['commitment', 'focus'],
+  commitments_due: ['commitment', 'focus', 'project'],
   add_task: ['task', 'project'],
   add_goal: ['goal', 'project'],
   subtasks: ['task'],
   task_details: ['task', 'goal'],
   goal_details: ['goal', 'task'],
-  week_target: ['task', 'focus'],
+  week_target: ['task', 'focus', 'commitment'],
   week_projects: ['task', 'focus', 'project'],
   week_focus: ['focus'],
-  comeback: ['task', 'focus'],
+  comeback: ['task', 'focus', 'commitment'],
 };
 
 const DAILY_BOARD_TYPES: QuestType[] = ['daily', 'time', 'make', 'quick', 'comeback'];
@@ -114,14 +116,9 @@ async function gatherInput(
 ): Promise<BoardInput> {
   const from = addDays(today, -QUESTS.history.days);
   const weekStart = startOfWeek(today, s.weekStart);
-  const activeTypes = sql.join(
-    ACTIVE_DAY_TYPES.map((t) => sql`${t}`),
-    sql`, `,
-  );
-
   const [last] = rowsOf<{ day: string | null }>(
     await tx.execute(
-      sql`select max(local_date)::text as day from activity where user_id = ${userId} and type in (${activeTypes}) and local_date <= ${today}`,
+      sql`select max(local_date)::text as day from activity where user_id = ${userId} and ${activeDaySql()} and local_date <= ${today}`,
     ),
   );
   const idleDays = last?.day ? daysBetween(last.day, today) : null;
@@ -242,6 +239,7 @@ async function gatherInput(
   ];
 
   const staleSince = addDays(today, -QUESTS.staleProjectDays);
+  const commitments = (await todayCommitments(tx, userId, today)).filter((c) => c.scheduled);
   return {
     today,
     resting: (s.quest.restingTypes ?? []) as QuestType[],
@@ -305,6 +303,8 @@ async function gatherInput(
       .map((t) => ({ id: t.id, title: t.title, daysWaiting: waiting(t.id, t.createdAt) })),
     lastFocusWithoutNote:
       lastFocus && !lastFocus.note && (lastFocus.minutes ?? 0) > 0 ? { id: lastFocus.id } : null,
+    // All of today's, sized as one ask, while any is still to do.
+    commitmentsDue: commitments.some((c) => c.due) ? commitments.length : 0,
   };
 }
 
@@ -528,6 +528,19 @@ async function progressOf(tx: Tx, userId: string, q: QuestRow): Promise<Progress
       if (!t || t.completedAt) return t?.effort ? 1 : 'cancel';
       return t.effort ? 1 : 0;
     }
+    case 'log_commitment':
+      return Math.min(
+        1,
+        await count(tx, and(mine, eq(activity.type, 'commitment_logged'), since(q))),
+      );
+    case 'commitments_due': {
+      // Today's scheduled ones, each met (or a weekly check ticked today). All of them completes
+      // it, however many there are now; none left (archived, parked) cancels it.
+      const all = (await todayCommitments(tx, userId, q.periodStart)).filter((c) => c.scheduled);
+      if (!all.length) return 'cancel';
+      const done = all.filter((c) => !c.due).length;
+      return done === all.length ? q.target : Math.min(done, q.target - 1);
+    }
     case 'focus_note': {
       if (!q.focusSessionId) return 'cancel';
       const [f] = await tx
@@ -577,7 +590,7 @@ async function progressOf(tx: Tx, userId: string, q: QuestRow): Promise<Progress
         .where(
           and(
             mine,
-            inArray(activity.type, [...ACTIVE_DAY_TYPES]),
+            activeDayWhere(),
             gte(activity.localDate, q.periodStart),
             lte(activity.localDate, q.periodEnd),
           ),
@@ -596,13 +609,7 @@ async function progressOf(tx: Tx, userId: string, q: QuestRow): Promise<Progress
       return Math.min(q.target, rows[0]?.n ?? 0);
     }
     case 'comeback':
-      return Math.min(
-        1,
-        await count(
-          tx,
-          and(mine, inArray(activity.type, [...ACTIVE_DAY_TYPES]), on(q.periodStart)),
-        ),
-      );
+      return Math.min(1, await count(tx, and(mine, activeDayWhere(), on(q.periodStart))));
   }
 }
 

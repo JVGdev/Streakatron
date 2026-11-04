@@ -5,8 +5,14 @@
 import { parseId, type IdKind } from '../ids';
 import type { RichNode } from './index';
 
-/** What a mention can point to. Habits and events join when they exist. */
-export const LINKABLE_KINDS = ['area', 'project', 'goal', 'task'] as const satisfies IdKind[];
+/** What a mention can point to. Events join when they exist. */
+export const LINKABLE_KINDS = [
+  'area',
+  'project',
+  'goal',
+  'task',
+  'commitment',
+] as const satisfies IdKind[];
 export type LinkableKind = (typeof LINKABLE_KINDS)[number];
 
 const LINKABLE = new Set<string>(LINKABLE_KINDS);

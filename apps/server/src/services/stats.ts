@@ -1,11 +1,11 @@
 // Stats read from the activity log (plan.md §4.7). Phase 3: the contribution heatmap.
 
-import { ACTIVE_DAY_TYPES } from '@streakatron/shared/game';
 import type { HeatmapQuery } from '@streakatron/shared/schemas';
 import { addDays, userDay } from '@streakatron/shared/time';
 import { eq, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { userSettings } from '../db/schema';
+import { activeDaySql } from './game';
 
 /** The heatmap's span when none is asked for: a year, to today. */
 export const HEATMAP_DAYS = 371;
@@ -19,10 +19,6 @@ export async function heatmap(userId: string, q: HeatmapQuery) {
   const today = userDay(new Date(), s!);
   const to = q.to ?? today;
   const from = q.from ?? addDays(to, -(HEATMAP_DAYS - 1));
-  const active = sql.join(
-    ACTIVE_DAY_TYPES.map((t) => sql`${t}`),
-    sql`, `,
-  );
   const res = await db.execute(sql`
     select local_date::text as date,
       coalesce(sum(xp), 0)::int as xp,
@@ -30,7 +26,7 @@ export async function heatmap(userId: string, q: HeatmapQuery) {
         where type = 'task_completed' and coalesce((payload->>'subtask')::boolean, false) = false
       )::int as tasks,
       coalesce(sum((payload->>'minutes')::int) filter (where type = 'focus_completed'), 0)::int as minutes,
-      bool_or(type in (${active})) as active
+      bool_or(${activeDaySql()}) as active
     from activity
     where user_id = ${userId} and local_date between ${from} and ${to}
     group by local_date

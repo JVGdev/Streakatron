@@ -112,6 +112,26 @@ const fetchGoal = (id: string) => call(api.goals[':id'].$get({ param: { id } }))
 export const goalQuery = (id: string) =>
   queryOptions({ queryKey: ['goal', id], queryFn: () => fetchGoal(id) });
 
+// --- Commitments (D31) -----------------------------------------------------------------------
+
+const fetchCommitments = (archived: boolean) =>
+  call(api.commitments.$get({ query: { archived: archived ? 'true' : 'false' } }));
+export type Commitment = Awaited<ReturnType<typeof fetchCommitments>>['commitments'][number];
+
+/** Live commitments with where each stands today (archived ones too, when asked). */
+export const commitmentsQuery = (archived = false) =>
+  queryOptions({
+    queryKey: ['commitments', { archived }] as const,
+    queryFn: async () => (await fetchCommitments(archived)).commitments,
+  });
+
+const fetchCommitment = (id: string) => call(api.commitments[':id'].$get({ param: { id } }));
+export type CommitmentDetail = Awaited<ReturnType<typeof fetchCommitment>>;
+
+/** One commitment with its description and the last 4 weeks (the sheet). */
+export const commitmentQuery = (id: string) =>
+  queryOptions({ queryKey: ['commitment', id], queryFn: () => fetchCommitment(id) });
+
 // --- Game ------------------------------------------------------------------------------------
 
 const fetchGame = () => call(api.game.state.$get());

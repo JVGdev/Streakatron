@@ -6,7 +6,16 @@
 import { newId } from '@streakatron/shared/ids';
 import { and, desc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from '../db/client';
-import { areas, boardColumns, goals, projects, snapshots, tasks } from '../db/schema';
+import {
+  areas,
+  boardColumns,
+  commitmentEntries,
+  commitments,
+  goals,
+  projects,
+  snapshots,
+  tasks,
+} from '../db/schema';
 import { conflict, edgeOrder, notFound, restoreDeadline, type Tx } from './common';
 import { writeLinks } from './links';
 import { hasRoomForActive } from './projects';
@@ -19,6 +28,9 @@ interface ProjectBundle {
   columns: (typeof boardColumns.$inferSelect)[];
   goals: (typeof goals.$inferSelect)[];
   tasks: (typeof tasks.$inferSelect)[];
+  /** Since D31 (older snapshots have none). */
+  commitments?: (typeof commitments.$inferSelect)[];
+  entries?: (typeof commitmentEntries.$inferSelect)[];
 }
 
 interface SnapshotData {
@@ -38,7 +50,29 @@ async function bundle(tx: Tx, projectId: string): Promise<ProjectBundle> {
     .where(eq(boardColumns.projectId, projectId));
   const goalRows = await tx.select().from(goals).where(eq(goals.projectId, projectId));
   const taskRows = await tx.select().from(tasks).where(eq(tasks.projectId, projectId));
-  return { project, columns: columnRows, goals: goalRows, tasks: taskRows };
+  const commitmentRows = await tx
+    .select()
+    .from(commitments)
+    .where(eq(commitments.projectId, projectId));
+  const entryRows = commitmentRows.length
+    ? await tx
+        .select()
+        .from(commitmentEntries)
+        .where(
+          inArray(
+            commitmentEntries.commitmentId,
+            commitmentRows.map((c) => c.id),
+          ),
+        )
+    : [];
+  return {
+    project,
+    columns: columnRows,
+    goals: goalRows,
+    tasks: taskRows,
+    commitments: commitmentRows,
+    entries: entryRows,
+  };
 }
 
 /** Store a snapshot of projects (and an area) before they're deleted. Returns its id. */
@@ -175,6 +209,15 @@ export async function restoreSnapshot(userId: string, id: string) {
       if (ordered.length) {
         await tx.insert(tasks).values(ordered.map((t) => ({ ...revive(t), userId })));
       }
+      if (b.commitments?.length) {
+        await tx.insert(commitments).values(b.commitments.map((c) => ({ ...revive(c), userId })));
+      }
+      if (b.entries?.length) {
+        // A focus session may be gone (or re-linked) since; the entry keeps its amount either way.
+        await tx
+          .insert(commitmentEntries)
+          .values(b.entries.map((e) => ({ ...revive(e), userId, focusSessionId: null })));
+      }
       if (project.nextActionTaskId) {
         await tx
           .update(projects)
@@ -185,7 +228,12 @@ export async function restoreSnapshot(userId: string, id: string) {
 
     const sources = [
       ...(data.area ? [data.area] : []),
-      ...data.projects.flatMap((b) => [b.project, ...b.goals, ...b.tasks]),
+      ...data.projects.flatMap((b) => [
+        b.project,
+        ...b.goals,
+        ...b.tasks,
+        ...(b.commitments ?? []),
+      ]),
     ];
     for (const row of sources) {
       if (row.description) await writeLinks(tx, userId, row.id, row.description);

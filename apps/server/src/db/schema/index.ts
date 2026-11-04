@@ -4,4 +4,5 @@ export * from './structure';
 export * from './links';
 export * from './game';
 export * from './focus';
+export * from './commitments';
 export * from './quests';

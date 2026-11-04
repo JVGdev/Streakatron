@@ -1,5 +1,5 @@
 // The command palette (Ctrl/⌘ K): capture a task in a few keystrokes, jump to anything, run an
-// action. In capture mode (C) it only adds tasks: type, Enter, done.
+// action, tick a commitment due today. In capture mode (C) it only adds tasks: type, Enter, done.
 
 import { Command as Cmdk } from 'cmdk';
 import { useQuery } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import {
   LayoutGrid,
   ListTodo,
   Plus,
+  Repeat,
   Settings,
   Shapes,
   Sun,
@@ -20,11 +21,20 @@ import {
 import { useDeferredValue, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { useOpenEntity, useOpenTask } from '@/hooks/use-open-task';
+import { useOpenEntity, useOpenSheet, useOpenTask } from '@/hooks/use-open-task';
 import { isMac } from '@/hooks/use-hotkeys';
-import { useTaskActions } from '@/lib/actions';
-import { projectsQuery, searchQuery, type Project, type SearchHit } from '@/lib/queries';
-import { newArea, newProject, setUi, useUi } from '@/lib/ui-store';
+import { progressText } from '@streakatron/shared/commitments';
+import { useCommitmentActions, useTaskActions } from '@/lib/actions';
+import {
+  commitmentsQuery,
+  projectsQuery,
+  searchQuery,
+  type Commitment,
+  type Project,
+  type SearchHit,
+} from '@/lib/queries';
+import { newArea, newCommitment, newProject, setUi, useUi } from '@/lib/ui-store';
+import { doneToday } from '@/lib/commitments';
 import { EntityIcon, RefIcon } from './entity-icon';
 
 export function CommandPalette() {
@@ -69,7 +79,14 @@ function Palette({ mode, close }: { mode: 'search' | 'capture'; close: () => voi
   const openTask = useOpenTask();
   const openEntity = useOpenEntity();
   const tasks = useTaskActions();
+  const commitmentActions = useCommitmentActions();
+  const openSheet = useOpenSheet();
   const { data: projects = [] } = useQuery(projectsQuery);
+  const { data: commitments = [] } = useQuery({
+    ...commitmentsQuery(),
+    enabled: mode === 'search',
+  });
+  const dueToday = commitments.filter((c) => c.day.scheduled && !doneToday(c));
   const { data: hits = [] } = useQuery({
     ...searchQuery(searched),
     enabled: mode === 'search' && searched.length > 0,
@@ -101,6 +118,16 @@ function Palette({ mode, close }: { mode: 'search' | 'capture'; close: () => voi
     fn();
   };
 
+  /** A check is ticked right here; amounts and minutes open the sheet to log them. */
+  function logCommitment(c: Commitment) {
+    close();
+    if (c.measure === 'check') {
+      void commitmentActions.log(c.id).then((done) => done && toast.success(`Ticked “${c.title}”`));
+    } else {
+      openSheet('commitment', c.id);
+    }
+  }
+
   const commands: {
     id: string;
     label: string;
@@ -122,6 +149,12 @@ function Palette({ mode, close }: { mode: 'search' | 'capture'; close: () => voi
       run: run(() => newProject(currentId ? current?.areaId : undefined)),
     },
     { id: 'new-area', label: 'New area', icon: Shapes, run: run(newArea) },
+    {
+      id: 'new-commitment',
+      label: 'New commitment',
+      icon: Repeat,
+      run: run(() => newCommitment(currentId ?? null)),
+    },
     {
       id: 'go-today',
       label: 'Go to Today',
@@ -149,6 +182,12 @@ function Palette({ mode, close }: { mode: 'search' | 'capture'; close: () => voi
       icon: LayoutGrid,
       hint: 'G P',
       run: run(() => void navigate({ to: '/projects' })),
+    },
+    {
+      id: 'go-commitments',
+      label: 'Go to Commitments',
+      icon: Repeat,
+      run: run(() => void navigate({ to: '/commitments' })),
     },
     {
       id: 'go-tasks',
@@ -253,6 +292,22 @@ function Palette({ mode, close }: { mode: 'search' | 'capture'; close: () => voi
                 {h.snippet && (
                   <span className="block truncate text-xs text-muted-foreground">{h.snippet}</span>
                 )}
+              </Item>
+            ))}
+          </Group>
+        )}
+
+        {mode === 'search' && !query && dueToday.length > 0 && (
+          <Group heading="Commitments due today">
+            {dueToday.map((c) => (
+              <Item
+                key={c.id}
+                value={`commitment-${c.id}`}
+                icon={<Repeat />}
+                onSelect={() => logCommitment(c)}
+                hint={c.measure === 'check' ? 'Tick' : progressText(c, c.day.progress)}
+              >
+                {c.title}
               </Item>
             ))}
           </Group>

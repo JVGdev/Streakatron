@@ -17,7 +17,15 @@ import type { FocusPatch, FocusStart } from '@streakatron/shared/schemas';
 import { userDay, userDayRange } from '@streakatron/shared/time';
 import { and, desc, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from '../db/client';
-import { focusSessions, projects, tasks, userSettings } from '../db/schema';
+import {
+  commitmentEntries,
+  commitments,
+  focusSessions,
+  projects,
+  tasks,
+  userSettings,
+} from '../db/schema';
+import { logEntry } from './commitments';
 import { conflict, notFound, type Conn, type Tx } from './common';
 import { logActivity } from './game';
 
@@ -25,7 +33,10 @@ type SessionRow = typeof focusSessions.$inferSelect;
 
 // --- Views -----------------------------------------------------------------------------------
 
-/** A session as the client sees it, with the task and project it's on (when they still exist). */
+/**
+ * A session as the client sees it, with the task, project or commitment it's on (when they still
+ * exist). `commitment.logged`: this session already filled it (its minutes, or "Mark done").
+ */
 async function sessionView(conn: Conn, userId: string, id: string) {
   const [row] = await conn
     .select({
@@ -46,10 +57,19 @@ async function sessionView(conn: Conn, userId: string, id: string) {
       projectTitle: projects.title,
       projectColor: projects.color,
       projectIcon: projects.icon,
+      commitmentId: commitments.id,
+      commitmentTitle: commitments.title,
+      commitmentMeasure: commitments.measure,
+      commitmentUnit: commitments.unit,
+      commitmentLogged: sql<boolean>`exists (select 1 from ${commitmentEntries} e where e.focus_session_id = ${focusSessions.id})`,
     })
     .from(focusSessions)
     .leftJoin(tasks, and(eq(tasks.id, focusSessions.taskId), isNull(tasks.deletedAt)))
     .leftJoin(projects, eq(projects.id, focusSessions.projectId))
+    .leftJoin(
+      commitments,
+      and(eq(commitments.id, focusSessions.commitmentId), isNull(commitments.deletedAt)),
+    )
     .where(and(eq(focusSessions.id, id), eq(focusSessions.userId, userId)));
   if (!row) throw notFound('focus session');
   const {
@@ -60,6 +80,11 @@ async function sessionView(conn: Conn, userId: string, id: string) {
     projectTitle,
     projectColor,
     projectIcon,
+    commitmentId,
+    commitmentTitle,
+    commitmentMeasure,
+    commitmentUnit,
+    commitmentLogged,
     ...s
   } = row;
   return {
@@ -67,6 +92,15 @@ async function sessionView(conn: Conn, userId: string, id: string) {
     task: taskId ? { id: taskId, title: taskTitle!, completedAt: taskCompletedAt } : null,
     project: projectId
       ? { id: projectId, title: projectTitle!, color: projectColor!, icon: projectIcon! }
+      : null,
+    commitment: commitmentId
+      ? {
+          id: commitmentId,
+          title: commitmentTitle!,
+          measure: commitmentMeasure!,
+          unit: commitmentUnit,
+          logged: commitmentLogged,
+        }
       : null,
   };
 }
@@ -102,7 +136,11 @@ async function openSession(
 
 const noSession = () => conflict('no_focus', 'No focus session is going right now.');
 
-/** End a session as completed at `endedAt`, crediting its minutes (and XP from 10 minutes). */
+/**
+ * End a session as completed at `endedAt`, crediting its minutes (and XP from 10 minutes). A
+ * session on a minutes commitment puts its minutes there (D31); checks and amounts are offered on
+ * the finish card instead.
+ */
 async function complete(tx: Tx, userId: string, row: SessionRow, endedAt: Date) {
   const pausedMs = row.pausedAt
     ? row.pausedMs + Math.max(0, endedAt.getTime() - row.pausedAt.getTime())
@@ -122,6 +160,27 @@ async function complete(tx: Tx, userId: string, row: SessionRow, endedAt: Date) 
         occurredAt: endedAt,
       },
     ]);
+  }
+  if (row.commitmentId && minutes > 0) {
+    const [c] = await tx
+      .select()
+      .from(commitments)
+      .where(
+        and(
+          eq(commitments.id, row.commitmentId),
+          isNull(commitments.deletedAt),
+          isNull(commitments.archivedAt),
+        ),
+      )
+      .for('update');
+    if (c?.measure === 'minutes') {
+      await logEntry(tx, userId, c, {
+        amount: minutes,
+        source: 'focus',
+        focusSessionId: row.id,
+        at: endedAt,
+      });
+    }
   }
 }
 
@@ -211,7 +270,22 @@ export async function startFocus(userId: string, input: FocusStart, now = new Da
     }
     let taskId: string | null = null;
     let projectId: string | null = null;
-    if (input.taskId) {
+    let commitmentId: string | null = null;
+    if (input.commitmentId) {
+      const [c] = await tx
+        .select({ id: commitments.id, projectId: commitments.projectId })
+        .from(commitments)
+        .where(
+          and(
+            eq(commitments.id, input.commitmentId),
+            eq(commitments.userId, userId),
+            isNull(commitments.deletedAt),
+          ),
+        );
+      if (!c) throw notFound('commitment');
+      commitmentId = c.id;
+      projectId = c.projectId;
+    } else if (input.taskId) {
       const [task] = await tx
         .select({ id: tasks.id, projectId: tasks.projectId })
         .from(tasks)
@@ -232,6 +306,7 @@ export async function startFocus(userId: string, input: FocusStart, now = new Da
       userId,
       taskId,
       projectId,
+      commitmentId,
       status: 'running',
       plannedMinutes: input.focusMinutes,
       breakMinutes: input.breakMinutes,

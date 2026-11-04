@@ -1,6 +1,7 @@
 // Today's focus list (plan.md §4.3): overdue tasks, tasks due or scheduled today, then the next
 // action of each active project, each task once. Shared so the server's quests (the "top Today
-// item") and the web app's Today page read the same list. Habits join it in Phase 4.
+// item") and the web app's Today page read the same list. Commitments due today sit between
+// today's tasks and the next actions (`todayItems`, D31).
 
 import type { ProjectStatus } from './index';
 
@@ -62,4 +63,29 @@ export function focusList<T extends FocusListTask>(
     if (t) add(t, 'next');
   }
   return items;
+}
+
+export type TodayItem<T, C> =
+  | { kind: 'task'; task: T; reason: FocusReason }
+  | { kind: 'commitment'; commitment: C; reason: 'commitment' };
+
+/** Today's list: overdue and today's tasks, then commitments due and not met, then next actions. */
+export function todayItems<T extends FocusListTask, C>(
+  openTasks: readonly T[],
+  projects: readonly FocusListProject[],
+  due: readonly C[],
+  today: string,
+): TodayItem<T, C>[] {
+  const tasks = focusList(openTasks, projects, today).map((i) => ({ kind: 'task' as const, ...i }));
+  const urgent = tasks.filter((i) => i.reason !== 'next');
+  const next = tasks.filter((i) => i.reason === 'next');
+  return [
+    ...urgent,
+    ...due.map((commitment) => ({
+      kind: 'commitment' as const,
+      commitment,
+      reason: 'commitment' as const,
+    })),
+    ...next,
+  ];
 }

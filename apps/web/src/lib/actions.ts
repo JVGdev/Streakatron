@@ -8,6 +8,8 @@
 import type {
   AreaCreate,
   AreaPatch,
+  CommitmentCreate,
+  CommitmentPatch,
   FocusStart,
   GoalCreate,
   GoalPatch,
@@ -32,6 +34,8 @@ import { askNotifications, endBreak, markSeen, syncServerClock } from './focus-t
 import type {
   Area,
   BoardColumn,
+  Commitment,
+  CommitmentDetail,
   FocusSession,
   FocusState,
   Goal,
@@ -464,6 +468,103 @@ export function useStructureActions() {
   return useMemo(() => structureActions(qc), [qc]);
 }
 
+// --- Commitments (D31) -----------------------------------------------------------------------
+
+/** After any commitment write: the lists, chips and quests read again; the sheet gets the answer. */
+function settleCommitment(qc: QueryClient, detail?: CommitmentDetail) {
+  if (detail) {
+    qc.setQueryData(['commitment', detail.id], detail);
+    // The answer has today's state: put it in the lists at once, then read them again.
+    qc.setQueriesData<Commitment[]>({ queryKey: ['commitments'] }, (old) =>
+      old?.map((c) => (c.id === detail.id ? { ...c, ...detail } : c)),
+    );
+  }
+  void qc.invalidateQueries({ queryKey: ['commitments'] });
+  refreshEntities(qc);
+}
+
+export function commitmentActions(qc: QueryClient) {
+  return {
+    create: (input: CommitmentCreate) =>
+      attempt(async () => {
+        const c = await call(api.commitments.$post({ json: input }));
+        settleCommitment(qc, c);
+        return c;
+      }),
+
+    update: (id: string, patch: CommitmentPatch) =>
+      attempt(async () => {
+        const c = await call(api.commitments[':id'].$patch({ param: { id }, json: patch }));
+        settleCommitment(qc, c);
+        return c;
+      }),
+
+    /** Autosave's sender for the sheet's title and description: throws. */
+    save: async (id: string, patch: CommitmentPatch) => {
+      const c = await call(api.commitments[':id'].$patch({ param: { id }, json: patch }));
+      settleCommitment(qc, c);
+      return c;
+    },
+
+    archive: (c: { id: string; title: string }, archived: boolean) =>
+      attempt(async () => {
+        const updated = await call(
+          api.commitments[':id'].$patch({ param: { id: c.id }, json: { archived } }),
+        );
+        settleCommitment(qc, updated);
+        if (archived) toast(`Archived “${c.title}”`, { description: 'Find it under Archived.' });
+        return updated;
+      }),
+
+    delete: (c: { id: string; title: string }) =>
+      attempt(async () => {
+        await call(api.commitments[':id'].$delete({ param: { id: c.id } }));
+        settleCommitment(qc);
+        toast(`Deleted “${c.title}”`, {
+          action: {
+            label: 'Undo',
+            onClick: () =>
+              void attempt(async () => {
+                settleCommitment(
+                  qc,
+                  await call(api.commitments[':id'].restore.$post({ param: { id: c.id } })),
+                );
+              }),
+          },
+        });
+      }),
+
+    /** A tick, +N or minutes today (`focusSessionId`: from a finished session's card). */
+    log: (id: string, amount?: number, focusSessionId?: string) =>
+      attempt(async () => {
+        const c = await call(
+          api.commitments[':id'].entries.$post({
+            param: { id },
+            json: { ...(amount ? { amount } : {}), ...(focusSessionId ? { focusSessionId } : {}) },
+          }),
+        );
+        settleCommitment(qc, c);
+        if (focusSessionId) void qc.invalidateQueries({ queryKey: ['focus'] });
+        return c;
+      }),
+
+    /** Remove an entry: untick, or undo a mistaken +N. */
+    unlog: (id: string, entryId: string) =>
+      attempt(async () => {
+        const c = await call(
+          api.commitments[':id'].entries[':entryId'].$delete({ param: { id, entryId } }),
+        );
+        settleCommitment(qc, c);
+        return c;
+      }),
+  };
+}
+
+export function useCommitmentActions() {
+  const qc = useQueryClient();
+  return useMemo(() => commitmentActions(qc), [qc]);
+}
+
 // --- Focus -----------------------------------------------------------------------------------
 
 /** Focus-session writes. Each answers the timer's whole state, which replaces the cache. */
@@ -472,6 +573,13 @@ export function focusActions(qc: QueryClient) {
     syncServerClock(state.now);
     qc.setQueryData<FocusState>(['focus'], state);
     void qc.invalidateQueries({ queryKey: ['quests'] });
+    // A finished session fills a minutes commitment and its project's time goals.
+    if (state.last && !state.session) {
+      void qc.invalidateQueries({ queryKey: ['commitments'] });
+      void qc.invalidateQueries({ queryKey: ['commitment'] });
+      void qc.invalidateQueries({ queryKey: ['project'] });
+      void qc.invalidateQueries({ queryKey: ['goal'] });
+    }
     return state;
   };
   return {

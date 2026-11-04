@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { addDays, eachDay } from '../time';
 import {
+  commitmentPeriodKey,
+  countsAsActive,
   dailyStreak,
   foldXp,
   gameEvents,
@@ -256,5 +258,41 @@ describe('events', () => {
   it('reports nothing when nothing changed', () => {
     const s = gameState(50, ['2026-11-05'], '2026-11-05', rules);
     expect(gameEvents(s, s)).toEqual([]);
+  });
+});
+
+describe('commitments (D31)', () => {
+  const met = (
+    key: string,
+    localDate = '2026-11-02',
+    period: 'day' | 'week' = 'day',
+  ): XpActivity => ({
+    type: 'commitment_met',
+    entityId: key,
+    localDate,
+    payload: { period },
+  });
+  const logged = (period: 'day' | 'week'): XpActivity => ({
+    type: 'commitment_logged',
+    entityId: 'cme_1',
+    localDate: '2026-11-02',
+    payload: { period },
+  });
+
+  it('earns 10 XP once per commitment per period', () => {
+    const k = commitmentPeriodKey('cmt_a', '2026-11-02');
+    expect(k).toBe('cmt_a:2026-11-02');
+    expect(foldXp([met(k), met(k), met(commitmentPeriodKey('cmt_a', '2026-11-03'))])).toEqual([
+      10, 0, 10,
+    ]);
+    expect(xpFor(logged('day'), { earnedBefore: false, taskXpThatDay: 0 })).toBe(0);
+  });
+
+  it('makes the day active when met, or on any weekly entry, not on a partial daily one', () => {
+    expect(countsAsActive('commitment_met', { period: 'day' })).toBe(true);
+    expect(countsAsActive('commitment_logged', { period: 'week' })).toBe(true);
+    expect(countsAsActive('commitment_logged', { period: 'day' })).toBe(false);
+    expect(countsAsActive('commitment_logged')).toBe(false);
+    expect(countsAsActive('task_completed')).toBe(true);
   });
 });

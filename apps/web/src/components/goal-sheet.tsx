@@ -22,7 +22,7 @@ import { goalQuery, meQuery, projectsQuery, tasksQuery, type Goal } from '@/lib/
 import { cn } from '@/lib/utils';
 import { Backlinks } from './backlinks';
 import { EntityIcon } from './entity-icon';
-import { GoalForm } from './goals-panel';
+import { GoalForm, TimeGoalProgress } from './goals-panel';
 import { RichEditor } from './rich-editor';
 import { SheetBar, TitleField } from './sheet-parts';
 import { TaskRow } from './task-row';
@@ -83,7 +83,7 @@ function GoalEditor({ goal }: { goal: Goal }) {
     { what: 'the goal' },
   );
   const close = () => open('goal', undefined);
-  const Icon = goal.kind === 'commitment' ? Timer : Target;
+  const Icon = goal.kind === 'time' ? Timer : Target;
 
   return (
     <div className="flex min-h-full flex-col">
@@ -157,8 +157,8 @@ function GoalEditor({ goal }: { goal: Goal }) {
           </dd>
           <dt className="text-muted-foreground">Kind</dt>
           <dd className="flex items-center gap-2">
-            {goal.kind === 'commitment' && goal.targetMinutes && goal.period
-              ? `Commitment · ${formatMinutes(goal.targetMinutes)} of focus a ${goal.period}`
+            {goal.kind === 'time' && goal.targetMinutes && goal.period
+              ? `Time goal · ${formatMinutes(goal.targetMinutes)} of focus a ${goal.period}`
               : 'Outcome'}
             <Button
               size="icon"
@@ -170,6 +170,14 @@ function GoalEditor({ goal }: { goal: Goal }) {
               <Pencil />
             </Button>
           </dd>
+          {goal.progress && (
+            <>
+              <dt className="text-muted-foreground">Progress</dt>
+              <dd className="text-xs text-muted-foreground">
+                <TimeGoalProgress progress={goal.progress} period={goal.period} />
+              </dd>
+            </>
+          )}
           <dt className="text-muted-foreground">
             {goal.kind === 'outcome' ? 'Deadline' : 'Until'}
           </dt>
