@@ -3,6 +3,7 @@
 
 import { queryOptions } from '@tanstack/react-query';
 import { api, call } from './api';
+import { syncServerClock } from './focus-timer';
 
 const fetchMe = () => call(api.me.$get());
 export type Me = Awaited<ReturnType<typeof fetchMe>>;
@@ -110,3 +111,51 @@ const fetchGoal = (id: string) => call(api.goals[':id'].$get({ param: { id } }))
 /** One goal (the goal sheet). */
 export const goalQuery = (id: string) =>
   queryOptions({ queryKey: ['goal', id], queryFn: () => fetchGoal(id) });
+
+// --- Game ------------------------------------------------------------------------------------
+
+const fetchGame = () => call(api.game.state.$get());
+export type GameState = Awaited<ReturnType<typeof fetchGame>>;
+
+/** XP, level, streaks and this week, as the server counts them. Writes update it (GameMoments). */
+export const gameQuery = queryOptions({
+  queryKey: ['game'],
+  queryFn: fetchGame,
+  staleTime: 60_000,
+});
+
+// --- Focus -----------------------------------------------------------------------------------
+
+const fetchFocus = async () => {
+  const state = await call(api.focus.current.$get());
+  syncServerClock(state.now);
+  return state;
+};
+export type FocusState = Awaited<ReturnType<typeof fetchFocus>>;
+export type FocusSession = NonNullable<FocusState['session']>;
+
+/**
+ * The open focus session (or null), the one that ended last, and today's focus. Writes replace it
+ * (focusActions); it's read again now and then while a session is open, for other devices.
+ */
+export const focusQuery = queryOptions({
+  queryKey: ['focus'],
+  queryFn: fetchFocus,
+  staleTime: 30_000,
+  refetchInterval: (q) => (q.state.data?.session ? 60_000 : false),
+});
+
+// --- Quests and stats ------------------------------------------------------------------------
+
+const fetchQuests = () => call(api.quests.$get());
+export type QuestBoard = Awaited<ReturnType<typeof fetchQuests>>;
+export type Quest = QuestBoard['quests'][number];
+
+/** Today's quests and this week's (made on the day's first look). Writes mark it stale. */
+export const questsQuery = queryOptions({ queryKey: ['quests'], queryFn: fetchQuests });
+
+const fetchHeatmap = () => call(api.stats.heatmap.$get({ query: {} }));
+export type Heatmap = Awaited<ReturnType<typeof fetchHeatmap>>;
+
+/** A year of days, to today. */
+export const heatmapQuery = queryOptions({ queryKey: ['stats', 'heatmap'], queryFn: fetchHeatmap });

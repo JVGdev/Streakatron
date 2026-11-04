@@ -1,12 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { ChevronDown, Flame, Plus } from 'lucide-react';
+import { ChevronDown, Play, Plus, Timer } from 'lucide-react';
 import { useState } from 'react';
+import { ProgressStrip } from '@/components/progress-strip';
+import { QuestBoard } from '@/components/quest-board';
 import { TaskRow } from '@/components/task-row';
 import { Button } from '@/components/ui/button';
+import { clockText, sessionLabel, useFocus, useQuickFocus } from '@/hooks/use-focus';
 import { formatDayLong } from '@/lib/days';
 import { FOCUS_VISIBLE, focusList, type FocusReason } from '@/lib/focus';
-import { meQuery, projectsQuery, tasksQuery } from '@/lib/queries';
+import {
+  focusQuery,
+  gameQuery,
+  meQuery,
+  projectsQuery,
+  questsQuery,
+  tasksQuery,
+  type Task,
+} from '@/lib/queries';
 import { onRowsKeyDown } from '@/lib/rows';
 import { openPalette } from '@/lib/ui-store';
 import { cn } from '@/lib/utils';
@@ -16,6 +27,9 @@ export const Route = createFileRoute('/_app/today')({
     Promise.all([
       context.queryClient.ensureQueryData(projectsQuery),
       context.queryClient.ensureQueryData(tasksQuery({ status: 'open' })),
+      context.queryClient.prefetchQuery(gameQuery),
+      context.queryClient.prefetchQuery(focusQuery),
+      context.queryClient.prefetchQuery(questsQuery),
     ]),
   component: TodayPage,
 });
@@ -41,6 +55,7 @@ function TodayPage() {
 
   return (
     <div className="max-w-3xl space-y-8">
+      <ProgressStrip />
       <header>
         <p className="text-sm font-bold text-muted-foreground">{formatDayLong(me.today)}</p>
         <h1 className="mt-1 text-4xl tracking-tight md:text-5xl">Hi, {first}.</h1>
@@ -48,6 +63,8 @@ function TodayPage() {
           What’s the smallest meaningful thing you can do right now?
         </p>
       </header>
+
+      <FocusLauncher top={items[0]?.task} minutes={me.settings.focusPresets[0]?.focusMinutes} />
 
       <section
         aria-label="Today’s focus"
@@ -115,10 +132,67 @@ function TodayPage() {
         )}
       </section>
 
-      <p className="flex items-center gap-3 rounded-3xl border-2 border-dashed px-5 py-4 text-sm font-semibold text-muted-foreground">
-        <Flame className="size-5 shrink-0 fill-ember/20 text-ember" aria-hidden />
-        Streaks, XP and quests arrive with the MVP (Phase 3).
-      </p>
+      <QuestBoard />
+    </div>
+  );
+}
+
+/** The big "Start focus" (plan.md §4.3): one click, on the top item; or the running session. */
+function FocusLauncher({ top, minutes = 25 }: { top?: Task; minutes?: number }) {
+  const { session, clock, state } = useFocus();
+  const quick = useQuickFocus();
+
+  if (session && clock) {
+    return (
+      <Link
+        to="/focus"
+        className="flex items-center gap-4 rounded-3xl border-2 bg-card p-4 shadow-ledge transition-colors hover:bg-muted/50"
+      >
+        <span className="grid size-12 place-items-center rounded-2xl bg-glow text-glow-foreground">
+          <Timer className="size-6" strokeWidth={2.6} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-xs font-extrabold tracking-[0.08em] text-muted-foreground uppercase">
+            {session.status === 'paused' ? 'Paused' : 'Focusing'}
+          </span>
+          <span className="block truncate font-display text-lg font-semibold">
+            {sessionLabel(session)}
+          </span>
+        </span>
+        <span className="font-display text-3xl font-semibold tabular-nums">{clockText(clock)}</span>
+      </Link>
+    );
+  }
+
+  const today = state?.today;
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <Button
+        size="lg"
+        className="h-14 rounded-2xl px-6 text-lg"
+        onClick={() => void quick(top ? { taskId: top.id } : undefined)}
+      >
+        <Play className="size-5" />
+        Start focus · {minutes} min
+      </Button>
+      <div className="min-w-0 flex-1 text-sm">
+        {top && (
+          <p className="truncate font-bold">
+            <span className="text-muted-foreground">on </span>
+            {top.title}
+          </p>
+        )}
+        <p className="text-muted-foreground">
+          <Link
+            to="/focus"
+            search={top ? { on: top.id } : {}}
+            className="font-bold underline-offset-2 hover:underline"
+          >
+            Other length or task
+          </Link>
+          {today && today.minutes > 0 && ` · ${today.minutes} min focused today`}
+        </p>
+      </div>
     </div>
   );
 }

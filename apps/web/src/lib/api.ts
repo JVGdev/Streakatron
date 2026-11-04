@@ -7,6 +7,7 @@ import type { AppType } from '@streakatron/server';
 import { apiErrorSchema } from '@streakatron/shared/schemas';
 import { hc, type ClientResponse } from 'hono/client';
 import type { SuccessStatusCode } from 'hono/utils/http-status';
+import { takeGame, type WithoutGame } from './game-bus';
 
 export const api = hc<AppType>('/api');
 
@@ -67,10 +68,13 @@ type Ok<R> =
       : never
     : never;
 
-/** Await a request; resolve to its JSON body, or throw an `ApiError`. */
+/**
+ * Await a request; resolve to its JSON body, or throw an `ApiError`. A write's `game` block is
+ * taken off the body and celebrated (game-bus.ts).
+ */
 export async function call<R extends ClientResponse<unknown, number, string>>(
   request: Promise<R>,
-): Promise<Ok<R>> {
+): Promise<WithoutGame<Ok<R>>> {
   let res: R;
   try {
     res = await request;
@@ -78,8 +82,8 @@ export async function call<R extends ClientResponse<unknown, number, string>>(
     throw new ApiError(0, 'network', 'Can’t reach the server. Check your connection.', err);
   }
   if (!res.ok) throw await errorFrom(res as unknown as Response);
-  if (res.status === 204) return undefined as Ok<R>;
-  return (await res.json()) as Ok<R>;
+  if (res.status === 204) return undefined as WithoutGame<Ok<R>>;
+  return takeGame((await res.json()) as Ok<R>);
 }
 
 /** A message fit to show for any error. */

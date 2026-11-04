@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError, call, errorMessage } from './api';
+import { onGame, type GameBlock } from './game-bus';
 
 const respond = (status: number, body?: unknown) =>
   Promise.resolve(
@@ -12,6 +13,16 @@ const respond = (status: number, body?: unknown) =>
 describe('call', () => {
   it('returns the JSON body of a success', async () => {
     expect(await call(respond(200, { ok: true }))).toEqual({ ok: true });
+  });
+
+  it('takes the game block off a write and hands it to the listeners', async () => {
+    const seen: GameBlock[] = [];
+    const stop = onGame((g) => seen.push(g));
+    const game = { events: [{ type: 'xp', amount: 10 }], state: {} };
+    expect(await call(respond(200, { id: 'tsk_1', game }))).toEqual({ id: 'tsk_1' });
+    expect(await call(respond(200, { id: 'tsk_2', game: null }))).toEqual({ id: 'tsk_2' });
+    stop();
+    expect(seen).toEqual([game]);
   });
 
   it('throws our error shape with the server’s message', async () => {

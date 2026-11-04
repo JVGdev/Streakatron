@@ -13,6 +13,8 @@ import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { CommandPalette } from '@/components/command-palette';
 import { EntityIcon } from '@/components/entity-icon';
+import { FocusWatcher, MiniTimer } from '@/components/focus-timer';
+import { GameMoments } from '@/components/game-moments';
 import { Logo } from '@/components/logo';
 import { NAV } from '@/components/nav';
 import { ProjectStatusProvider } from '@/components/project-status';
@@ -90,6 +92,9 @@ export function AppShell({
               </Link>
             ))}
           </nav>
+          <div className="mt-4 empty:hidden">
+            <MiniTimer variant="sidebar" />
+          </div>
           <AreaTree />
           <div className="border-t-2 border-sidebar-border p-3">
             <UserMenu me={me} wide />
@@ -116,6 +121,11 @@ export function AppShell({
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-40 md:px-10 md:pt-10 md:pb-12">
             {children}
           </main>
+        </div>
+
+        {/* Phones: the running timer, above the bottom bar and beside the + button. */}
+        <div className="fixed right-20 bottom-[calc(4.6rem+env(safe-area-inset-bottom))] left-0 z-20 md:hidden">
+          <MiniTimer variant="bar" />
         </div>
 
         {/* Phones: capture in one tap, above the bottom bar. */}
@@ -156,6 +166,8 @@ export function AppShell({
       <AreaSheet areaId={sheets.area} />
       <CommandPalette />
       <StructureDialogs />
+      <GameMoments />
+      <FocusWatcher />
       <GlobalShortcuts />
     </ProjectStatusProvider>
   );

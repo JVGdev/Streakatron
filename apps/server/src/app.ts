@@ -11,11 +11,20 @@ import { errorBody, onError } from './http/errors';
 import { adminRoutes } from './routes/admin';
 import { areaRoutes } from './routes/areas';
 import { columnRoutes } from './routes/columns';
+import { focusRoutes } from './routes/focus';
 import { goalRoutes } from './routes/goals';
 import { healthRoutes } from './routes/health';
 import { meRoutes } from './routes/me';
-import { entityRoutes, searchRoutes, settingsRoutes, snapshotRoutes } from './routes/misc';
+import {
+  entityRoutes,
+  gameRoutes,
+  searchRoutes,
+  settingsRoutes,
+  snapshotRoutes,
+  statsRoutes,
+} from './routes/misc';
 import { projectRoutes } from './routes/projects';
+import { questRoutes } from './routes/quests';
 import { setupRoutes } from './routes/setup';
 import { taskRoutes } from './routes/tasks';
 
@@ -35,7 +44,11 @@ const api = new Hono()
   .route('/search', searchRoutes)
   .route('/entities', entityRoutes)
   .route('/snapshots', snapshotRoutes)
-  .route('/settings', settingsRoutes);
+  .route('/settings', settingsRoutes)
+  .route('/game', gameRoutes)
+  .route('/focus', focusRoutes)
+  .route('/quests', questRoutes)
+  .route('/stats', statsRoutes);
 
 export const app = new Hono();
 

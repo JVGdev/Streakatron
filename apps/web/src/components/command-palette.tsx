@@ -14,6 +14,7 @@ import {
   Settings,
   Shapes,
   Sun,
+  Timer,
   type LucideIcon,
 } from 'lucide-react';
 import { useDeferredValue, useState, type ReactNode } from 'react';
@@ -127,6 +128,13 @@ function Palette({ mode, close }: { mode: 'search' | 'capture'; close: () => voi
       icon: Sun,
       hint: 'G T',
       run: run(() => void navigate({ to: '/today' })),
+    },
+    {
+      id: 'focus',
+      label: 'Start focus session',
+      icon: Timer,
+      hint: 'G F',
+      run: run(() => void navigate({ to: '/focus' })),
     },
     {
       id: 'go-inbox',

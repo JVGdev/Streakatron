@@ -1,22 +1,23 @@
-// Search, mentions (resolve, backlinks), deleted-item snapshots and settings.
+// Search, mentions (resolve, backlinks), deleted-item snapshots, settings and the game.
 
 import {
+  heatmapQuerySchema,
   idOf,
   linkableId,
   resolveQuerySchema,
   searchQuerySchema,
   settingsPatchSchema,
 } from '@streakatron/shared/schemas';
-import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { db } from '../db/client';
-import { userSettings } from '../db/schema';
 import { requireUser, type AuthedEnv } from '../http/session';
 import { validate } from '../http/validate';
 import { backlinks, resolveEntities } from '../services/entities';
+import { getGameState } from '../services/game';
 import { search } from '../services/search';
+import { heatmap } from '../services/stats';
 import { listSnapshots, restoreSnapshot } from '../services/snapshots';
+import { updateSettings } from '../services/users';
 
 export const searchRoutes = new Hono<AuthedEnv>()
   .use(requireUser)
@@ -45,13 +46,18 @@ export const snapshotRoutes = new Hono<AuthedEnv>()
 
 export const settingsRoutes = new Hono<AuthedEnv>()
   .use(requireUser)
-  .patch('/', validate('json', settingsPatchSchema), async (c) => {
-    const values = c.req.valid('json');
-    const userId = c.get('user').id;
-    if (Object.keys(values).length) {
-      await db.update(userSettings).set(values).where(eq(userSettings.userId, userId));
-    }
-    const [row] = await db.select().from(userSettings).where(eq(userSettings.userId, userId));
-    const { userId: _, createdAt: __, updatedAt: ___, ...settings } = row!;
-    return c.json(settings);
-  });
+  .patch('/', validate('json', settingsPatchSchema), async (c) =>
+    c.json(await updateSettings(c.get('user').id, c.req.valid('json'))),
+  );
+
+export const gameRoutes = new Hono<AuthedEnv>()
+  .use(requireUser)
+  /** XP, level, streaks, freezes and this week, as the server counts them (D17). */
+  .get('/state', async (c) => c.json(await getGameState(c.get('user').id)));
+
+export const statsRoutes = new Hono<AuthedEnv>()
+  .use(requireUser)
+  /** Per day: active, XP, tasks completed, focus minutes (a year to today by default). */
+  .get('/heatmap', validate('query', heatmapQuerySchema), async (c) =>
+    c.json(await heatmap(c.get('user').id, c.req.valid('query'))),
+  );

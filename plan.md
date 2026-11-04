@@ -147,7 +147,9 @@ Rejected ideas are listed at the end of the decisions log so they aren't propose
 
 - Timer with presets (25/5, 50/10, custom); attach to a task or project (or none).
 - Pause/resume; sessions survive page reloads (state stored server-side with start timestamp).
-- On finish: optional one-line note, optional "mark task done".
+- At the planned time: chime and notification, then overtime counts until you finish; a running session finishes on its own 60 minutes past the plan (D29).
+- On finish: optional one-line note, optional "mark task done", the preset's break offered as a browser-only countdown (D29).
+- A mini timer on every page plus a full `/focus` page; Today starts one in one click on the top item (D29).
 - Browser notification + sound when a session ends (Web Push once the PWA lands, so it works with the tab closed).
 
 ### 4.5 Gamification (see §5 for rules)
@@ -221,7 +223,7 @@ All values live in one config module in `packages/shared/game` and are applied b
 
 | Activity | XP |
 |---|---|
-| Task completed — effort S / M / L | 10 / 25 / 50 |
+| Task completed — effort S / M / L (unset = S, D27) | 10 / 25 / 50 |
 | Subtask completed | 0 (the parent task carries the XP) |
 | Focus session completed (≥ 10 min) | 1 XP per minute |
 | Habit check-in | 10 |
@@ -492,18 +494,21 @@ Each phase ends with a usable app. **Phase 3 completion = MVP = start using it d
 **Acceptance:** Mention a goal inside a task description; rename the goal and the chip updates; the goal's backlinks panel lists the task; deleting the goal shows a broken chip.
 
 ### Phase 3 — Today + gamification core → **MVP**
-- [ ] `activity` table and service; all counting mutations write activity in the same transaction
-- [ ] `packages/shared/game`: XP rules with **earn-once / never-lose** (D15), level curve, active-day calc, daily streak + freezes, weekly streak — **thorough unit tests** (edge cases: day boundary, timezone change, reopen/re-complete, freeze banking)
-- [ ] Server-side user day from timezone + day-start hour; rate-limited timezone changes (D17)
-- [ ] Game events returned on every write response; UI toasts/animations (subtle)
-- [ ] Focus sessions: timer UI, presets, attach to task/project, persistence across reloads, end notification + sound
-- [ ] Today view: header (level/XP/streaks/freezes/weekly target), capped focus list, start-focus button *(focus list without habits done early in the 2026-11-04 polish pass, D24: `lib/focus.ts`)*
-- [ ] Quest engine with **type registry** (D10): weighted picks with waiting time, sizing from your own days, one reroll per quest per day, board bonus, resting types, nothing for idle projects
-- [ ] MVP quest types: quick (with daily cap), daily, time, weekly (basic), comeback, **make + follow-up with soft cap** (D16)
-- [ ] Incremental quest evaluation (only quests an activity can affect); `quest_completed` activity logged for future loot; offered/rerolled/expired logged for fit stats
-- [ ] Contribution heatmap (basic) on Stats page
-- [ ] Settings page: timezone, day-start hour, week start, active-project limit, weekly target, focus presets, quest types on/off, time-quest min/max
-- [ ] Admin "recompute" action
+
+Ships in three slices (D27): **3a** activity, XP/levels/streaks, game events, progress strip, settings, recompute *(done)* · **3b** focus sessions *(done, D29)* · **3c** quests and heatmap *(done, D30)*. No backfill: the game starts when 3a is deployed.
+
+- [x] `activity` table and service; all counting mutations write activity in the same transaction *(3a: task completions and reopens; focus and habits add theirs in 3b/Phase 4)*
+- [x] `packages/shared/game`: XP rules with **earn-once / never-lose** (D15), level curve, active-day calc, daily streak + freezes, weekly streak — **thorough unit tests** (edge cases: day boundary, timezone change, reopen/re-complete, freeze banking)
+- [x] Server-side user day from timezone + day-start hour; rate-limited timezone changes (D17)
+- [x] Game events returned on every write response; UI toasts/animations (subtle) *(D28)*
+- [x] Focus sessions: timer UI, presets, attach to task/project, persistence across reloads, end notification + sound *(3b, D29: overtime capped at plan + 60 min, browser-only breaks, mini timer + `/focus`)*
+- [x] Today view: header (level/XP/streaks/freezes/weekly target), capped focus list, start-focus button *(3a: progress strip; 3b: one-click start-focus on the top item)* *(focus list without habits done early in the 2026-11-04 polish pass, D24: `lib/focus.ts`)*
+- [x] Quest engine with **type registry** (D10): weighted picks with waiting time, sizing from your own days, one reroll per quest per day, board bonus, resting types, nothing for idle projects *(D30: pure planners in `packages/shared/quests`)*
+- [x] MVP quest types: quick (with daily cap), daily, time, weekly (basic), comeback, **make + follow-up with soft cap** (D16) *(templates listed in D30)*
+- [x] Incremental quest evaluation (only quests an activity can affect); `quest_completed` activity logged for future loot; offered/rerolled/expired logged for fit stats *(the `quest_instances` statuses are that log, D30)*
+- [x] Contribution heatmap (basic) on Stats page
+- [x] Settings page: timezone, day-start hour, week start, active-project limit, weekly target, focus presets, quest types on/off, time-quest min/max *(3a: day and week; 3b: focus presets; 3c: quests)*
+- [x] Admin "recompute" action *(`POST /api/admin/recompute`; no button yet)*
 
 **Acceptance:** A full day of real use works end-to-end: plan on Today, run focus sessions, complete tasks, see XP/level/streak update immediately and correctly, complete daily quests. A make quest spawns a follow-up for the new task. Missing a day with a banked freeze keeps the streak. **Start dogfooding.**
 
@@ -526,7 +531,9 @@ Each phase ends with a usable app. **Phase 3 completion = MVP = start using it d
 - [ ] Collectible catalogue format + initial catalogue (~40–60 items across categories and all rarities) with placeholder art (CC0 pack, license checked for commercial use)
 - [ ] `loot_boxes` + `inventory_items` tables; box granted on quest completion with tier by type
 - [ ] Loot rolling server-side: tiered odds, pity timer — unit-tested with seeded RNG (distribution + pity guarantees); crypto RNG in production
-- [ ] Retroactive grant: one box per previously completed quest
+- [ ] Retroactive grant: one box per previously completed quest *(optional since D30: the user isn't relying on boxes accruing before this phase)*
+- [ ] Make-quest boxes per D16: granted when the follow-up is done or expires with the item still existing
+- [ ] **Rework the loot box visual:** the quest-complete screen shows a placeholder wrapped box since 3c (D30, `LootBoxPlaceholder` in `game-moments.tsx`); replace it with the real box art per tier and the "Open your box" button
 - [ ] Opening UI: reveal animation by rarity, skip, open-all; unopened badge in the app shell
 - [ ] Collection/album view: owned vs. silhouettes, completion % by category/set
 

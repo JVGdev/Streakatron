@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
+import { Route as AppFocusRouteImport } from './routes/_app/focus'
 import { Route as AppInboxRouteImport } from './routes/_app/inbox'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppStatsRouteImport } from './routes/_app/stats'
@@ -38,6 +39,11 @@ const SignInRoute = SignInRouteImport.update({
 const AppCalendarRoute = AppCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFocusRoute = AppFocusRouteImport.update({
+  id: '/focus',
+  path: '/focus',
   getParentRoute: () => AppRoute,
 } as any)
 const AppInboxRoute = AppInboxRouteImport.update({
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
   '/calendar': typeof AppCalendarRoute
+  '/focus': typeof AppFocusRoute
   '/inbox': typeof AppInboxRoute
   '/settings': typeof AppSettingsRoute
   '/stats': typeof AppStatsRoute
@@ -92,6 +99,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sign-in': typeof SignInRoute
   '/calendar': typeof AppCalendarRoute
+  '/focus': typeof AppFocusRoute
   '/inbox': typeof AppInboxRoute
   '/settings': typeof AppSettingsRoute
   '/stats': typeof AppStatsRoute
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/_app/calendar': typeof AppCalendarRoute
+  '/_app/focus': typeof AppFocusRoute
   '/_app/inbox': typeof AppInboxRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/stats': typeof AppStatsRoute
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
     | '/'
     | '/sign-in'
     | '/calendar'
+    | '/focus'
     | '/inbox'
     | '/settings'
     | '/stats'
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
     | '/'
     | '/sign-in'
     | '/calendar'
+    | '/focus'
     | '/inbox'
     | '/settings'
     | '/stats'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/sign-in'
     | '/_app/calendar'
+    | '/_app/focus'
     | '/_app/inbox'
     | '/_app/settings'
     | '/_app/stats'
@@ -188,6 +200,13 @@ declare module '@tanstack/react-router' {
       path: '/calendar'
       fullPath: '/calendar'
       preLoaderRoute: typeof AppCalendarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/focus': {
+      id: '/_app/focus'
+      path: '/focus'
+      fullPath: '/focus'
+      preLoaderRoute: typeof AppFocusRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/inbox': {
@@ -244,6 +263,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppCalendarRoute: typeof AppCalendarRoute
+  AppFocusRoute: typeof AppFocusRoute
   AppInboxRoute: typeof AppInboxRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppStatsRoute: typeof AppStatsRoute
@@ -255,6 +275,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppCalendarRoute: AppCalendarRoute,
+  AppFocusRoute: AppFocusRoute,
   AppInboxRoute: AppInboxRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppStatsRoute: AppStatsRoute,

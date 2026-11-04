@@ -5,7 +5,7 @@ import type { RichDoc } from '@streakatron/shared/rich';
 import { EFFORTS, type Effort } from '@streakatron/shared/structure';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Check, Pin, PinOff, RotateCcw, Trash2 } from 'lucide-react';
+import { Check, Pin, PinOff, RotateCcw, Timer, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
+import { useQuickFocus } from '@/hooks/use-focus';
 import { useOpenTask } from '@/hooks/use-open-task';
 import { useStructureActions, useTaskActions } from '@/lib/actions';
 import { ApiError } from '@/lib/api';
@@ -88,6 +89,7 @@ const NONE = 'none';
 
 function TaskEditor({ task }: { task: TaskDetail }) {
   const tasks = useTaskActions();
+  const quickFocus = useQuickFocus();
   const structure = useStructureActions();
   const openTask = useOpenTask();
   const { data: me } = useQuery(meQuery);
@@ -272,10 +274,23 @@ function TaskEditor({ task }: { task: TaskDetail }) {
             Reopen
           </Button>
         ) : (
-          <Button size="sm" onClick={() => void tasks.toggle(task)}>
-            <Check />
-            Complete
-          </Button>
+          <>
+            <Button size="sm" onClick={() => void tasks.toggle(task)}>
+              <Check />
+              Complete
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                await save.flush();
+                await quickFocus({ taskId: task.id });
+              }}
+            >
+              <Timer />
+              Focus
+            </Button>
+          </>
         )}
         {canPin && (
           <Button
