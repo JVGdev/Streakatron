@@ -3,7 +3,7 @@
 ## Status
 
 - **Current phase:** Phases 0–3 done → **Phase 3 is the MVP**, committed and merged (`phase-3-mvp`) and deployed to the Docker app on 2026-11-04. Next: Phase 4 (habits, calendar, countdowns, weekly review, reminders) once the user has tried the MVP.
-- **Code:** monorepo with server, web and shared packages; 280 tests passing. **Repository:** https://github.com/JVGdev/streaktron (private, `main`).
+- **Code:** monorepo with server, web and shared packages; 280 tests passing. **Repository:** https://github.com/JVGdev/Streakatron (private, `main`).
 - **Running over Tailscale:** the Docker app is served at `https://hills.tail99ef4d.ts.net:8443` (port 8443, because the root of that address serves Quire on :8788; never replace it). Verified from the laptop over HTTPS (page, sign-in with a Secure cookie, `/me`); not yet opened from the phone.
 - **Open questions:** deferred by the user (plan.md §13). D19–D24, D28, and D29's and D30's details are Claude's choices to confirm when convenient.
 - **The Docker app on :8443 runs Phase 3 (the MVP)** since 2026-11-04: migrations `0003_links` through `0007_quests` applied to the real database (new tables, generated search columns; no data changes). A dump from just before is kept as `data/backups/streakatron-pre-phase3-20261104-1804.dump` (the backup job never prunes it). The game starts from this deploy (D27).

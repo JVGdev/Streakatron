@@ -6,7 +6,7 @@ Streakatron is a web app that helps people stay consistent with studies and pers
 
 - **Phase:** Phases 0–2 done 2026-11-03. **Phase 3 (MVP) done 2026-11-04 in three slices (D27): 3a activity log, XP, levels, streaks; 3b focus sessions (D29); 3c quests and heatmap (D30). Next: Phase 4, after the user tries the MVP.**
 - **Run it:** `pnpm db:up && pnpm dev` (README has setup, scripts, Tailscale and backups).
-- **Repository:** https://github.com/JVGdev/streaktron (private), branch `main`.
+- **Repository:** https://github.com/JVGdev/Streakatron (private), branch `main`.
 - Detailed status and session history: `.claude/context/progress.md`.
 
 ## Where things live

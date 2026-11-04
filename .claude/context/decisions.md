@@ -147,7 +147,7 @@ The canonical record of what was decided, why, and what was considered instead. 
 
 ### D26 · The app is called Streakatron, internals included (2026-11-04, the user)
 - **Decision:** The name changes from Streaktron to **Streakatron** everywhere: the UI (logo, page title, sign-in), the auth app name, the server log and the docs, and the internals: `@streakatron/*` packages, the root package, the `streakatron` database, role and password, the `streakatron_test` database, the `streakatron-db` and `streakatron-app` containers, `streakatron-YYYY-MM-DD.dump` backups and the dev seed account (`dev@streakatron.local`). `docker-compose.yml` pins the project name (`name: streakatron`), so the volume is `streakatron_pgdata` wherever the repository is checked out.
-- **Not renamed (yet):** the GitHub repository (`JVGdev/streaktron`) and the local folder.
+- **Renamed later the same day (the user):** the GitHub repository is now `JVGdev/Streakatron` (the old URL redirects); the local folder is `Streakatron`.
 - **Why:** The user's choice of name; they asked for the internals too ("it will be better going forward"), so no old name lingers in code.
 
 ### D27 · Phase 3 in three slices; the game starts fresh; unset effort earns like S (2026-11-04, the user)
