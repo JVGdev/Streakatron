@@ -1,10 +1,10 @@
-import { idOf } from '@streaktron/shared/schemas';
+import { idOf } from '@streakatron/shared/schemas';
 import {
   areaCreateSchema,
   areaDeleteQuerySchema,
   areaPatchSchema,
   reorderSchema,
-} from '@streaktron/shared/schemas';
+} from '@streakatron/shared/schemas';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { requireUser, type AuthedEnv } from '../http/session';

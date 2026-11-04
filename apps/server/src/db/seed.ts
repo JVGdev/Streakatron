@@ -6,8 +6,8 @@ import { runMigrations } from './migrate';
 import { createOwner } from '../services/setup';
 import { hasAnyUser } from '../services/users';
 
-const email = process.env.SEED_EMAIL ?? 'dev@streaktron.local';
-const password = process.env.SEED_PASSWORD ?? 'streaktron-dev';
+const email = process.env.SEED_EMAIL ?? 'dev@streakatron.local';
+const password = process.env.SEED_PASSWORD ?? 'streakatron-dev';
 
 await runMigrations();
 if (await hasAnyUser()) {

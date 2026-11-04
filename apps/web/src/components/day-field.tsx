@@ -2,7 +2,7 @@
 // opening quick picks and a calendar. Replaces native date inputs, whose look and language follow
 // the browser's locale instead of the app's English UI (D7).
 
-import { addDays, startOfWeek } from '@streaktron/shared/time';
+import { addDays, startOfWeek } from '@streakatron/shared/time';
 import { useQuery } from '@tanstack/react-query';
 import { CalendarDays, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useState } from 'react';

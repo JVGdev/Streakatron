@@ -1,4 +1,4 @@
-# Streaktron — Development Plan
+# Streakatron — Development Plan
 
 > A web app that builds consistency for studies and personal projects with light gamification (quests, streaks, XP) and a cosmetic reward layer (loot boxes, collectibles, a bedroom) on top of real project management (areas, projects, goals, tasks, Kanban, calendar). Built for one user first, designed to become a product.
 
@@ -69,6 +69,7 @@ The full decisions log, with rationale, alternatives and status, lives in **`.cl
 | D23 | Search: full-text with prefixes, typo-tolerant titles |
 | D24 | UI polish rules: one page width, no desktop top bar, unbuilt pages hidden, day picker, completion pop |
 | D25 | Visual identity: B's structure, C's colors, A's icons and quest-complete screen, rounded type (Fredoka + Nunito); applied to the app (rarity colors open) |
+| D26 | The app is called Streakatron, internals included (packages, database, containers, backups) |
 
 Rejected ideas are listed at the end of the decisions log so they aren't proposed again.
 
@@ -350,7 +351,7 @@ Svelte 5 would be a perfectly good web framework; the deciding factors are Postg
 ### Repository layout
 
 ```
-streaktron/
+streakatron/
 ├── apps/
 │   ├── web/                # React + Vite SPA
 │   │   └── src/
@@ -591,11 +592,11 @@ Each phase ends with a usable app. **Phase 3 completion = MVP = start using it d
 
 ## 11. Lessons and reuse from Quire
 
-Quire (`~/Documentos/quire`) is the user's earlier project: a worldbuilding and writing app with XP, levels, streaks, daily quests, mentions, search, backups and Google Calendar sync, plus several review documents of what went wrong. Not integrated with Streaktron (rejected, §2), but its code and lessons are reused.
+Quire (`~/Documentos/quire`) is the user's earlier project: a worldbuilding and writing app with XP, levels, streaks, daily quests, mentions, search, backups and Google Calendar sync, plus several review documents of what went wrong. Not integrated with Streakatron (rejected, §2), but its code and lessons are reused.
 
 ### Code worth porting (framework-agnostic TypeScript)
 
-| Quire | Streaktron use |
+| Quire | Streakatron use |
 |---|---|
 | `shared/quests.ts`: `questWeight`, `pickWeighted`, `questWords` (median-based sizing), reroll and bonus flow | Quest engine selection and sizing (§5) |
 | `server/activity.ts`: "marks" (count only growth past the highest value reached), `quietly()` for imports, game events on responses | Earn-once rule (D15), imports that don't count as work, immediate feedback |

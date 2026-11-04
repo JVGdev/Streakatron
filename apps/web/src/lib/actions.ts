@@ -14,14 +14,14 @@ import type {
   ProjectPatch,
   TaskCreate,
   TaskPatch,
-} from '@streaktron/shared/schemas';
+} from '@streakatron/shared/schemas';
 import {
   firstColumnOf,
   firstOpenColumn,
   placeAt,
   type ColumnCategory,
   type ProjectStatus,
-} from '@streaktron/shared/structure';
+} from '@streakatron/shared/structure';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { toast } from 'sonner';

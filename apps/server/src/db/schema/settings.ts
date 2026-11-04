@@ -1,4 +1,4 @@
-import { DEFAULT_USER_SETTINGS, type UserSettings } from '@streaktron/shared/schemas';
+import { DEFAULT_USER_SETTINGS, type UserSettings } from '@streakatron/shared/schemas';
 import { sql } from 'drizzle-orm';
 import { check, jsonb, pgTable, smallint, text, timestamp } from 'drizzle-orm/pg-core';
 import { users } from './auth';

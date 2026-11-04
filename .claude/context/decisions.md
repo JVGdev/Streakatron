@@ -145,11 +145,16 @@ The canonical record of what was decided, why, and what was considered instead. 
 - **Still open:** loot rarity colors (C's palette has a single accent) and sound.
 - **Why:** The user found the app too much like an office tool; Duolingo is their reference for a good feel, but they preferred C's calmer colors.
 
+### D26 · The app is called Streakatron, internals included (2026-11-04, the user)
+- **Decision:** The name changes from Streaktron to **Streakatron** everywhere: the UI (logo, page title, sign-in), the auth app name, the server log and the docs, and the internals: `@streakatron/*` packages, the root package, the `streakatron` database, role and password, the `streakatron_test` database, the `streakatron-db` and `streakatron-app` containers, `streakatron-YYYY-MM-DD.dump` backups and the dev seed account (`dev@streakatron.local`). `docker-compose.yml` pins the project name (`name: streakatron`), so the volume is `streakatron_pgdata` wherever the repository is checked out.
+- **Not renamed (yet):** the GitHub repository (`JVGdev/streaktron`) and the local folder.
+- **Why:** The user's choice of name; they asked for the internals too ("it will be better going forward"), so no old name lingers in code.
+
 ---
 
 ## Rejected ideas (don't propose again)
 
-- **Quire integration** (Quire writing days counting as Streaktron activity) — rejected by the user, 2026-11-03.
+- **Quire integration** (Quire writing days counting as Streakatron activity) — rejected by the user, 2026-11-03.
 - **Familiar / pet companion** that grows with level and reacts (from Quire) — rejected by the user, 2026-11-03.
 - **All data in Firestore** — rejected by Claude's analysis (breaks the relational model); superseded anyway by D14.
 

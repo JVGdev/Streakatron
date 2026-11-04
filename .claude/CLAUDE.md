@@ -1,6 +1,6 @@
-# Streaktron — project memory
+# Streakatron — project memory
 
-Streaktron is a web app that helps people stay consistent with studies and personal projects. It combines real project management (areas → projects → goals → tasks, Kanban, list, calendar, countdowns, `@` mentions with backlinks) with light gamification (XP, levels, forgiving streaks, typed quests) and a cosmetic reward layer (loot boxes, collectibles, a customizable bedroom with a wardrobe of medals). Friend streaks come later. The first user is the author (a CS student), but it is **designed to potentially become a product**.
+Streakatron is a web app that helps people stay consistent with studies and personal projects. It combines real project management (areas → projects → goals → tasks, Kanban, list, calendar, countdowns, `@` mentions with backlinks) with light gamification (XP, levels, forgiving streaks, typed quests) and a cosmetic reward layer (loot boxes, collectibles, a customizable bedroom with a wardrobe of medals). Friend streaks come later. The first user is the author (a CS student), but it is **designed to potentially become a product**.
 
 ## Current status
 

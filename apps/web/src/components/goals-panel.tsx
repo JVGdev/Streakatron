@@ -2,7 +2,7 @@
 // week or month). Commitment progress needs focus sessions (Phase 3); until then it shows the
 // target only.
 
-import type { GoalKind, GoalPeriod, GoalStatus } from '@streaktron/shared/structure';
+import type { GoalKind, GoalPeriod, GoalStatus } from '@streakatron/shared/structure';
 import {
   Check,
   CircleOff,
