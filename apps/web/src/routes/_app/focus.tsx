@@ -7,7 +7,7 @@ import { GAME } from '@streakatron/shared/game';
 import type { FocusPreset } from '@streakatron/shared/schemas';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { Check, Coffee, Flag, Pause, Play, SkipForward } from 'lucide-react';
+import { Check, Coffee, Eye, EyeOff, Flag, Pause, Play, SkipForward } from 'lucide-react';
 import { useState } from 'react';
 import { z } from 'zod';
 import { AttachPicker, FocusRing, MinutesField, type Attachment } from '@/components/focus-timer';
@@ -24,8 +24,10 @@ import {
   markSeen,
   seenSession,
   serverNow,
+  setTimeShown,
   startBreak,
   useFocusMemory,
+  useTimeShown,
 } from '@/lib/focus-timer';
 import { focusQuery, meQuery, taskQuery, type FocusSession, type FocusState } from '@/lib/queries';
 import { cn } from '@/lib/utils';
@@ -100,6 +102,7 @@ function Running({ session }: { session: FocusSession }) {
   const openSheet = useOpenSheet();
   const [confirmAbandon, setConfirmAbandon] = useState(false);
   const [busy, setBusy] = useState(false);
+  const shown = useTimeShown(session.id);
   if (!clock) return null;
   const paused = session.status === 'paused';
   const minutes = Math.floor(clock.focusedMs / 60_000);
@@ -127,28 +130,50 @@ function Running({ session }: { session: FocusSession }) {
       </span>
 
       <FocusRing
-        progress={clock.progress}
-        tone={paused ? 'paused' : clock.phase}
+        progress={shown ? clock.progress : 1}
+        tone={paused ? 'paused' : shown ? clock.phase : 'calm'}
         size={272}
         className="max-w-full"
       >
-        <div className="text-center">
-          <div
-            className={cn(
-              'font-display text-6xl font-semibold tracking-tight tabular-nums',
-              paused && 'text-muted-foreground',
-            )}
-            role="timer"
-            aria-live="off"
-          >
-            {clockText(clock)}
-          </div>
-          <div className="mt-1 text-sm font-bold text-muted-foreground">
-            {clock.phase === 'overtime'
-              ? `${session.plannedMinutes} min done`
-              : `of ${session.plannedMinutes} min`}
-          </div>
-        </div>
+        {/* Hidden by default for each new session (D41); a click on the ring shows or hides it. */}
+        <button
+          className="grid size-52 place-content-center rounded-full text-center outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          aria-label={shown ? 'Hide the time' : 'Show the time'}
+          aria-pressed={shown}
+          onClick={() => setTimeShown(session.id, !shown)}
+        >
+          {shown ? (
+            <>
+              <span
+                className={cn(
+                  'font-display text-6xl font-semibold tracking-tight tabular-nums',
+                  paused && 'text-muted-foreground',
+                )}
+                role="timer"
+                aria-live="off"
+              >
+                {clockText(clock)}
+              </span>
+              <span className="mt-1 text-sm font-bold text-muted-foreground">
+                {clock.phase === 'overtime'
+                  ? `${session.plannedMinutes} min done`
+                  : `of ${session.plannedMinutes} min`}
+              </span>
+              <span className="mt-3 inline-flex items-center justify-center gap-1 text-xs font-bold text-muted-foreground">
+                <EyeOff className="size-3.5" aria-hidden />
+                Hide
+              </span>
+            </>
+          ) : (
+            <>
+              <Eye className="mx-auto size-7 text-muted-foreground" aria-hidden />
+              <span className="mt-2 text-base font-bold">Show time</span>
+              <span className="mt-1 text-sm font-bold text-muted-foreground">
+                {session.plannedMinutes} min planned
+              </span>
+            </>
+          )}
+        </button>
       </FocusRing>
 
       {(session.task || session.project || session.commitment) && (
@@ -208,11 +233,13 @@ function Running({ session }: { session: FocusSession }) {
       </div>
 
       <p className="max-w-sm text-center text-sm text-muted-foreground">
-        {!focusCounts(minutes)
-          ? `Sessions count from ${GAME.focus.minMinutes} minutes, 1 XP each.`
-          : clock.phase === 'overtime' && capAt
-            ? `Overtime counts. The session finishes on its own at ${capAt.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' })}.`
-            : `${minutes} min so far: ${minutes} XP when you finish.`}
+        {!shown && clock.phase !== 'overtime'
+          ? 'A chime tells you when the time’s up.'
+          : !focusCounts(minutes)
+            ? `Sessions count from ${GAME.focus.minMinutes} minutes, 1 XP each.`
+            : clock.phase === 'overtime' && capAt
+              ? `Overtime counts. The session finishes on its own at ${capAt.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' })}.`
+              : `${minutes} min so far: ${minutes} XP when you finish.`}
       </p>
 
       <div className="text-sm">
