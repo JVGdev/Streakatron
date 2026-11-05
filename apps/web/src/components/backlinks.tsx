@@ -8,7 +8,7 @@ import { backlinksQuery, KIND_PLURAL, type Backlink } from '@/lib/entities';
 import { cn } from '@/lib/utils';
 import { RefIcon } from './entity-icon';
 
-const ORDER: LinkableKind[] = ['task', 'goal', 'commitment', 'project', 'area'];
+const ORDER: LinkableKind[] = ['task', 'goal', 'commitment', 'event', 'project', 'area'];
 
 export function Backlinks({ id, className }: { id: string; className?: string }) {
   const { data: links, isPending } = useQuery(backlinksQuery(id));

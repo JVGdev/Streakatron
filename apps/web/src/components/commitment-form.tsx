@@ -290,17 +290,21 @@ export function Choice<T extends string>({
   options,
   value,
   onChange,
+  hideLabel,
 }: {
   label: string;
   options: { value: T; label: string }[];
   value: T;
   onChange: (value: T) => void;
+  /** Where a row label already says it (sheets). */
+  hideLabel?: boolean;
 }): ReactNode {
   return (
     <div className="grid gap-1.5">
-      <span className="text-sm font-medium">{label}</span>
+      {!hideLabel && <span className="text-sm font-medium">{label}</span>}
       <div
-        className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1"
+        className="grid gap-1 rounded-lg bg-muted p-1"
+        style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
         role="radiogroup"
         aria-label={label}
       >

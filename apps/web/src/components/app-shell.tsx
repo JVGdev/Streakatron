@@ -26,6 +26,8 @@ import { CommitmentDialog } from '@/components/commitment-form';
 import { SpotlightFullDialog } from '@/components/spotlight';
 import { PushPromptDialog } from '@/components/push-prompt';
 import { CommitmentSheet } from '@/components/commitment-sheet';
+import { EventDialog } from '@/components/event-form';
+import { EventSheet } from '@/components/event-sheet';
 import { GoalSheet } from '@/components/goal-sheet';
 import { TaskSheet } from '@/components/task-sheet';
 import { Button } from '@/components/ui/button';
@@ -58,7 +60,7 @@ export function AppShell({
 }: {
   me: Me;
   /** Which detail sheet is open (search params). */
-  sheets: { task?: string; goal?: string; area?: string; commitment?: string };
+  sheets: { task?: string; goal?: string; area?: string; commitment?: string; event?: string };
   children: ReactNode;
 }) {
   const { data: inbox } = useQuery(tasksQuery({ project: 'inbox', status: 'open' }));
@@ -174,6 +176,8 @@ export function AppShell({
       <AreaSheet areaId={sheets.area} />
       <CommitmentSheet commitmentId={sheets.commitment} />
       <CommitmentDialog />
+      <EventSheet eventId={sheets.event} />
+      <EventDialog />
       <CommandPalette />
       <StructureDialogs />
       <SpotlightFullDialog />
@@ -354,6 +358,15 @@ function UserMenu({ me, wide }: { me: Me; wide?: boolean }) {
           <div className="truncate text-xs text-muted-foreground">{me.user.email}</div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {/* Phones: the pages that don't fit the bottom bar. */}
+        {!wide &&
+          NAV.filter((n) => !n.phone && !n.later).map(({ to, label, icon: Icon }) => (
+            <DropdownMenuItem key={to} onSelect={() => void navigate({ to })}>
+              <Icon />
+              {label}
+            </DropdownMenuItem>
+          ))}
+        {!wide && <DropdownMenuSeparator />}
         <DropdownMenuItem onSelect={() => void navigate({ to: '/settings' })}>
           <Settings />
           Settings

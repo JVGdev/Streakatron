@@ -10,6 +10,8 @@ import type {
   AreaPatch,
   CommitmentCreate,
   CommitmentPatch,
+  EventCreate,
+  EventPatch,
   FocusStart,
   GoalCreate,
   GoalPatch,
@@ -35,6 +37,7 @@ import { syncPush } from './push';
 import type {
   Area,
   BoardColumn,
+  CalendarEvent,
   Commitment,
   CommitmentDetail,
   FocusSession,
@@ -486,6 +489,69 @@ function settleCommitment(qc: QueryClient, detail?: CommitmentDetail) {
   refreshEntities(qc);
 }
 
+// --- Calendar events (D39) -------------------------------------------------------------------
+
+/** After any event write: the calendar, project dates, spotlight and chips read again. */
+function settleEvent(qc: QueryClient, event?: CalendarEvent) {
+  if (event) qc.setQueryData(['event', event.id], event);
+  void qc.invalidateQueries({ queryKey: ['calendar'] });
+  void qc.invalidateQueries({ queryKey: ['events'] });
+  void qc.invalidateQueries({ queryKey: ['spotlight'] });
+  refreshEntities(qc);
+}
+
+export function eventActions(qc: QueryClient) {
+  return {
+    create: (input: EventCreate) =>
+      attempt(async () => {
+        const event = await call(api.events.$post({ json: input }));
+        settleEvent(qc, event);
+        return event;
+      }),
+
+    update: (event: { id: string }, patch: EventPatch) =>
+      attempt(async () => {
+        const updated = await call(
+          api.events[':id'].$patch({ param: { id: event.id }, json: patch }),
+        );
+        settleEvent(qc, updated);
+        return updated;
+      }),
+
+    /** Autosave's sender for an event's title and description: throws. */
+    save: async (event: { id: string }, patch: EventPatch) => {
+      const updated = await call(
+        api.events[':id'].$patch({ param: { id: event.id }, json: patch }),
+      );
+      settleEvent(qc, updated);
+      return updated;
+    },
+
+    remove: (event: { id: string; title: string }) =>
+      attempt(async () => {
+        await call(api.events[':id'].$delete({ param: { id: event.id } }));
+        settleEvent(qc);
+        toast(`Deleted event “${event.title}”`, {
+          action: {
+            label: 'Undo',
+            onClick: () =>
+              void attempt(async () => {
+                settleEvent(
+                  qc,
+                  await call(api.events[':id'].restore.$post({ param: { id: event.id } })),
+                );
+              }),
+          },
+        });
+      }),
+  };
+}
+
+export function useEventActions() {
+  const qc = useQueryClient();
+  return useMemo(() => eventActions(qc), [qc]);
+}
+
 // --- Spotlight (D33) -------------------------------------------------------------------------
 
 /**
@@ -498,6 +564,7 @@ export function spotlightActions(qc: QueryClient) {
     void qc.invalidateQueries({ queryKey: ['tasks'] });
     void qc.invalidateQueries({ queryKey: ['project'] });
     void qc.invalidateQueries({ queryKey: ['goal'] });
+    void qc.invalidateQueries({ queryKey: ['event'] });
   };
   return {
     set: async (item: { id: string; title: string }, on: boolean, replace?: string) => {
@@ -509,7 +576,7 @@ export function spotlightActions(qc: QueryClient) {
       } catch (err) {
         if (err instanceof ApiError && err.code === 'spotlight_full') {
           const { items } = err.details as {
-            items: { id: string; kind: 'task' | 'goal'; title: string }[];
+            items: { id: string; kind: 'task' | 'goal' | 'event'; title: string }[];
           };
           setUi({ spotlightFull: { add: item, items } });
         } else {

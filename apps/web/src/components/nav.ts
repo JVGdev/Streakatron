@@ -34,7 +34,7 @@ export const NAV: NavItem[] = [
   { to: '/inbox', label: 'Inbox', icon: Inbox, phone: true },
   { to: '/projects', label: 'Projects', icon: FolderKanban, phone: true },
   { to: '/commitments', label: 'Commitments', icon: Repeat, phone: true },
-  { to: '/tasks', label: 'Tasks', icon: ListTodo, phone: true },
-  { to: '/calendar', label: 'Calendar', icon: CalendarDays, phone: true, later: true },
+  { to: '/calendar', label: 'Calendar', icon: CalendarDays, phone: true },
+  { to: '/tasks', label: 'Tasks', icon: ListTodo, phone: false },
   { to: '/stats', label: 'Stats', icon: BarChart3, phone: false },
 ];

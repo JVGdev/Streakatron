@@ -32,6 +32,16 @@ import {
   reminderProblem,
   type CommitmentReminder,
 } from '../reminders';
+import {
+  DATE_PRECISIONS,
+  EVENT_LIMITS,
+  EVENT_REMINDER_MAX,
+  REPEAT_LIMITS,
+  REPEAT_UNITS,
+  repeatProblem,
+  type DatePrecision,
+  type Repeat,
+} from '../calendar';
 
 export const dateString = z.string().refine(isDateString, 'Expected a YYYY-MM-DD day');
 
@@ -250,9 +260,9 @@ export const columnDeleteQuerySchema = z.object({
 
 /** Feature a task or goal on Today (D33), or take it off; `replace` makes room when it's full. */
 export const spotlightSchema = z.object({
-  id: z.union([idOf('task'), idOf('goal')]),
+  id: z.union([idOf('task'), idOf('goal'), idOf('event')]),
   on: z.boolean(),
-  replace: z.union([idOf('task'), idOf('goal')]).optional(),
+  replace: z.union([idOf('task'), idOf('goal'), idOf('event')]).optional(),
 });
 export type SpotlightInput = z.infer<typeof spotlightSchema>;
 
@@ -265,6 +275,8 @@ const goalFields = {
   period: z.enum(GOAL_PERIODS).nullable(),
   /** Outcome goals: an optional deadline. */
   dueDate: optionalDay,
+  /** A deadline can be a month ("~July 2027", stored as its first day) until it's known (D32). */
+  duePrecision: z.enum(['day', 'month']),
 };
 
 /** A time goal needs a target and a period; an outcome goal has neither. */
@@ -285,6 +297,7 @@ export const goalCreateSchema = z
     targetMinutes: goalFields.targetMinutes.optional().default(null),
     period: goalFields.period.optional().default(null),
     dueDate: optionalDay.optional(),
+    duePrecision: goalFields.duePrecision.optional(),
   })
   .superRefine((g, ctx) => {
     const problem = goalShapeProblem(g);
@@ -491,3 +504,85 @@ export const heatmapQuerySchema = z
     'At most 400 days at a time',
   );
 export type HeatmapQuery = z.infer<typeof heatmapQuerySchema>;
+
+// --- Calendar events (D39) -------------------------------------------------------------------
+
+export const repeatSchema = z.object({
+  every: z.enum(REPEAT_UNITS),
+  interval: z.int().min(REPEAT_LIMITS.interval.min).max(REPEAT_LIMITS.interval.max),
+  weekdays: z.array(z.int().min(0).max(6)).max(7).optional(),
+  until: optionalDay.optional(),
+});
+
+/** What's wrong with an event's dates, time, repeat and reminder together, or null. */
+export function eventShapeProblem(e: {
+  date: string | null;
+  precision: DatePrecision;
+  startTime: string | null;
+  durationMinutes: number | null;
+  repeat: Repeat | null;
+  reminderMinutes: number | null;
+}): string | null {
+  if (e.precision === 'tbd') {
+    if (e.date) return 'A date to be decided has no day yet.';
+  } else if (!e.date) return 'Pick a day.';
+  if (e.precision !== 'day' && (e.startTime || e.repeat || e.reminderMinutes !== null)) {
+    return 'Times, repeats and reminders need a day.';
+  }
+  if (e.durationMinutes !== null && !e.startTime) return 'A length needs a start time.';
+  if (e.repeat && e.date) return repeatProblem(e.repeat, e.date);
+  return null;
+}
+
+const eventFields = {
+  title,
+  description,
+  /** null: no project. */
+  projectId: idOf('project').nullable(),
+  /** The day (or the month's first day, for a month); null when it's to be decided. */
+  date: optionalDay,
+  precision: z.enum(DATE_PRECISIONS),
+  /** null: all day. */
+  startTime: clockTime.nullable(),
+  durationMinutes: z
+    .int()
+    .min(EVENT_LIMITS.durationMinutes.min)
+    .max(EVENT_LIMITS.durationMinutes.max)
+    .nullable(),
+  repeat: repeatSchema.nullable(),
+  /** Minutes before the start (all-day events: before 09:00 that day); null: none. */
+  reminderMinutes: z.int().min(0).max(EVENT_REMINDER_MAX).nullable(),
+};
+
+export const eventCreateSchema = z
+  .object({
+    ...eventFields,
+    description: description.optional(),
+    projectId: eventFields.projectId.optional().default(null),
+    precision: eventFields.precision.default('day'),
+    date: optionalDay.default(null),
+    startTime: eventFields.startTime.default(null),
+    durationMinutes: eventFields.durationMinutes.default(null),
+    repeat: eventFields.repeat.default(null),
+    reminderMinutes: eventFields.reminderMinutes.default(null),
+  })
+  .superRefine((e, ctx) => {
+    const problem = eventShapeProblem(e as Parameters<typeof eventShapeProblem>[0]);
+    if (problem) ctx.addIssue({ code: 'custom', path: ['date'], message: problem });
+  });
+export type EventCreate = z.input<typeof eventCreateSchema>;
+
+export const eventPatchSchema = z.object(eventFields).partial();
+export type EventPatch = z.infer<typeof eventPatchSchema>;
+
+export const eventListQuerySchema = z.object({ project: idOf('project') });
+
+/** The calendar between two days (both included), at most a few months. */
+export const calendarQuerySchema = z
+  .object({ from: dateString, to: dateString })
+  .refine((q) => q.from <= q.to, 'from comes before to')
+  .refine(
+    (q) => (Date.parse(q.to) - Date.parse(q.from)) / 86_400_000 <= 100,
+    'At most 100 days at a time',
+  );
+export type CalendarQuery = z.infer<typeof calendarQuerySchema>;

@@ -16,7 +16,7 @@ import { useOpenSheet } from '@/hooks/use-open-task';
 import { useStructureActions } from '@/lib/actions';
 import { ApiError } from '@/lib/api';
 import { useAutosave } from '@/lib/autosave';
-import { countdown, formatDayShort, formatMinutes } from '@/lib/days';
+import { formatDayShort, formatMinutes, goalDue } from '@/lib/days';
 import { onRowsKeyDown } from '@/lib/rows';
 import { goalQuery, meQuery, projectsQuery, tasksQuery, type Goal } from '@/lib/queries';
 import { cn } from '@/lib/utils';
@@ -75,6 +75,7 @@ function GoalEditor({ goal }: { goal: Goal }) {
   const project = projects.find((p) => p.id === goal.projectId);
   const tasks = projectTasks.filter((t) => t.goalId === goal.id);
   const done = tasks.filter((t) => t.completedAt).length;
+  const due = goalDue(goal, today);
 
   const [title, setTitle] = useState(goal.title);
   const [description, setDescription] = useState<RichDoc | null>(goal.description);
@@ -185,10 +186,12 @@ function GoalEditor({ goal }: { goal: Goal }) {
           <dt className="text-muted-foreground">
             {goal.kind === 'outcome' ? 'Deadline' : 'Until'}
           </dt>
-          <dd className={cn(goal.dueDate && goal.dueDate < today && 'text-destructive')}>
-            {goal.dueDate
-              ? `${formatDayShort(goal.dueDate, today)} · ${countdown(goal.dueDate, today)}`
-              : '—'}
+          <dd className={cn(due?.late && 'text-destructive')}>
+            {!goal.dueDate || !due
+              ? '—'
+              : goal.duePrecision === 'month'
+                ? due.text
+                : `${formatDayShort(goal.dueDate, today)} · ${due.text}`}
           </dd>
         </dl>
 

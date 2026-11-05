@@ -4,6 +4,7 @@
 
 import type { GoalCreate, GoalPatch } from '@streakatron/shared/schemas';
 import { goalShapeProblem } from '@streakatron/shared/schemas';
+import { monthStart } from '@streakatron/shared/calendar';
 import { newId } from '@streakatron/shared/ids';
 import { goalPeriodRange, timeGoalProgress } from '@streakatron/shared/structure';
 import { userDay } from '@streakatron/shared/time';
@@ -16,6 +17,10 @@ import { writeLinks } from './links';
 import { ownedProject } from './projects';
 
 type GoalRow = typeof goals.$inferSelect;
+
+/** A month deadline is stored as the month's first day (D39). */
+const dueOf = (dueDate: string | null, precision: 'day' | 'month') =>
+  dueDate && precision === 'month' ? monthStart(dueDate) : dueDate;
 
 /** Goals as the API returns them: the row, and a time goal's progress this period. */
 export async function goalViews(conn: Conn, userId: string, rows: GoalRow[]) {
@@ -86,7 +91,8 @@ export async function createGoal(userId: string, input: GoalCreate) {
         kind: input.kind,
         targetMinutes: outcome ? null : (input.targetMinutes ?? null),
         period: outcome ? null : (input.period ?? null),
-        dueDate: input.dueDate ?? null,
+        dueDate: dueOf(input.dueDate ?? null, input.duePrecision ?? 'day'),
+        duePrecision: input.duePrecision ?? 'day',
         sortOrder: await edgeOrder(
           tx,
           goals,
@@ -121,6 +127,7 @@ export async function updateGoal(userId: string, id: string, patch: GoalPatch) {
         ...defined(rest),
         targetMinutes: next.targetMinutes,
         period: next.period,
+        dueDate: dueOf(next.dueDate, next.duePrecision),
         ...richColumns(description),
       })
       .where(eq(goals.id, id))

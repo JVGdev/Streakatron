@@ -125,6 +125,10 @@ export const goals = pgTable(
     targetMinutes: integer(),
     period: text({ enum: GOAL_PERIODS }),
     dueDate: day(),
+    /** A month ("~July 2027", the due date is its first day) until the day is known (D32). */
+    duePrecision: text({ enum: ['day', 'month'] })
+      .notNull()
+      .default('day'),
     status: text({ enum: GOAL_STATUSES }).notNull().default('open'),
     /** Featured on Today since then (D33); shown while the goal is open. */
     spotlightedAt: timestamp({ withTimezone: true }),

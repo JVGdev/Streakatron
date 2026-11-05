@@ -92,6 +92,20 @@
       "when": 1793833863894,
       "tag": "0012_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793846769731,
+      "tag": "0013_calendar",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793846775240,
+      "tag": "0014_event_search",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,8 @@ import { useNavigate, useRouterState } from '@tanstack/react-router';
 import {
   FolderPlus,
   Inbox,
+  CalendarDays,
+  CalendarPlus,
   Keyboard,
   LayoutGrid,
   ListTodo,
@@ -29,6 +31,7 @@ import { progressText } from '@streakatron/shared/commitments';
 import { useCommitmentActions, useSpotlightActions, useTaskActions } from '@/lib/actions';
 import {
   commitmentsQuery,
+  eventQuery,
   goalQuery,
   projectsQuery,
   searchQuery,
@@ -37,7 +40,7 @@ import {
   type Project,
   type SearchHit,
 } from '@/lib/queries';
-import { newArea, newCommitment, newProject, setUi, useUi } from '@/lib/ui-store';
+import { newArea, newCommitment, newEvent, newProject, setUi, useUi } from '@/lib/ui-store';
 import { doneToday } from '@/lib/commitments';
 import { EntityIcon, RefIcon } from './entity-icon';
 
@@ -101,7 +104,7 @@ function Palette({ mode, close }: { mode: 'search' | 'capture'; close: () => voi
   // The task or goal whose sheet is open can be spotlighted from here (D33).
   const spotlight = useSpotlightActions();
   const sheet = useRouterState({
-    select: (s) => s.location.search as { task?: string; goal?: string },
+    select: (s) => s.location.search as { task?: string; goal?: string; event?: string },
   });
   const { data: sheetTask } = useQuery({
     ...taskQuery(sheet.task ?? ''),
@@ -111,12 +114,16 @@ function Palette({ mode, close }: { mode: 'search' | 'capture'; close: () => voi
     ...goalQuery(sheet.goal ?? ''),
     enabled: mode === 'search' && !sheet.task && !!sheet.goal,
   });
+  const { data: sheetEvent } = useQuery({
+    ...eventQuery(sheet.event ?? ''),
+    enabled: mode === 'search' && !sheet.task && !sheet.goal && !!sheet.event,
+  });
   const featurable =
     sheetTask && !sheetTask.completedAt
       ? sheetTask
       : sheetGoal && sheetGoal.status === 'open'
         ? sheetGoal
-        : undefined;
+        : sheetEvent;
   const active = projects.filter((p) => p.status === 'active' && p.id !== currentId);
 
   async function capture(projectId: string | null, title: string) {
@@ -178,6 +185,12 @@ function Palette({ mode, close }: { mode: 'search' | 'capture'; close: () => voi
       icon: Repeat,
       run: run(() => newCommitment(currentId ?? null)),
     },
+    {
+      id: 'new-event',
+      label: 'New event',
+      icon: CalendarPlus,
+      run: run(() => newEvent({ projectId: currentId ?? null })),
+    },
     ...(featurable
       ? [
           {
@@ -223,6 +236,13 @@ function Palette({ mode, close }: { mode: 'search' | 'capture'; close: () => voi
       label: 'Go to Commitments',
       icon: Repeat,
       run: run(() => void navigate({ to: '/commitments' })),
+    },
+    {
+      id: 'go-calendar',
+      label: 'Go to Calendar',
+      icon: CalendarDays,
+      hint: 'G C',
+      run: run(() => void navigate({ to: '/calendar' })),
     },
     {
       id: 'go-tasks',

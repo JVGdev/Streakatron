@@ -1,6 +1,14 @@
 import type { LinkableKind } from '@streakatron/shared/rich';
 import type { ColorKey, IconKey } from '@streakatron/shared/structure';
-import { CheckCircle2, CircleDashed, Folder, Repeat, Shapes, Target } from 'lucide-react';
+import {
+  CalendarDays,
+  CheckCircle2,
+  CircleDashed,
+  Folder,
+  Repeat,
+  Shapes,
+  Target,
+} from 'lucide-react';
 import { COLOR, ICON } from '@/lib/look';
 import { cn } from '@/lib/utils';
 
@@ -55,12 +63,14 @@ export function RefIcon({
       ? Target
       : entity.kind === 'commitment'
         ? Repeat
-        : entity.kind === 'area'
-          ? Shapes
-          : entity.kind === 'project'
-            ? Folder
-            : entity.closed
-              ? CheckCircle2
-              : CircleDashed;
+        : entity.kind === 'event'
+          ? CalendarDays
+          : entity.kind === 'area'
+            ? Shapes
+            : entity.kind === 'project'
+              ? Folder
+              : entity.closed
+                ? CheckCircle2
+                : CircleDashed;
   return <Icon className={cn('size-4 shrink-0 text-muted-foreground', className)} aria-hidden />;
 }

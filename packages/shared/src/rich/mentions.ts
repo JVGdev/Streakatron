@@ -12,6 +12,7 @@ export const LINKABLE_KINDS = [
   'goal',
   'task',
   'commitment',
+  'event',
 ] as const satisfies IdKind[];
 export type LinkableKind = (typeof LINKABLE_KINDS)[number];
 

@@ -11,6 +11,7 @@ import {
   boardColumns,
   commitmentEntries,
   commitments,
+  events,
   goals,
   projects,
   snapshots,
@@ -31,6 +32,8 @@ interface ProjectBundle {
   /** Since D31 (older snapshots have none). */
   commitments?: (typeof commitments.$inferSelect)[];
   entries?: (typeof commitmentEntries.$inferSelect)[];
+  /** Since D39. */
+  events?: (typeof events.$inferSelect)[];
 }
 
 interface SnapshotData {
@@ -65,8 +68,10 @@ async function bundle(tx: Tx, projectId: string): Promise<ProjectBundle> {
           ),
         )
     : [];
+  const eventRows = await tx.select().from(events).where(eq(events.projectId, projectId));
   return {
     project,
+    events: eventRows,
     columns: columnRows,
     goals: goalRows,
     tasks: taskRows,
@@ -218,6 +223,9 @@ export async function restoreSnapshot(userId: string, id: string) {
           .insert(commitmentEntries)
           .values(b.entries.map((e) => ({ ...revive(e), userId, focusSessionId: null })));
       }
+      if (b.events?.length) {
+        await tx.insert(events).values(b.events.map((e) => ({ ...revive(e), userId })));
+      }
       if (project.nextActionTaskId) {
         await tx
           .update(projects)
@@ -233,6 +241,7 @@ export async function restoreSnapshot(userId: string, id: string) {
         ...b.goals,
         ...b.tasks,
         ...(b.commitments ?? []),
+        ...(b.events ?? []),
       ]),
     ];
     for (const row of sources) {

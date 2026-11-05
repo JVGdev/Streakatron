@@ -83,6 +83,7 @@ The full decisions log, with rationale, alternatives and status, lives in **`.cl
 | D36 | Commitments as built in 4a |
 | D37 | Today & boards as built in 4b (Spotlight, waiting, required, create from pickers) |
 | D38 | Reminders as built in 4c: a minute job sends what's due once, with grace; snooze; push to every device; installable app |
+| D39 | Calendar & countdowns as built in 4d: events (day, month or TBD; structured repeats instead of RRULE), countdowns in Spotlight, month/week views with drag to schedule, day load |
 
 Rejected ideas are listed at the end of the decisions log so they aren't proposed again.
 
@@ -575,13 +576,13 @@ Shaped by the use case below and the gaps from brainstormed use cases (D32). **E
 **Done when:** Duolingo not done by 10:00 notifies the PC and the phone, again every 3 hours, none after it's ticked (also from the notification's Done); "check the visa status" reminds on its day and time.
 
 #### 4d — Calendar & countdowns
-- [ ] Calendar events: one-off + recurring (RRULE via `rrule` lib), project association
-- [ ] Calendar view: month + week, showing events, schedule blocks, task due/scheduled dates, focus sessions, commitments met; drag a task onto a day to schedule it
-- [ ] **Day load** in the week view (how much is scheduled each day)
-- [ ] **Tentative dates** (D32): goals, events and countdowns can be a month or TBD ("~March 2027")
-- [ ] Countdowns: events and dated goals in Today's Spotlight (D33) and on the project page
-- [ ] Event reminders (e.g. 15 min before a class) through 4c's control
-- [ ] UI review (D32)
+- [x] Calendar events: one-off + recurring, project association *(D39: a structured repeat rule in `packages/shared/calendar` instead of RRULE strings)*
+- [x] Calendar view: month + week, showing events, schedule blocks, task due/scheduled dates, focus sessions, commitments met; drag a task onto a day to schedule it
+- [x] **Day load** in the week view (how much is scheduled each day)
+- [x] **Tentative dates** (D32): goals, events and countdowns can be a month or TBD ("~March 2027") *(goals: a month; no date is their TBD)*
+- [x] Countdowns: events and dated goals in Today's Spotlight (D33) and on the project page
+- [x] Event reminders (e.g. 15 min before a class) through 4c's control
+- [x] UI review (D32)
 
 **Done when:** the JLPT and departure dates show on the calendar and as countdowns in Spotlight (the departure as "~March" until it's known); the course's classes show every week and remind 15 minutes before.
 

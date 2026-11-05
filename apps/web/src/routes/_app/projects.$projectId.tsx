@@ -23,6 +23,7 @@ import { Board } from '@/components/board';
 import { CommitmentsPanel } from '@/components/commitments-panel';
 import { EntityIcon } from '@/components/entity-icon';
 import { GoalsPanel } from '@/components/goals-panel';
+import { EventsPanel, ProjectCountdowns } from '@/components/project-dates';
 import { QuickAdd } from '@/components/quick-add';
 import { RichEditor } from '@/components/rich-editor';
 import { SaveState } from '@/components/sheet-parts';
@@ -151,6 +152,7 @@ function ProjectPage() {
   return (
     <div className="space-y-5">
       <ProjectHeader project={project} today={today} />
+      <ProjectCountdowns projectId={projectId} goals={page.goals} today={today} />
       <NextAction project={project} />
 
       <Tabs
@@ -205,6 +207,7 @@ function ProjectPage() {
           <div className="space-y-8">
             <GoalsPanel projectId={projectId} goals={page.goals} tasks={tasks} today={today} />
             <CommitmentsPanel projectId={projectId} />
+            <EventsPanel projectId={projectId} today={today} />
           </div>
           <Details key={project.id} project={project} today={today} />
         </div>
