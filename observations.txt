@@ -1,4 +1,3 @@
 - Be able to turn a task into a commitment if needed, and "vice-versa". Basically make any "task/goal type entry" able to turn into other.
-- Completely remove small useless and bothering texts/hints like "Inbox zero. Everything has a home." (?), "Capture now, sort later.", "A short active list is the point: park what can wait.", and other subtle hints that may even be focused on my projects for some reason, like the commitments text. First you should do a study on these small hints, classify them into types and show them to me asking which types and or singular phrases to remove or substitute.
 - Maybe hide the focus time by default mid-focus, and show it with a click.
 - Add a easy way to add quick notes mid-focus, so good ideas can be written immediately.

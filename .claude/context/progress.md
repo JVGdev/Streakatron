@@ -178,3 +178,8 @@
 - **Checked:** typecheck, lint, format. Screenshots (Vite on :5173 against the running app, read only): Today, Inbox, Projects, Commitments, Tasks, Stats, Settings, a project, and the area/project/commitment dialogs on desktop and phone dark; no wrapping problems.
 - **Committed and merged (same day, at the user's request):** branch `ui-wording` (`552e4d5`) merged into `main` (`c8832a3`) and pushed; Docker app rebuilt after a manual `pg_dump` (`data/backups/pre-wording-20261105-1322.dump`); no new migration, health OK locally and over Tailscale (:8443).
 - **Next:** answer Q6–Q8, then 4e Recurring tasks.
+
+### 2026-11-05 — Q7 and Q8 decided: focus time hidden (D41), Notes board as 4g (D42)
+- **Q7 (hide the focus time):** the user chose: every new session starts hidden, a click shows or hides it for that session, hidden everywhere the time shows (ring, mini timer, Today's card, tab title). Claude's details: no filling ring while hidden; chime, overtime and cap unchanged; kept per session on the device. Recorded as **D41**; a checkbox in 4e, small enough to ship before it.
+- **Q8 (quick notes mid-focus):** Claude studied it (today a session has one line, seen only on the finish card) and proposed sort cards plus an Inbox section. The user chose a real board of small post-its with drag and drop and links, its own Notes page, rich text with `@`, written from the focus page and a shortcut, as its own slice. Recorded as **D42** and planned as **4g Notes board** (after 4f; it replaces the backlog's "Notes as a first-class entity"), with what's left to settle when it starts.
+- **Next:** ship D41 (hidden focus time), then 4e Recurring tasks (with Q6 still to answer).

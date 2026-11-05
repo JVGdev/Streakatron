@@ -85,6 +85,8 @@ The full decisions log, with rationale, alternatives and status, lives in **`.cl
 | D38 | Reminders as built in 4c: a minute job sends what's due once, with grace; snooze; push to every device; installable app |
 | D39 | Calendar & countdowns as built in 4d: events (day, month or TBD; structured repeats instead of RRULE), countdowns in Spotlight, month/week views with drag to schedule, day load |
 | D40 | UI wording: no mottos (a few kept by the user), no examples from the user's data, neutral placeholders, short explanations and one-line empty states |
+| D41 | Focus time hidden by default mid-focus: every new session starts hidden, a click shows it; hidden everywhere the time shows |
+| D42 | Notes board as its own slice (4g): quick notes mid-focus become post-its on a Notes page, sorted by drag and drop, rich text with `@` |
 
 Rejected ideas are listed at the end of the decisions log so they aren't proposed again.
 
@@ -533,7 +535,7 @@ Ships in three slices (D27): **3a** activity, XP/levels/streaks, game events, pr
 
 Shaped by the use case below and the gaps from brainstormed use cases (D32). **Every slice ends with a UI review** (D32): screenshots of the changed screens on desktop, phone and dark, checked for clutter and plain wording; defaults first, options behind "More".
 
-**Six slices (D34), in this order:** **4a** Commitments (+ time-goal progress) · **4b** Today & boards (Spotlight, waiting, required, create from selectors, small fixes) · **4c** Reminders · **4d** Calendar & countdowns · **4e** Recurring tasks · **4f** Goals & weekly review. Each one is usable on its own and has its own "done when".
+**Seven slices (D34, D42), in this order:** **4a** Commitments (+ time-goal progress) · **4b** Today & boards (Spotlight, waiting, required, create from selectors, small fixes) · **4c** Reminders · **4d** Calendar & countdowns · **4e** Recurring tasks · **4f** Goals & weekly review · **4g** Notes board. Each one is usable on its own and has its own "done when".
 
 **Use case: Studying Japanese** (the user's real setup, 2026-11-04; dates are placeholders until the real ones exist). Area *Intercâmbio* → project *Studying Japanese*: "Get to conversational Japanese before the exchange. Duolingo every day for now; Anki and an online course later."
 - **Goals:** "Read and write hiragana and katakana" (outcome, mid-December) · "Pass JLPT N5" (outcome, July) · "4 hours of Japanese a week" (time goal).
@@ -589,6 +591,7 @@ Shaped by the use case below and the gaps from brainstormed use cases (D32). **E
 
 #### 4e — Recurring tasks
 - [ ] **Recurring tasks** (D32): every weekday X, monthly on day N, N days after completion ("review again in 2 days"); completing one creates the next with the next date (earn once each, D15); shown on the calendar ahead
+- [ ] **Focus time hidden mid-focus** (D41): every new session starts hidden, a click shows it; hidden on the ring, the mini timer, Today's card and the tab title *(small; can ship on its own before 4e)*
 - [ ] UI review (D32)
 
 **Done when:** "Problem set every Friday" and "pay the installment on the 5th" come back after each completion; "review topic 3 in 2 days" reappears two days after it's done.
@@ -602,6 +605,18 @@ Shaped by the use case below and the gaps from brainstormed use cases (D32). **E
 - [ ] UI review (D32)
 
 **Done when:** "Finish the course: lesson 12 of 40 by June" shows the pace needed; the weekly review is guided and takes ~5 minutes.
+
+#### 4g — Notes board (D42)
+From `observations.txt` (plan.md §13 Q8): ideas that come up mid-focus are written down at once, kept, and sorted later on a board of small post-its.
+- [ ] **Notes** as a first-class entity (`not_`, replaces the backlog's "Notes as a first-class entity"): rich text with `@` mentions and backlinks (`RichEditor`, `writeLinks`), a colour, an optional project, the focus session it came from and the minute it was written
+- [ ] **Quick notes mid-focus**: a note field on the focus page and the `n` shortcut from any page while a session or break runs; each note is saved at once (a reload or another device loses nothing)
+- [ ] **Notes page** (sidebar): small post-its on a board, drag and drop to sort and reorder (dnd-kit, like the project board); a post-it opens to edit; links in and out through `@`
+- [ ] **Sorting**: a post-it becomes a task (Inbox or a project), another entry (goal, commitment, event, prefilled), is added to a task's description, or is dismissed (undo); the finish card shows the session's post-its with a way to the board
+- [ ] UI review (D32)
+
+To settle when the slice starts: fixed sorting columns (To sort → Tasks · Add to task · Dismiss, where dropping does it) or the user's own columns with sorting on each post-it; notes captured only mid-focus or anywhere (a "note" mode in the palette); the post-it look (colours, size, a slight tilt); whether sorting a note counts for the "Clear one inbox item" quest (no XP of its own, D15).
+
+**Done when:** an idea written at minute 12 of a session is a post-it on the Notes board after it, with a link to what it mentions; dragging it to Tasks makes a task; nothing written mid-focus is lost.
 
 **Acceptance (the whole phase):** each slice's "done when", together: On Today, "Duolingo lesson" is due every day until ticked; ticking it earns 10 XP, makes the day active and grows its own streak, and it's due again tomorrow. "Anki reviews" fills with +N to 20; "Listening" fills with typed minutes; a 50-minute focus session on "Course class" counts one class and 50 minutes toward "4 hours of Japanese a week". Duolingo not done by 10:00 sends a notification to the PC and the phone, again every 3 hours, none after it's ticked. The JLPT and departure dates show on the calendar and as countdowns on Today; the course's classes show every week. The weekly review is guided and takes ~5 minutes.
 
@@ -726,7 +741,7 @@ Quire (`~/Documentos/quire`) is the user's earlier project: a worldbuilding and 
 - Timeline / Gantt view
 - Graph view of links
 - Markdown import/export of descriptions
-- Notes as a first-class entity (linkable documents not tied to a task)
+- ~~Notes as a first-class entity (linkable documents not tied to a task)~~ → scheduled as 4g Notes board (D42)
 - Time-of-day focus analytics ("you focus best at…")
 - Offline mode (see §6 note)
 - Spread tasks over the days until a deadline, with a warning for overloaded days (D32; the week view's day load comes first, 4d)
@@ -760,12 +775,6 @@ Quire (`~/Documentos/quire`) is the user's earlier project: a worldbuilding and 
   - Mentions in other descriptions point at the old id: rewrite them in the same transaction (proposed) or keep a redirect from old id to new?
   - What happens to what doesn't map: subtasks/status/column of a task, entries and streak of a commitment, a goal's linked tasks, an event's repeat?
   - The old entry: soft-deleted with undo (proposed), or gone?
-- **Q7 — Hide the focus time mid-focus**, shown with a click. Small. To discuss:
-  - Hidden by default for everyone, or a remembered toggle (proposed: a toggle, starting hidden)?
-  - Both the `/focus` ring and the mini timer, or only the focus page?
-  - Hidden means no numbers at all, or the ring/progress still moves?
-  - Chime and overtime unchanged while hidden (proposed: yes)?
-- **Q8 — Quick notes mid-focus**, so ideas are written down at once. Small. Today a session has one note, shown on the finish card after it ends. To discuss:
-  - Where a note goes: the Inbox as a task ("capture now, sort later"; proposed for ideas about something else), notes kept on the session and shown on the finish card (for the current work), or one field with an "Inbox" toggle?
-  - From the focus page only, or also the mini timer (and a shortcut)?
-  - Several notes per session, or one that grows?
+- **Q7 — Hide the focus time mid-focus: decided (D41).** Every new session starts with its time hidden; one click shows or hides it for that session. Hidden everywhere the time shows.
+- **Q8 — Quick notes mid-focus: decided, scheduled as 4g Notes board (D42).** The user: notes stay with the session and are sorted afterwards on a real board of small post-its with drag and drop and links; they get their own Notes page; rich text with `@`. The rest of the design is settled when 4g starts (see its list).
+  - Kept from the study: the session's one line ("What did you get done?") stays as the reflection and feeds the `focus_note` quest; quick notes are separate. Each note is saved at once, one row per note, with the session and its minute.

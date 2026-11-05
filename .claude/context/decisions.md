@@ -314,6 +314,19 @@ The canonical record of what was decided, why, and what was considered instead. 
   - **Rule explainers stay** (they say what can't be guessed), trimmed where long (Settings cards).
 - **Why:** principle 10 (easy as it grows) and the product direction: mottos read as preaching after the first day, and examples from one person's setup look odd to anyone else.
 
+### D41 · Focus time hidden by default mid-focus (2026-11-05, the user; details Claude's choice, confirm when convenient)
+- **Context (`observations.txt`, plan.md §13 Q7):** a visible clock can make a session anxious (watching it) or slack (seeing there's time left).
+- **Decision (the user):** every new session starts with its time hidden; a click shows or hides it for that session, not remembered for the next one. Hidden **everywhere** the time shows: the `/focus` ring, the mini timer (sidebar and phone bar), the "Focusing" card on Today and the browser tab title.
+- **Details (Claude's choice):** hidden means no numbers and no filling ring: the ring stays still with a calm "Focusing" label; paused still says "Paused". The chime at the planned time, overtime and the auto-finish cap are unchanged. Shown or hidden is kept per session on the device (browser storage keyed by session id), so a reload keeps it.
+- **Why:** the point is to stop watching the clock; a moving ring is still a clock, and the chime already says when time is up.
+
+### D42 · Notes board: quick notes mid-focus become post-its, as slice 4g (2026-11-05, the user)
+- **Context (`observations.txt`, plan.md §13 Q8):** good ideas come up mid-focus and need writing down at once, without leaving the session. Claude studied it (today a session has one line, seen only on the finish card) and proposed cards with sort buttons, kept in the Inbox.
+- **Decision (the user):** notes stay with the session and are sorted afterwards on **a real board of small post-its**, with drag and drop and links; they live on **their own Notes page**; they're **rich text with `@`** even mid-focus; written from the focus page and a shortcut. Big enough for **its own slice, 4g**, after 4f.
+- **Kept from the study:** each note saved at once as its own row (session + minute); the session's one line stays as the reflection (`focus_note` quest).
+- **Alternatives:** cards with action buttons on the finish card and a "From focus" section in the Inbox (Claude's proposal; lighter, but the user wants a board that feels like post-its); plain-text notes (faster to type, no links).
+- **Open, settled when 4g starts:** fixed sorting columns or the user's own; notes only mid-focus or anywhere; the post-it look; the quest link.
+
 ---
 
 ## Rejected ideas (don't propose again)
