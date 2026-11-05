@@ -382,10 +382,6 @@ export function questHint(template: QuestTemplate, missing?: readonly DetailPart
       return 'Tick, add to or log minutes on each one on Today.';
     case 'log_commitment':
       return 'A tick, +1 or a few minutes on any commitment.';
-    case 'weekly_review':
-      return 'About 5 minutes: look back, tidy up, pick what’s next.';
-    case 'revisit_parked':
-      return 'In the weekly review, or from the project’s menu.';
     case 'time_goal':
       return 'Focus sessions on its project count.';
     case 'number_goal':
