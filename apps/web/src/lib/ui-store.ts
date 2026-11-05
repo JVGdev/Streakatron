@@ -12,6 +12,12 @@ export interface UiState {
   commitmentDialog: null | { commitmentId?: string; projectId?: string | null };
   shortcuts: boolean;
   /** The spotlight is full (D33): which one to drop for `add`. */
+  /** A reminder was set but this device won't show it (D38): why, and who still gets it. */
+  pushPrompt: null | {
+    problem: import('./push').PushProblem;
+    others: string[];
+    message?: string;
+  };
   spotlightFull: null | {
     add: { id: string; title: string };
     items: { id: string; kind: 'task' | 'goal'; title: string }[];
@@ -25,6 +31,7 @@ let state: UiState = {
   commitmentDialog: null,
   shortcuts: false,
   spotlightFull: null,
+  pushPrompt: null,
 };
 const listeners = new Set<() => void>();
 

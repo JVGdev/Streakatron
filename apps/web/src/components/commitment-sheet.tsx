@@ -3,7 +3,7 @@
 
 import { amountText, progressText, targetText } from '@streakatron/shared/commitments';
 import type { RichDoc } from '@streakatron/shared/rich';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
   Archive,
@@ -33,6 +33,7 @@ import { Backlinks } from './backlinks';
 import { doneToday } from '@/lib/commitments';
 import { CommitmentControl, LogPopover } from './commitment-row';
 import { EntityIcon } from './entity-icon';
+import { checkAfterReminder } from '@/lib/push';
 import { CommitmentReminderField } from './reminder-field';
 import { RichEditor } from './rich-editor';
 import { SheetBar, TitleField } from './sheet-parts';
@@ -82,6 +83,7 @@ function CommitmentEditor({ commitment: c }: { commitment: CommitmentDetail }) {
   const quickFocus = useQuickFocus();
   const { data: me } = useQuery(meQuery);
   const { data: live = c } = useQuery({ ...commitmentQuery(c.id), initialData: c });
+  const qc = useQueryClient();
   const weekStart = me?.settings.weekStart ?? 1;
   const archived = !!live.archivedAt;
 
@@ -220,7 +222,10 @@ function CommitmentEditor({ commitment: c }: { commitment: CommitmentDetail }) {
             <CommitmentReminderField
               id="commitment-sheet-reminder"
               value={live.reminder}
-              onChange={(reminder) => void actions.update(c.id, { reminder })}
+              onChange={(reminder) => {
+                void actions.update(c.id, { reminder });
+                if (reminder && !live.reminder) void checkAfterReminder(qc);
+              }}
             />
             {live.reminder && live.remindAgainAt && new Date(live.remindAgainAt) > new Date() && (
               <span className="px-1 text-xs text-muted-foreground">

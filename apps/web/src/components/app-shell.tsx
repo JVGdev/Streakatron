@@ -24,6 +24,7 @@ import { StructureDialogs } from '@/components/structure-dialogs';
 import { AreaSheet } from '@/components/area-sheet';
 import { CommitmentDialog } from '@/components/commitment-form';
 import { SpotlightFullDialog } from '@/components/spotlight';
+import { PushPromptDialog } from '@/components/push-prompt';
 import { CommitmentSheet } from '@/components/commitment-sheet';
 import { GoalSheet } from '@/components/goal-sheet';
 import { TaskSheet } from '@/components/task-sheet';
@@ -176,6 +177,7 @@ export function AppShell({
       <CommandPalette />
       <StructureDialogs />
       <SpotlightFullDialog />
+      <PushPromptDialog />
       <GameMoments />
       <FocusWatcher />
       <GlobalShortcuts />

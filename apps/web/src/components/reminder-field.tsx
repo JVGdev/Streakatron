@@ -11,8 +11,8 @@ import {
   type CommitmentReminder,
 } from '@streakatron/shared/reminders';
 import { addDays, wallClock, zonedTime } from '@streakatron/shared/time';
-import { useQuery } from '@tanstack/react-query';
-import { Bell, BellOff, X } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Bell, BellOff, TriangleAlert, X } from 'lucide-react';
 import { useState, type ComponentProps } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,19 +26,24 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { formatRemindAt } from '@/lib/days';
-import { useNotifyOnReminder, usePush } from '@/lib/push';
+import { checkAfterReminder, usePush, type PushState } from '@/lib/push';
 import { meQuery } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { Choice } from './commitment-form';
 import { DayField } from './day-field';
 
-/** The button both share. */
+/** This device won't show reminders (and it isn't still checking). */
+const WONT_SHOW: PushState[] = ['off', 'turned-off', 'blocked', 'install', 'unsupported'];
+
+/** The button both share; a set reminder this device won't show carries an amber warning. */
 function Trigger({
   on,
   text,
   outlined,
   ...rest
 }: ComponentProps<typeof Button> & { on: boolean; text: string; outlined?: boolean }) {
+  const { state } = usePush();
+  const warn = outlined && on && WONT_SHOW.includes(state);
   const Icon = on ? Bell : BellOff;
   return (
     <Button
@@ -54,6 +59,15 @@ function Trigger({
     >
       <Icon className="text-muted-foreground" />
       <span className="truncate">{text}</span>
+      {warn && (
+        <span
+          className="ml-auto flex shrink-0 items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-400"
+          title="This device won’t show it"
+        >
+          <TriangleAlert className="text-amber-600 dark:text-amber-400" aria-hidden />
+          <span>Not on this device</span>
+        </span>
+      )}
     </Button>
   );
 }
@@ -119,9 +133,7 @@ export function CommitmentReminderField({
   const mode: Mode = value?.kind ?? 'off';
   const problem = mode === 'repeat' ? reminderProblem(repeat) : null;
 
-  const notifyHere = useNotifyOnReminder();
   const pick = (m: Mode) => {
-    if (m !== 'off' && mode === 'off') notifyHere();
     if (m === 'off') onChange(null);
     if (m === 'once') onChange({ kind: 'once', at: once });
     if (m === 'repeat') onChange(reminderProblem(repeat) ? DEFAULT_REPEAT : repeat);
@@ -144,6 +156,7 @@ export function CommitmentReminderField({
         />
       </PopoverTrigger>
       <PopoverContent align="start" className="grid w-[min(20rem,calc(100vw-2rem))] gap-3">
+        <DeviceHint fresh={mode === 'off'} />
         <Choice label="Remind me" options={MODES} value={mode} onChange={pick} />
         {mode === 'once' && (
           <TimeInput
@@ -203,7 +216,6 @@ export function CommitmentReminderField({
             </p>
           )
         )}
-        <DeviceHint fresh={mode === 'off'} />
       </PopoverContent>
     </Popover>
   );
@@ -226,7 +238,7 @@ export function TaskReminderField({
   onChange: (remindAt: string | null) => void;
 }) {
   const { data: me } = useQuery(meQuery);
-  const notifyHere = useNotifyOnReminder();
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const tz = me?.settings.timezone ?? 'UTC';
   const today = me?.today ?? new Date().toISOString().slice(0, 10);
@@ -243,7 +255,7 @@ export function TaskReminderField({
   const past = at.getTime() <= openedAt;
 
   return (
-    <div className="flex min-w-0 items-center gap-1">
+    <div className="flex min-w-0 flex-wrap items-center gap-x-1">
       <Popover
         open={open}
         onOpenChange={(o) => {
@@ -278,6 +290,7 @@ export function TaskReminderField({
           />
         </PopoverTrigger>
         <PopoverContent align="start" className="grid w-[min(18rem,calc(100vw-2rem))] gap-3">
+          <DeviceHint fresh={!value} />
           <div className="grid grid-cols-[minmax(0,1fr)_7rem] items-end gap-2">
             <div className="grid gap-1">
               <span className="text-xs text-muted-foreground">Day</span>
@@ -292,7 +305,6 @@ export function TaskReminderField({
             <TimeInput id="task-remind-time" label="Time" value={time} onChange={setTime} />
           </div>
           {past && <p className="text-xs text-destructive">That time has passed.</p>}
-          <DeviceHint fresh={!value} />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
               Cancel
@@ -303,8 +315,8 @@ export function TaskReminderField({
               disabled={past}
               onClick={() => {
                 setOpen(false);
-                if (!value) notifyHere();
                 onChange(at.toISOString());
+                void checkAfterReminder(qc);
               }}
             >
               {value ? 'Change' : 'Remind me'}
@@ -324,17 +336,39 @@ export function TaskReminderField({
           <X />
         </Button>
       )}
+      {value && <NotHere />}
     </div>
   );
 }
 
 /**
- * Whether this device will show it, with a one-click fix when it won't. Setting a reminder turns
- * notifications on by itself; this covers a device turned off, blocked, or an iPhone in Safari.
+ * Under a set task reminder this device won't show, on its own line (phones keep the ✕). A click
+ * turns notifications on when one click can, or explains why not (the same dialog).
+ */
+function NotHere() {
+  const qc = useQueryClient();
+  const { state } = usePush();
+  if (!WONT_SHOW.includes(state)) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => void checkAfterReminder(qc, { force: true })}
+      className="flex basis-full items-center gap-1 rounded px-2 pb-1 text-left text-xs font-semibold text-amber-600 hover:underline dark:text-amber-400"
+    >
+      <TriangleAlert className="size-3.5 shrink-0" aria-hidden />
+      Not on this device · {state === 'off' || state === 'turned-off' ? 'Turn on' : 'Why?'}
+    </button>
+  );
+}
+
+/**
+ * Whether this device will show it, at the top of the picker, with a one-click fix when there is
+ * one. A new reminder turns notifications on by itself (`checkAfterReminder`), so then it just
+ * says so.
  */
 function DeviceHint({ fresh }: { fresh: boolean }) {
   const { state, turnOn } = usePush();
-  // Setting a new one turns them on by itself: just say so.
+  if (state === 'on' || state === 'loading') return null;
   if (state === 'off' && fresh) {
     return (
       <p className="text-xs text-muted-foreground">
@@ -342,30 +376,38 @@ function DeviceHint({ fresh }: { fresh: boolean }) {
       </p>
     );
   }
-  if (state === 'on' || state === 'loading') return null;
-  if (state === 'off' || state === 'turned-off') {
-    return (
-      <p className="flex items-center justify-between gap-2 rounded-md bg-muted px-2.5 py-1.5 text-xs text-muted-foreground">
-        Notifications are off on this device.
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="h-7"
-          onClick={() => void turnOn()}
-        >
-          Turn on
-        </Button>
-      </p>
-    );
-  }
+  const fixable = state === 'off' || state === 'turned-off';
   return (
-    <p className="rounded-md bg-muted px-2.5 py-1.5 text-xs text-muted-foreground">
-      {state === 'blocked'
-        ? 'This browser blocks notifications for Streakatron. Allow them in its site settings.'
-        : state === 'install'
-          ? 'To get them on this iPhone, add Streakatron to the Home Screen (Share → Add to Home Screen) and open it from there.'
-          : 'This browser can’t show them here. Your other devices still get them.'}
-    </p>
+    <div
+      role="status"
+      className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-2.5 py-2 text-xs text-amber-900 dark:text-amber-200"
+    >
+      <TriangleAlert
+        className="mt-px size-4 shrink-0 text-amber-600 dark:text-amber-400"
+        aria-hidden
+      />
+      <div className="grid min-w-0 flex-1 gap-1.5">
+        <span>
+          <b>This device won’t show it.</b>{' '}
+          {fixable
+            ? 'Notifications are off here.'
+            : state === 'blocked'
+              ? 'The browser blocks notifications for Streakatron: allow them in its site settings (the icon left of the address), then reload.'
+              : state === 'install'
+                ? 'On iPhone, add Streakatron to the Home Screen (Share → Add to Home Screen) and open it from there.'
+                : 'This browser can’t show notifications here. Your other devices still get them.'}
+        </span>
+        {fixable && (
+          <Button
+            type="button"
+            size="sm"
+            className="h-7 justify-self-start"
+            onClick={() => void turnOn()}
+          >
+            Turn on here
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }

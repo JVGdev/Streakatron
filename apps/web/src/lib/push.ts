@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, call } from './api';
 import { report } from './report';
+import { setUi } from './ui-store';
 
 /** Register the worker (installability, push). Nothing breaks without it. */
 export function registerServiceWorker() {
@@ -155,24 +156,22 @@ export type PushState =
   | 'unsupported'
   | 'loading';
 
+type DevicesData = { devices: PushDevice[]; endpoint: string | null };
+
+function stateOf(data: DevicesData | undefined): PushState {
+  const support = pushSupport();
+  if (support !== 'ok') return support;
+  if (!data) return 'loading';
+  if (data.endpoint && data.devices.some((d) => d.endpoint === data.endpoint)) return 'on';
+  if (Notification.permission === 'denied') return 'blocked';
+  return turnedOff() ? 'turned-off' : 'off';
+}
+
 /** Where this device stands, and a one-click "turn on" that says how it went. */
 export function usePush() {
   const qc = useQueryClient();
-  const { data, isPending } = usePushDevices();
-  const support = pushSupport();
-  const on = !!data?.endpoint && data.devices.some((d) => d.endpoint === data.endpoint);
-  const state: PushState =
-    support !== 'ok'
-      ? support
-      : on
-        ? 'on'
-        : isPending
-          ? 'loading'
-          : Notification.permission === 'denied'
-            ? 'blocked'
-            : turnedOff()
-              ? 'turned-off'
-              : 'off';
+  const { data } = usePushDevices();
+  const state = stateOf(data);
   const turnOn = async () => {
     try {
       const problem = await enablePush();
@@ -189,16 +188,52 @@ export function usePush() {
   return { state, turnOn, devices: data?.devices ?? [], endpoint: data?.endpoint ?? null };
 }
 
+/** Why this device won't show a reminder just set (the dialog after setting one). */
+export type PushProblem = Exclude<PushState, 'on' | 'loading' | 'off'> | 'dismissed' | 'failed';
+
 /**
- * Setting a reminder turns notifications on for this device (D38: one step, not a trip to
- * Settings). From the click that set it, so the browser may ask; quiet when already on, or when
- * the device was turned off in Settings.
+ * After a reminder is set (D38): make sure this device will show it. Asks the browser first, while
+ * the click still counts; turns notifications on when it can; otherwise opens the dialog that says
+ * why not and what to do, with the devices that will still get it (once per visit and reason).
  */
-export function useNotifyOnReminder() {
-  const { state, turnOn } = usePush();
-  return () => {
-    if (state === 'off') void turnOn();
-  };
+export async function checkAfterReminder(qc: QueryClient, { force = false } = {}) {
+  if (pushSupport() === 'ok' && Notification.permission === 'default' && !turnedOff()) {
+    await Notification.requestPermission().catch(() => 'default');
+  }
+  try {
+    const data = await qc.fetchQuery({ ...pushDevicesQuery, staleTime: 0 });
+    const state = stateOf(data);
+    const others = data.devices.filter((d) => d.endpoint !== data.endpoint).map((d) => d.label);
+    if (state === 'on' || state === 'loading') return;
+    if (state === 'off') {
+      const problem = await enablePush({ ask: false });
+      void qc.invalidateQueries({ queryKey: ['push'] });
+      if (!problem) {
+        toast.success('Notifications are on for this device');
+        return;
+      }
+      return openPushPrompt(
+        problem === 'not asked' ? 'dismissed' : 'failed',
+        others,
+        problem,
+        force,
+      );
+    }
+    openPushPrompt(state, others, undefined, force);
+  } catch (err) {
+    report(err);
+  }
+}
+
+function openPushPrompt(problem: PushProblem, others: string[], message?: string, force = false) {
+  const key = `streakatron:push-prompt:${problem}`;
+  try {
+    if (sessionStorage.getItem(key) && !force) return;
+    sessionStorage.setItem(key, '1');
+  } catch {
+    // Private mode: it may show again this visit.
+  }
+  setUi({ pushPrompt: { problem, others, message } });
 }
 
 const fetchDevices = () => call(api.push.devices.$get());

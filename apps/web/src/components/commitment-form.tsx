@@ -9,7 +9,7 @@ import {
   type CommitmentPeriod,
 } from '@streakatron/shared/commitments';
 import type { CommitmentReminder } from '@streakatron/shared/reminders';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,6 +34,7 @@ import { useCommitmentActions } from '@/lib/actions';
 import { commitmentQuery, meQuery, projectsQuery, type CommitmentDetail } from '@/lib/queries';
 import { setUi, useUi } from '@/lib/ui-store';
 import { cn } from '@/lib/utils';
+import { checkAfterReminder } from '@/lib/push';
 import { CommitmentReminderField } from './reminder-field';
 
 export function CommitmentDialog() {
@@ -87,6 +88,7 @@ function CommitmentForm({
   onDone: () => void;
 }) {
   const actions = useCommitmentActions();
+  const qc = useQueryClient();
   const openSheet = useOpenSheet();
   const { data: me } = useQuery(meQuery);
   const { data: projects = [] } = useQuery(projectsQuery);
@@ -145,6 +147,7 @@ function CommitmentForm({
     setBusy(false);
     if (!saved) return;
     onDone();
+    if (reminder) void checkAfterReminder(qc);
     if (!commitment) openSheet('commitment', saved.id);
   }
 
