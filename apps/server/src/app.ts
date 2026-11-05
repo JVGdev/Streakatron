@@ -29,6 +29,7 @@ import {
 import { projectRoutes } from './routes/projects';
 import { pushRoutes, reminderRoutes } from './routes/push';
 import { questRoutes } from './routes/quests';
+import { noteRoutes } from './routes/notes';
 import { reviewRoutes } from './routes/review';
 import { setupRoutes } from './routes/setup';
 import { spotlightRoutes } from './routes/spotlight';
@@ -62,7 +63,8 @@ const api = new Hono()
   .route('/focus', focusRoutes)
   .route('/quests', questRoutes)
   .route('/stats', statsRoutes)
-  .route('/review', reviewRoutes);
+  .route('/review', reviewRoutes)
+  .route('/notes', noteRoutes);
 
 export const app = new Hono();
 

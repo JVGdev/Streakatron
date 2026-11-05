@@ -1,5 +1,6 @@
-// "Turn into…" (D44): a task, commitment, goal or event becomes one of the others. The dialog shows
-// what carries over and what stays behind (back on undo) before anything changes.
+// "Turn into…" (D44): a task, commitment, goal or event becomes one of the others, and a note (D46)
+// becomes any of them. The dialog shows what carries over and what stays behind (back on undo)
+// before anything changes.
 
 import {
   CONVERT_KINDS,
@@ -118,7 +119,7 @@ function TurnIntoDialog({
   const [projectId, setProjectId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const plan = convertPlan(source, to, today);
-  const from = noun(source.kind);
+  const from = source.kind === 'note' ? 'note' : noun(source.kind);
 
   const run = async () => {
     setBusy(true);
@@ -155,11 +156,20 @@ function TurnIntoDialog({
       <DialogHeader>
         <DialogTitle>Turn into…</DialogTitle>
         <DialogDescription>
-          “{source.title}” becomes a new {noun(to)}; the {from} is deleted (you can undo).
+          “{source.title}” becomes a new {noun(to)};{' '}
+          {source.kind === 'note' ? 'the note leaves the board' : `the ${from} is deleted`} (you can
+          undo).
         </DialogDescription>
       </DialogHeader>
 
-      <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Turn into">
+      <div
+        className={cn(
+          'grid gap-2',
+          targets.length > 3 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3',
+        )}
+        role="radiogroup"
+        aria-label="Turn into"
+      >
         {targets.map((k) => {
           const Icon = ICONS[k];
           const on = k === to;

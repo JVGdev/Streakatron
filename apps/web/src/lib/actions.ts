@@ -16,6 +16,8 @@ import type {
   FocusStart,
   GoalCreate,
   GoalPatch,
+  NoteCreate,
+  NotePatch,
   ProjectCreate,
   ProjectPatch,
   SettingsPatch,
@@ -44,6 +46,7 @@ import type {
   FocusSession,
   FocusState,
   Goal,
+  Note,
   Project,
   ProjectPage,
   Task,
@@ -863,4 +866,151 @@ export function reviewActions(qc: QueryClient) {
 export function useReviewActions() {
   const qc = useQueryClient();
   return useMemo(() => reviewActions(qc), [qc]);
+}
+
+// --- Notes (D46) -----------------------------------------------------------------------------
+
+/** A note written or changed: the board and its sheet show it, chips and backlinks refetch. */
+function settleNote(qc: QueryClient, note: Note) {
+  qc.setQueryData(['note', note.id], note);
+  qc.setQueryData<Note[]>(['notes'], (list) => {
+    if (!list) return list;
+    const rest = list.filter((n) => n.id !== note.id);
+    return [...rest, note].sort((a, b) => a.z - b.z);
+  });
+  refreshEntities(qc);
+}
+
+/** Off the board at once (sorted or dismissed); the server's answer settles the rest. */
+const dropNote = (qc: QueryClient, id: string) =>
+  qc.setQueryData<Note[]>(['notes'], (list) => list?.filter((n) => n.id !== id));
+
+const backOnBoard = (qc: QueryClient, note?: Note) => {
+  if (note) settleNote(qc, note);
+  void qc.invalidateQueries({ queryKey: ['notes'] });
+};
+
+export function noteActions(qc: QueryClient) {
+  /** A board change shown before the server answers: on failure, the board is fetched again. */
+  const sorting = <T>(fn: () => Promise<T>) =>
+    attempt(async () => {
+      try {
+        return await fn();
+      } catch (err) {
+        void qc.invalidateQueries({ queryKey: ['notes'] });
+        throw err;
+      }
+    });
+
+  const restore = (note: { id: string }) =>
+    attempt(async () => {
+      backOnBoard(qc, await call(api.notes[':id'].restore.$post({ param: { id: note.id } })));
+    });
+
+  return {
+    /** A new note (the quick note writes it on its first character). Throws, for autosave. */
+    create: async (input: NoteCreate) => {
+      const note = await call(api.notes.$post({ json: input }));
+      settleNote(qc, note);
+      return note;
+    },
+
+    /** Autosave's sender for a note's text: throws. */
+    save: async (note: { id: string }, patch: NotePatch) => {
+      const updated = await call(api.notes[':id'].$patch({ param: { id: note.id }, json: patch }));
+      settleNote(qc, updated);
+      return updated;
+    },
+
+    update: (note: { id: string }, patch: NotePatch) =>
+      attempt(async () => {
+        settleNote(
+          qc,
+          await call(api.notes[':id'].$patch({ param: { id: note.id }, json: patch })),
+        );
+      }),
+
+    /** Put it somewhere else on the board: there and on top at once, saved after. */
+    move: (note: Note, x: number, y: number) => {
+      const list = qc.getQueryData<Note[]>(['notes']) ?? [];
+      const z = Math.max(0, ...list.map((n) => n.z)) + 1;
+      settleNote(qc, { ...note, x: Math.round(x), y: Math.round(y), z });
+      return sorting(async () => {
+        settleNote(
+          qc,
+          await call(api.notes[':id'].$patch({ param: { id: note.id }, json: { x, y } })),
+        );
+      });
+    },
+
+    /** Dismiss it, with Undo. A note with nothing written just goes. */
+    dismiss: (note: { id: string; title: string }) =>
+      sorting(async () => {
+        dropNote(qc, note.id);
+        await call(api.notes[':id'].$delete({ param: { id: note.id } }));
+        refreshEntities(qc);
+        if (!note.title) return;
+        toast(`Dismissed “${note.title}”`, {
+          action: { label: 'Undo', onClick: () => void restore(note) },
+        });
+      }),
+
+    /** Make it a task (its first line the title), in its project or the Inbox, with Undo. */
+    toTask: (note: { id: string; title: string }) =>
+      sorting(async () => {
+        dropNote(qc, note.id);
+        const res = await call(api.convert.$post({ json: { id: note.id, to: 'task' } }));
+        void qc.invalidateQueries();
+        toast(`“${note.title || 'Note'}” is a task now`, {
+          action: {
+            label: 'Undo',
+            onClick: () =>
+              void attempt(async () => {
+                await call(api.convert.undo.$post({ json: { from: note.id, to: res.to.id } }));
+                qc.removeQueries({ queryKey: ['task', res.to.id] });
+                void qc.invalidateQueries();
+              }),
+          },
+        });
+      }),
+
+    /** Add it to the end of a task's description, with Undo. */
+    appendTo: (note: { id: string; title: string }, task: { id: string; title: string }) =>
+      sorting(async () => {
+        dropNote(qc, note.id);
+        await call(
+          api.notes[':id'].append.$post({ param: { id: note.id }, json: { taskId: task.id } }),
+        );
+        void qc.invalidateQueries({ queryKey: ['task', task.id] });
+        refreshEntities(qc);
+        toast(`Added to “${task.title}”`, {
+          action: {
+            label: 'Undo',
+            onClick: () =>
+              void attempt(async () => {
+                const res = await call(
+                  api.notes[':id'].unappend.$post({
+                    param: { id: note.id },
+                    json: { taskId: task.id },
+                  }),
+                );
+                backOnBoard(qc, res.note);
+                void qc.invalidateQueries({ queryKey: ['task', task.id] });
+                if (!res.removed) {
+                  toast(
+                    `The note is back. “${task.title}” changed since, so it keeps the text too.`,
+                  );
+                }
+              }),
+          },
+        });
+      }),
+
+    restore,
+  };
+}
+
+export function useNoteActions() {
+  const qc = useQueryClient();
+  return useMemo(() => noteActions(qc), [qc]);
 }

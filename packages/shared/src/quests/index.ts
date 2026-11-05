@@ -3,6 +3,7 @@
 // (`BoardInput`), plans boards with `planDaily`/`planWeekly`/`planQuick`, stores the instances and
 // evaluates them against what happens.
 
+import { NOTES_CROWDED } from '../notes';
 import type { DateString } from '../time';
 
 // --- The registry ----------------------------------------------------------------------------
@@ -49,7 +50,7 @@ export const QUEST_TEMPLATES = {
     'commitments_due',
   ],
   time: ['focus_today'],
-  quick: ['triage', 'pin_next', 'effort', 'focus_note', 'log_commitment'],
+  quick: ['triage', 'pin_next', 'effort', 'focus_note', 'log_commitment', 'sort_notes'],
   make: ['add_task', 'add_goal', 'subtasks'],
   followup: ['task_details', 'goal_details'],
   weekly: ['week_target', 'week_projects', 'week_focus'],
@@ -90,7 +91,13 @@ export const QUESTS = {
     focus: { min: 60, max: 1200, step: 15, fallback: [120, 240] as const },
     xp: { week_target: 100, week_projects: 80 } as Record<string, number>,
   },
-  quick: { visible: 2, rewardedPerDay: 3, xp: 10 },
+  quick: {
+    visible: 2,
+    rewardedPerDay: 3,
+    xp: 10,
+    /** "Sort N post-its", offered only while the board holds `NOTES_CROWDED` or more (D46). */
+    sortNotes: 3,
+  },
   make: {
     xp: 15,
     /** How full a project can get before make quests fade: `open / cap` (soft cap, D16). */
@@ -332,6 +339,8 @@ export function questTitle({ template, target, name }: QuestWords): string {
         : `Meet every commitment due today (${target})`;
     case 'log_commitment':
       return 'Log one commitment';
+    case 'sort_notes':
+      return `Sort ${plural(target, 'post-it')}`;
     case 'add_task':
       return `Add a task to ${n}`;
     case 'add_goal':
@@ -382,6 +391,8 @@ export function questHint(template: QuestTemplate, missing?: readonly DetailPart
       return 'Tick, add to or log minutes on each one on Today.';
     case 'log_commitment':
       return 'A tick, +1 or a few minutes on any commitment.';
+    case 'sort_notes':
+      return 'Make one a task, add it to a task, or dismiss it.';
     case 'time_goal':
       return 'Focus sessions on its project count.';
     case 'number_goal':
@@ -454,6 +465,8 @@ export interface BoardInput {
   lastFocusWithoutNote: { id: string } | null;
   /** Commitments due today and not met yet (D31). */
   commitmentsDue: number;
+  /** Post-its on the Notes board (D46). */
+  notesOnBoard: number;
   /** Parked projects, waiting since they were parked or last revisited (D45). */
   parkedProjects: readonly Candidate[];
   /** Open goals in active projects, for project quests (D45). */
@@ -704,6 +717,12 @@ export function planQuick(
     options.push({
       item: { type: 'quick', template: 'log_commitment', target: 1, xp },
       weight: 1.2,
+    });
+  }
+  if (input.notesOnBoard >= NOTES_CROWDED) {
+    options.push({
+      item: { type: 'quick', template: 'sort_notes', target: QUESTS.quick.sortNotes, xp },
+      weight: 1.5,
     });
   }
   const fresh = options.filter((o) => !exclude.some((e) => e.template === o.item.template));

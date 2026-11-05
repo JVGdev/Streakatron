@@ -90,6 +90,7 @@ export function xpFor(a: XpActivity, ctx: XpContext): number {
       return ctx.earnedBefore ? 0 : Math.max(0, Math.floor(a.payload.xp ?? 0));
     case 'task_triaged':
     case 'commitment_logged':
+    case 'note_sorted':
       return 0;
     case 'commitment_met':
       return ctx.earnedBefore ? 0 : GAME.xp.commitmentMet;

@@ -1,4 +1,5 @@
-// Turn any entry into another (D44): a task, commitment, goal or event becomes one of the others.
+// Turn any entry into another (D44): a task, commitment, goal or event becomes one of the others,
+// and a note (D46) becomes any of them (counted as sorting it).
 // One transaction: the new entry is made from what maps across (`convertPlan`), the old one is
 // soft-deleted, and `@` mentions of it point at the new one. Undo takes the new one away for good
 // and brings the old one back, mentions included. XP already earned stays (D15).
@@ -9,6 +10,7 @@ import {
   type ConvertPlan,
   type ConvertSource,
 } from '@streakatron/shared/convert';
+import { splitNote } from '@streakatron/shared/notes';
 import type { TaskRepeat } from '@streakatron/shared/repeats';
 import {
   linkableKind,
@@ -26,6 +28,7 @@ import {
   events,
   goals,
   links,
+  notes,
   projects,
   taskSeries,
   tasks,
@@ -35,10 +38,13 @@ import { createCommitment } from './commitments';
 import { createEvent } from './events';
 import { daySettings } from './game';
 import { createGoal } from './goals';
+import { sortNote } from './notes';
 import { ownedProject, unpinClosed } from './projects';
 import { createTask } from './tasks';
 
-const kindOf = (id: string) => linkableKind(id) as ConvertKind;
+/** What can be converted: the four kinds, and notes (only ever a source). */
+type SourceKind = ConvertKind | 'note';
+const kindOf = (id: string) => linkableKind(id) as SourceKind;
 
 interface Loaded {
   source: ConvertSource;
@@ -120,6 +126,20 @@ async function load(tx: Tx, userId: string, id: string): Promise<Loaded> {
         schedule: c.schedule,
         reminder: c.reminder !== null,
       },
+    };
+  }
+  if (kind === 'note') {
+    const [n] = await tx
+      .select()
+      .from(notes)
+      .where(and(eq(notes.id, id), eq(notes.userId, userId), isNull(notes.deletedAt)))
+      .for('update');
+    if (!n) throw notFound('note');
+    const { title, description } = splitNote(n.description);
+    return {
+      description,
+      spotlightedAt: null,
+      source: { kind, title, projectId: n.projectId },
     };
   }
   if (kind === 'goal') {
@@ -242,7 +262,13 @@ async function make(
   }
 }
 
-const tableOf = { task: tasks, commitment: commitments, goal: goals, event: events } as const;
+const tableOf = {
+  task: tasks,
+  commitment: commitments,
+  goal: goals,
+  event: events,
+  note: notes,
+} as const;
 
 /** Soft-delete (`at`) or bring back (`null`) an entry; a task takes its subtasks and series along. */
 async function setDeleted(tx: Tx, id: string, at: Date | null) {
@@ -287,6 +313,7 @@ const richTables = {
   task: tasks,
   commitment: commitments,
   event: events,
+  note: notes,
 } as const;
 
 /** Every `@` mention of `from` (in descriptions and the links table) now points at `to`. */
@@ -341,7 +368,8 @@ export async function convertEntry(userId: string, input: ConvertInput) {
       const table = tableOf[input.to] as typeof tasks | typeof goals | typeof events;
       await tx.update(table).set({ spotlightedAt: loaded.spotlightedAt }).where(eq(table.id, id));
     }
-    await setDeleted(tx, input.id, new Date());
+    if (from === 'note') await sortNote(tx, userId, input.id);
+    else await setDeleted(tx, input.id, new Date());
     await moveMentions(tx, userId, input.id, id);
     return {
       from: { kind: from, id: input.id },

@@ -6,6 +6,7 @@ import {
   Inbox,
   ListTodo,
   Repeat,
+  StickyNote,
   Sun,
   Timer,
   type LucideIcon,
@@ -21,6 +22,7 @@ export interface NavItem {
     | '/tasks'
     | '/calendar'
     | '/review'
+    | '/notes'
     | '/stats';
   label: string;
   icon: LucideIcon;
@@ -38,6 +40,7 @@ export const NAV: NavItem[] = [
   { to: '/commitments', label: 'Commitments', icon: Repeat, phone: true },
   { to: '/calendar', label: 'Calendar', icon: CalendarDays, phone: true },
   { to: '/tasks', label: 'Tasks', icon: ListTodo, phone: false },
+  { to: '/notes', label: 'Notes', icon: StickyNote, phone: false },
   { to: '/review', label: 'Review', icon: ClipboardCheck, phone: false },
   { to: '/stats', label: 'Stats', icon: BarChart3, phone: false },
 ];

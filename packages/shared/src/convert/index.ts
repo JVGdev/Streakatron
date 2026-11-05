@@ -1,4 +1,5 @@
-// Turn any entry into another (D44): a task, commitment, goal or event becomes one of the others.
+// Turn any entry into another (D44): a task, commitment, goal or event becomes one of the others,
+// and a note (D46) becomes any of them.
 // The server makes a new entry from what maps across and soft-deletes the old one; the dialog shows
 // the same plan first ("Carries over" / "Stays behind"). Pure: no ids, no I/O.
 
@@ -60,7 +61,9 @@ export type ConvertSource =
       startTime: string | null;
       repeat: Repeat | null;
       reminder: boolean;
-    });
+    })
+  /** A post-it (D46): its first line is the title, the rest the notes. Only ever a source. */
+  | (Omit<Common, 'spotlighted'> & { kind: 'note'; spotlighted?: false });
 
 export type ConvertFields =
   | {
@@ -157,7 +160,7 @@ function ruleOfSource(s: ConvertSource): Repeat | null {
 /** How an entry becomes `to`, on `today`. Converting into its own kind is not a conversion. */
 export function convertPlan(s: ConvertSource, to: ConvertKind, today: DateString): ConvertPlan {
   if (s.kind === to) throw new Error(`Already a ${to}`);
-  const kept = ['Title and notes'];
+  const kept = [s.kind === 'note' ? 'First line as title, the rest as notes' : 'Title and notes'];
   const dropped: string[] = [];
   if (s.projectId) kept.push('Project');
   const spotlight = s.spotlighted === true && to !== 'commitment';

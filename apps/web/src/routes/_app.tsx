@@ -5,7 +5,7 @@ import { ApiError } from '@/lib/api';
 import { meQuery } from '@/lib/queries';
 
 // Everything behind sign-in. `?task=tsk_…`, `?goal=gol_…`, `?area=are_…`, `?commitment=cmt_…` and
-// `?event=evt_…` open that sheet over any page.
+// `?event=evt_…` and `?note=not_…` open that sheet over any page.
 export const Route = createFileRoute('/_app')({
   validateSearch: z.object({
     task: z.string().optional(),
@@ -13,6 +13,7 @@ export const Route = createFileRoute('/_app')({
     area: z.string().optional(),
     commitment: z.string().optional(),
     event: z.string().optional(),
+    note: z.string().optional(),
   }),
   beforeLoad: async ({ context, location }) => {
     try {

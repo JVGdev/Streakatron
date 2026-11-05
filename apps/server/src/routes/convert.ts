@@ -5,8 +5,8 @@ import { validate } from '../http/validate';
 import { convertEntry, undoConvert } from '../services/convert';
 import { withGame } from '../services/game';
 
-/** A conversion can move task and commitment quests (D30). */
-const TOUCHES = { touches: ['task', 'commitment'] } as const;
+/** A conversion can move task and commitment quests (D30), and the notes quest (D46). */
+const TOUCHES = { touches: ['task', 'commitment', 'note'] } as const;
 
 export const convertRoutes = new Hono<AuthedEnv>()
   .use(requireUser)

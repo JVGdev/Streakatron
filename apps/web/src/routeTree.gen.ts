@@ -16,6 +16,7 @@ import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
 import { Route as AppCommitmentsRouteImport } from './routes/_app/commitments'
 import { Route as AppFocusRouteImport } from './routes/_app/focus'
 import { Route as AppInboxRouteImport } from './routes/_app/inbox'
+import { Route as AppNotesRouteImport } from './routes/_app/notes'
 import { Route as AppReviewRouteImport } from './routes/_app/review'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppStatsRouteImport } from './routes/_app/stats'
@@ -56,6 +57,11 @@ const AppFocusRoute = AppFocusRouteImport.update({
 const AppInboxRoute = AppInboxRouteImport.update({
   id: '/inbox',
   path: '/inbox',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotesRoute = AppNotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
   getParentRoute: () => AppRoute,
 } as any)
 const AppReviewRoute = AppReviewRouteImport.update({
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/commitments': typeof AppCommitmentsRoute
   '/focus': typeof AppFocusRoute
   '/inbox': typeof AppInboxRoute
+  '/notes': typeof AppNotesRoute
   '/review': typeof AppReviewRoute
   '/settings': typeof AppSettingsRoute
   '/stats': typeof AppStatsRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/commitments': typeof AppCommitmentsRoute
   '/focus': typeof AppFocusRoute
   '/inbox': typeof AppInboxRoute
+  '/notes': typeof AppNotesRoute
   '/review': typeof AppReviewRoute
   '/settings': typeof AppSettingsRoute
   '/stats': typeof AppStatsRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/_app/commitments': typeof AppCommitmentsRoute
   '/_app/focus': typeof AppFocusRoute
   '/_app/inbox': typeof AppInboxRoute
+  '/_app/notes': typeof AppNotesRoute
   '/_app/review': typeof AppReviewRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/stats': typeof AppStatsRoute
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/commitments'
     | '/focus'
     | '/inbox'
+    | '/notes'
     | '/review'
     | '/settings'
     | '/stats'
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
     | '/commitments'
     | '/focus'
     | '/inbox'
+    | '/notes'
     | '/review'
     | '/settings'
     | '/stats'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/_app/commitments'
     | '/_app/focus'
     | '/_app/inbox'
+    | '/_app/notes'
     | '/_app/review'
     | '/_app/settings'
     | '/_app/stats'
@@ -247,6 +259,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInboxRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/notes': {
+      id: '/_app/notes'
+      path: '/notes'
+      fullPath: '/notes'
+      preLoaderRoute: typeof AppNotesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/review': {
       id: '/_app/review'
       path: '/review'
@@ -304,6 +323,7 @@ interface AppRouteChildren {
   AppCommitmentsRoute: typeof AppCommitmentsRoute
   AppFocusRoute: typeof AppFocusRoute
   AppInboxRoute: typeof AppInboxRoute
+  AppNotesRoute: typeof AppNotesRoute
   AppReviewRoute: typeof AppReviewRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppStatsRoute: typeof AppStatsRoute
@@ -318,6 +338,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCommitmentsRoute: AppCommitmentsRoute,
   AppFocusRoute: AppFocusRoute,
   AppInboxRoute: AppInboxRoute,
+  AppNotesRoute: AppNotesRoute,
   AppReviewRoute: AppReviewRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppStatsRoute: AppStatsRoute,

@@ -8,6 +8,7 @@ import {
   Plus,
   Search,
   Settings,
+  StickyNote,
 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
@@ -29,6 +30,8 @@ import { CommitmentSheet } from '@/components/commitment-sheet';
 import { EventDialog } from '@/components/event-form';
 import { EventSheet } from '@/components/event-sheet';
 import { GoalSheet } from '@/components/goal-sheet';
+import { NoteDialogs } from '@/components/note-dialogs';
+import { NoteSheet } from '@/components/note-sheet';
 import { TaskSheet } from '@/components/task-sheet';
 import { Button } from '@/components/ui/button';
 import {
@@ -50,7 +53,7 @@ import {
   type Project,
 } from '@/lib/queries';
 import { flushAll } from '@/lib/saver';
-import { newArea, newProject, openPalette, setUi } from '@/lib/ui-store';
+import { newArea, newNote, newProject, openPalette, setUi } from '@/lib/ui-store';
 import { cn } from '@/lib/utils';
 
 export function AppShell({
@@ -60,7 +63,14 @@ export function AppShell({
 }: {
   me: Me;
   /** Which detail sheet is open (search params). */
-  sheets: { task?: string; goal?: string; area?: string; commitment?: string; event?: string };
+  sheets: {
+    task?: string;
+    goal?: string;
+    area?: string;
+    commitment?: string;
+    event?: string;
+    note?: string;
+  };
   children: ReactNode;
 }) {
   const { data: inbox } = useQuery(tasksQuery({ project: 'inbox', status: 'open' }));
@@ -116,6 +126,9 @@ export function AppShell({
           <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-4 border-b bg-background/85 px-4 backdrop-blur md:hidden">
             <Logo />
             <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" aria-label="New note" onClick={() => newNote()}>
+                <StickyNote />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -178,6 +191,8 @@ export function AppShell({
       <CommitmentDialog />
       <EventSheet eventId={sheets.event} />
       <EventDialog />
+      <NoteSheet noteId={sheets.note} />
+      <NoteDialogs />
       <CommandPalette />
       <StructureDialogs />
       <SpotlightFullDialog />
