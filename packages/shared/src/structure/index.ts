@@ -16,8 +16,11 @@ export type ColumnCategory = (typeof COLUMN_CATEGORIES)[number];
 /** A task's status: its column's category, or todo/done for inbox tasks and subtasks. */
 export type TaskStatus = ColumnCategory;
 
-/** An outcome (a result, maybe by a date) or a time goal (focus minutes a period; was "commitment"). */
-export const GOAL_KINDS = ['outcome', 'time'] as const;
+/**
+ * An outcome (a result, maybe by a date), a time goal (focus minutes a period; was "commitment") or
+ * a number goal (a target with a unit, "40 lessons", D45).
+ */
+export const GOAL_KINDS = ['outcome', 'time', 'number'] as const;
 export type GoalKind = (typeof GOAL_KINDS)[number];
 
 export const GOAL_STATUSES = ['open', 'achieved', 'dropped'] as const;
@@ -200,3 +203,5 @@ export function pickNextAction(
 }
 export * from './focus-list';
 export * from './time-goals';
+export * from './number-goals';
+export * from './review';

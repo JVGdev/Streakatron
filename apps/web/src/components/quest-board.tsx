@@ -21,10 +21,12 @@ const TYPE_LABEL: Record<Quest['type'], string> = {
   make: 'Make',
   followup: 'Follow-up',
   weekly: 'This week',
+  review: 'Review',
+  project: 'Project',
   comeback: 'Welcome back',
 };
 
-const MINUTES = new Set(['focus_today', 'week_focus']);
+const MINUTES = new Set(['focus_today', 'week_focus', 'time_goal']);
 
 export function QuestBoard() {
   const { data: board } = useQuery(questsQuery);

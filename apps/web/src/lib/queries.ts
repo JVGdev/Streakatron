@@ -223,3 +223,17 @@ export type Heatmap = Awaited<ReturnType<typeof fetchHeatmap>>;
 
 /** A year of days, to today. */
 export const heatmapQuery = queryOptions({ queryKey: ['stats', 'heatmap'], queryFn: fetchHeatmap });
+
+const fetchReview = () => call(api.review.$get());
+export type WeekReview = Awaited<ReturnType<typeof fetchReview>>;
+export type Review = NonNullable<WeekReview['review']>;
+
+/** The weekly review page (D45): the week it looks at, its summary, the review row. */
+export const reviewQuery = queryOptions({ queryKey: ['review'], queryFn: fetchReview });
+
+/** Whether Today offers the review now. */
+export const reviewStatusQuery = queryOptions({
+  queryKey: ['review', 'status'],
+  queryFn: () => call(api.review.status.$get()),
+  staleTime: 5 * 60_000,
+});

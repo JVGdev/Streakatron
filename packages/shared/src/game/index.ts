@@ -33,6 +33,8 @@ export interface ActivityPayload {
   measure?: string;
   /** Commitment entries: the amount logged. */
   amount?: number;
+  /** Weekly reviews: the week reviewed (its first day). */
+  week?: string;
 }
 
 export interface XpActivity {
@@ -91,6 +93,8 @@ export function xpFor(a: XpActivity, ctx: XpContext): number {
       return 0;
     case 'commitment_met':
       return ctx.earnedBefore ? 0 : GAME.xp.commitmentMet;
+    case 'review_completed':
+      return ctx.earnedBefore ? 0 : GAME.xp.weeklyReview;
   }
 }
 
@@ -103,7 +107,8 @@ export const earnsOnce = (a: Pick<XpActivity, 'type'>) =>
   a.type === 'focus_completed' ||
   a.type === 'quest_completed' ||
   a.type === 'quest_bonus' ||
-  a.type === 'commitment_met';
+  a.type === 'commitment_met' ||
+  a.type === 'review_completed';
 
 /** Replay a log (in the order it happened): the XP each activity earns. */
 export function foldXp(log: readonly XpActivity[]): number[] {

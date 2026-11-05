@@ -205,7 +205,10 @@ export async function restoreSnapshot(userId: string, id: string) {
         await tx.insert(boardColumns).values(b.columns.map((c) => ({ ...revive(c), userId })));
       }
       if (b.goals.length) {
-        await tx.insert(goals).values(b.goals.map((g) => ({ ...revive(g), userId })));
+        // A number goal's commitment (D45) is linked again once commitments are back, below.
+        await tx
+          .insert(goals)
+          .values(b.goals.map((g) => ({ ...revive(g), userId, commitmentId: null })));
       }
       // Parents before their subtasks.
       const ordered = [...b.tasks].sort(
@@ -225,6 +228,14 @@ export async function restoreSnapshot(userId: string, id: string) {
         await tx
           .insert(commitmentEntries)
           .values(b.entries.map((e) => ({ ...revive(e), userId, focusSessionId: null })));
+      }
+      for (const g of b.goals) {
+        if (!g.commitmentId) continue;
+        const [c] = await tx
+          .select({ id: commitments.id })
+          .from(commitments)
+          .where(and(eq(commitments.id, g.commitmentId), eq(commitments.userId, userId)));
+        if (c) await tx.update(goals).set({ commitmentId: c.id }).where(eq(goals.id, g.id));
       }
       if (b.events?.length) {
         await tx.insert(events).values(b.events.map((e) => ({ ...revive(e), userId })));

@@ -1,6 +1,7 @@
 import {
   BarChart3,
   CalendarDays,
+  ClipboardCheck,
   FolderKanban,
   Inbox,
   ListTodo,
@@ -19,6 +20,7 @@ export interface NavItem {
     | '/commitments'
     | '/tasks'
     | '/calendar'
+    | '/review'
     | '/stats';
   label: string;
   icon: LucideIcon;
@@ -36,5 +38,6 @@ export const NAV: NavItem[] = [
   { to: '/commitments', label: 'Commitments', icon: Repeat, phone: true },
   { to: '/calendar', label: 'Calendar', icon: CalendarDays, phone: true },
   { to: '/tasks', label: 'Tasks', icon: ListTodo, phone: false },
+  { to: '/review', label: 'Review', icon: ClipboardCheck, phone: false },
   { to: '/stats', label: 'Stats', icon: BarChart3, phone: false },
 ];

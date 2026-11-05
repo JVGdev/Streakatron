@@ -29,6 +29,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { users } from './auth';
 import { timestamps } from './columns';
+import { commitments } from './commitments';
 
 const userId = () =>
   text()
@@ -77,6 +78,8 @@ export const projects = pgTable(
     /** Required (D32: a course, an obligation): outside the active limit, never offered for parking. */
     required: boolean().notNull().default(false),
     statusChangedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    /** Last looked at in a weekly review and kept as it is ("Keep parked", D45). */
+    reviewedAt: timestamp({ withTimezone: true }),
     /** A pinned next action; null means the board decides (pickNextAction). */
     nextActionTaskId: text().references((): AnyPgColumn => tasks.id, { onDelete: 'set null' }),
     color: text({ enum: COLORS }).notNull().default('stone'),
@@ -126,6 +129,13 @@ export const goals = pgTable(
     /** Time goals: focus minutes per period. */
     targetMinutes: integer(),
     period: text({ enum: GOAL_PERIODS }),
+    /** Number goals (D45): the target, its unit, and the part typed in. */
+    targetCount: integer(),
+    unit: text(),
+    count: integer().notNull().default(0),
+    /** Number goals: a commitment feeding it, counted from `commitmentFrom` (the day it was linked). */
+    commitmentId: text().references((): AnyPgColumn => commitments.id, { onDelete: 'set null' }),
+    commitmentFrom: day(),
     dueDate: day(),
     /** A month ("~July 2027", the due date is its first day) until the day is known (D32). */
     duePrecision: text({ enum: ['day', 'month'] })
@@ -147,6 +157,8 @@ export const goals = pgTable(
       'goals_time_shape',
       sql`${t.kind} <> 'time' or (${t.targetMinutes} is not null and ${t.period} is not null)`,
     ),
+    check('goals_number_shape', sql`${t.kind} <> 'number' or ${t.targetCount} is not null`),
+    check('goals_count', sql`${t.count} >= 0`),
   ],
 );
 

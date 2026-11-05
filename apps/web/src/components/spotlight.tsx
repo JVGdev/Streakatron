@@ -31,7 +31,7 @@ import {
 import { setUi, useUi } from '@/lib/ui-store';
 import { cn } from '@/lib/utils';
 import { EntityIcon } from './entity-icon';
-import { TimeGoalProgress } from './goals-panel';
+import { NumberGoalProgress, TimeGoalProgress } from './goals-panel';
 import { TaskRow } from './task-row';
 
 /** The Spotlight section on Today; nothing when it's empty. */
@@ -160,6 +160,8 @@ function GoalCard({
           {due && <span className={cn(due.late && 'text-destructive')}>{due.text}</span>}
           {goal.progress ? (
             <TimeGoalProgress progress={goal.progress} period={goal.period} />
+          ) : goal.numbers ? (
+            <NumberGoalProgress goal={goal} />
           ) : (
             total > 0 && (
               <span className="grid w-full max-w-sm gap-1">

@@ -28,6 +28,7 @@ import {
   type QuestTemplate,
   type QuestType,
 } from '@streakatron/shared/quests';
+import { monthEnd } from '@streakatron/shared/calendar';
 import { focusList, type TaskStatus } from '@streakatron/shared/structure';
 import {
   addDays,
@@ -52,6 +53,7 @@ import { HttpError } from '../http/errors';
 import { todayCommitments } from './commitments';
 import { conflict, notFound, type Tx } from './common';
 import { activeDaySql, activeDayWhere, logActivity, noteGameEvent, type Touch } from './game';
+import { goalViews } from './goals';
 import { projectViews } from './projects';
 
 type QuestRow = typeof questInstances.$inferSelect;
@@ -79,10 +81,16 @@ const TRIGGERS: Record<QuestTemplate, readonly Touch[]> = {
   week_target: ['task', 'focus', 'commitment'],
   week_projects: ['task', 'focus', 'project'],
   week_focus: ['focus'],
+  weekly_review: ['review'],
+  revisit_parked: ['project'],
+  goal_tasks: ['task', 'goal'],
+  time_goal: ['focus', 'goal'],
+  number_goal: ['goal', 'commitment', 'focus'],
   comeback: ['task', 'focus', 'commitment'],
 };
 
 const DAILY_BOARD_TYPES: QuestType[] = ['daily', 'time', 'make', 'quick', 'comeback'];
+const WEEKLY_BOARD_TYPES: QuestType[] = ['weekly', 'review', 'project'];
 
 // --- Settings and days -----------------------------------------------------------------------
 
@@ -159,7 +167,8 @@ async function gatherInput(
     rowsOf<{ id: string; day: string }>(
       await tx.execute(sql`
         select x.id, max(q.period_start)::text as day
-        from quest_instances q cross join lateral (values (q.task_id), (q.project_id)) as x(id)
+        from quest_instances q
+          cross join lateral (values (q.task_id), (q.project_id), (q.goal_id)) as x(id)
         where q.user_id = ${userId} and x.id is not null
         group by x.id`),
     ).map((r) => [r.id, r.day]),
@@ -248,6 +257,58 @@ async function gatherInput(
     open.filter((t) => t.projectId === null),
   ];
 
+  // Open goals of active projects, for project quests (D45).
+  const goalRows = await tx
+    .select()
+    .from(goals)
+    .where(
+      and(
+        eq(goals.userId, userId),
+        isNull(goals.deletedAt),
+        eq(goals.status, 'open'),
+        inArray(goals.projectId, active.length ? active.map((p) => p.id) : ['']),
+      ),
+    );
+  const goalTasks = new Map(
+    (
+      await tx
+        .select({ goalId: tasks.goalId, n: sql<number>`count(*)::int` })
+        .from(tasks)
+        .where(
+          and(
+            eq(tasks.userId, userId),
+            isNull(tasks.deletedAt),
+            isNull(tasks.completedAt),
+            sql`${tasks.goalId} is not null`,
+          ),
+        )
+        .groupBy(tasks.goalId)
+    ).map((r) => [r.goalId!, r.n]),
+  );
+  const goalCandidates = (await goalViews(tx, userId, goalRows)).map((g) => {
+    const end = g.dueDate ? (g.duePrecision === 'month' ? monthEnd(g.dueDate) : g.dueDate) : null;
+    const pace = g.numbers?.pace;
+    const remaining = g.numbers ? g.numbers.target - g.numbers.current : 0;
+    return {
+      id: g.id,
+      title: g.title,
+      daysWaiting: waiting(g.id, g.createdAt),
+      kind: g.kind,
+      daysLeft: end ? Math.max(0, daysBetween(today, end) + 1) : null,
+      openTasks: goalTasks.get(g.id) ?? 0,
+      weekMinutes:
+        g.kind === 'time' && g.targetMinutes
+          ? g.period === 'week'
+            ? g.targetMinutes
+            : Math.round((g.targetMinutes * 7) / 30)
+          : null,
+      current: g.numbers && !g.numbers.met ? g.numbers.current : null,
+      weekPace: pace
+        ? Math.min(remaining, pace.per === 'week' ? pace.amount : pace.amount * 7)
+        : null,
+    };
+  });
+
   const staleSince = addDays(today, -QUESTS.staleProjectDays);
   const commitments = (await todayCommitments(tx, userId, today)).filter((c) => c.scheduled);
   return {
@@ -315,6 +376,15 @@ async function gatherInput(
       lastFocus && !lastFocus.note && (lastFocus.minutes ?? 0) > 0 ? { id: lastFocus.id } : null,
     // All of today's, sized as one ask, while any is still to do.
     commitmentsDue: commitments.some((c) => c.due) ? commitments.length : 0,
+    parkedProjects: views
+      .filter((p) => p.status === 'parked')
+      .map((p) => {
+        const since = [p.statusChangedAt, p.reviewedAt]
+          .filter((d): d is Date => !!d)
+          .sort((a, b) => b.getTime() - a.getTime())[0]!;
+        return { id: p.id, title: p.title, daysWaiting: waiting(p.id, since) };
+      }),
+    goals: goalCandidates,
   };
 }
 
@@ -385,7 +455,9 @@ async function ensureBoards(tx: Tx, userId: string, s: QuestSettingsRow, today: 
       ),
     );
   const dailyMade = made.some((m) => m.periodStart === today && DAILY_BOARD_TYPES.includes(m.type));
-  const weeklyMade = made.some((m) => m.periodStart === weekStart && m.type === 'weekly');
+  const weeklyMade = made.some(
+    (m) => m.periodStart === weekStart && WEEKLY_BOARD_TYPES.includes(m.type),
+  );
   if (dailyMade && weeklyMade) return;
   const input = await gatherInput(tx, userId, s, today);
   if (!dailyMade) await insertSpecs(tx, userId, planDaily(input), { start: today, end: today });
@@ -620,7 +692,70 @@ async function progressOf(tx: Tx, userId: string, q: QuestRow): Promise<Progress
     }
     case 'comeback':
       return Math.min(1, await count(tx, and(mine, activeDayWhere(), on(q.periodStart))));
+    case 'weekly_review':
+      return Math.min(
+        1,
+        await count(tx, and(mine, eq(activity.type, 'review_completed'), since(q))),
+      );
+    case 'revisit_parked': {
+      if (!q.projectId) return 'cancel';
+      const [p] = await tx
+        .select({
+          status: projects.status,
+          statusChangedAt: projects.statusChangedAt,
+          reviewedAt: projects.reviewedAt,
+        })
+        .from(projects)
+        .where(and(eq(projects.id, q.projectId), eq(projects.userId, userId)));
+      if (!p) return 'cancel';
+      const after = (d: Date | null) => !!d && d >= q.offeredAt;
+      return after(p.reviewedAt) || after(p.statusChangedAt) ? 1 : 0;
+    }
+    case 'goal_tasks':
+    case 'time_goal':
+    case 'number_goal': {
+      const g = await openGoal(tx, userId, q.goalId);
+      if (!g) return 'cancel';
+      if (template === 'goal_tasks') {
+        const rows = rowsOf<{ n: number }>(
+          await tx.execute(sql`
+            select count(distinct a.entity_id)::int as n
+            from activity a join tasks t on t.id = a.entity_id
+            where a.user_id = ${userId} and a.type = 'task_completed'
+              and a.occurred_at >= ${q.offeredAt} and t.goal_id = ${g.id}
+              and t.completed_at is not null`),
+        );
+        return rows[0]?.n ?? 0;
+      }
+      if (template === 'time_goal') {
+        const [row] = await tx
+          .select({ m: sql<number>`coalesce(sum((${activity.payload}->>'minutes')::int), 0)::int` })
+          .from(activity)
+          .where(
+            and(
+              mine,
+              eq(activity.type, 'focus_completed'),
+              sql`${activity.payload}->>'projectId' = ${g.projectId}`,
+              gte(activity.localDate, q.periodStart),
+              lte(activity.localDate, q.periodEnd),
+            ),
+          );
+        return row?.m ?? 0;
+      }
+      const [view] = await goalViews(tx, userId, [g]);
+      return view?.numbers?.current ?? 0;
+    }
   }
+}
+
+/** A goal a project quest is about, while it's open (achieved still counts: it was reached). */
+async function openGoal(tx: Tx, userId: string, id: string | null) {
+  if (!id) return null;
+  const [g] = await tx
+    .select()
+    .from(goals)
+    .where(and(eq(goals.id, id), eq(goals.userId, userId), isNull(goals.deletedAt)));
+  return g && g.status !== 'dropped' ? g : null;
 }
 
 /** What a make quest made: the first task (or goal) created in its project since it was offered. */
@@ -702,6 +837,7 @@ const NAMES_PROJECT = new Set<string>([
   'add_task',
   'add_goal',
   'next_action',
+  'revisit_parked',
 ]);
 
 /** The title a quest shows, with today's names. */
@@ -917,7 +1053,17 @@ async function evaluateIn(
 
 // --- The board -------------------------------------------------------------------------------
 
-const ORDER: QuestType[] = ['comeback', 'daily', 'time', 'make', 'followup', 'quick', 'weekly'];
+const ORDER: QuestType[] = [
+  'comeback',
+  'daily',
+  'time',
+  'make',
+  'followup',
+  'quick',
+  'weekly',
+  'review',
+  'project',
+];
 
 async function boardView(tx: Tx, userId: string, today: DateString) {
   const rows = await tx

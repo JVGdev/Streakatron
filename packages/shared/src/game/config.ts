@@ -15,6 +15,8 @@ export const GAME = {
     focusPerMinute: 1,
     /** Meeting a commitment's target: once per commitment per period (D31). */
     commitmentMet: 10,
+    /** Finishing the weekly review: once per week (D45). */
+    weeklyReview: 50,
   },
   focus: {
     /** A session this long or longer earns XP and makes the day active. */
@@ -45,6 +47,8 @@ export const ACTIVITY_TYPES = [
   'commitment_logged',
   /** A commitment's target was reached for a period: its XP, once per commitment per period. */
   'commitment_met',
+  /** A weekly review was finished: its XP, once per week (D45). Not an active day by itself. */
+  'review_completed',
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 

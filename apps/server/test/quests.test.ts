@@ -123,7 +123,7 @@ describe('the board', () => {
   it('rests the types turned off, and validates quest settings', async () => {
     const res = await as.patch('/api/settings', {
       questSettings: {
-        restingTypes: ['daily', 'time', 'quick', 'make', 'weekly'],
+        restingTypes: ['daily', 'time', 'quick', 'make', 'weekly', 'review', 'project'],
         timeQuestMinMinutes: 15,
         timeQuestMaxMinutes: 180,
       },

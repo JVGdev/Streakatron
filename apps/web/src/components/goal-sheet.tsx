@@ -4,7 +4,7 @@
 import type { RichDoc } from '@streakatron/shared/rich';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
-import { Check, CircleOff, Pencil, RotateCcw, Target, Timer, Trash2 } from 'lucide-react';
+import { Check, CircleOff, Pencil, RotateCcw, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -16,14 +16,22 @@ import { useOpenSheet } from '@/hooks/use-open-task';
 import { useStructureActions } from '@/lib/actions';
 import { ApiError } from '@/lib/api';
 import { useAutosave } from '@/lib/autosave';
-import { formatDayShort, formatMinutes, goalDue } from '@/lib/days';
+import { formatDayShort, goalDue } from '@/lib/days';
 import { onRowsKeyDown } from '@/lib/rows';
-import { goalQuery, meQuery, projectsQuery, tasksQuery, type Goal } from '@/lib/queries';
+import {
+  commitmentsQuery,
+  goalQuery,
+  meQuery,
+  projectsQuery,
+  tasksQuery,
+  type Goal,
+} from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { SpotlightToggle } from './spotlight';
 import { Backlinks } from './backlinks';
 import { EntityIcon } from './entity-icon';
-import { GoalForm, TimeGoalProgress } from './goals-panel';
+import { GOAL_ICON, goalKindText } from '@/lib/goals';
+import { GoalForm, NumberGoalProgress, TimeGoalProgress } from './goals-panel';
 import { RichEditor } from './rich-editor';
 import { SheetBar, TitleField } from './sheet-parts';
 import { TurnInto } from './turn-into';
@@ -86,7 +94,7 @@ function GoalEditor({ goal }: { goal: Goal }) {
     { what: 'the goal' },
   );
   const close = () => open('goal', undefined);
-  const Icon = goal.kind === 'time' ? Timer : Target;
+  const Icon = GOAL_ICON[goal.kind];
 
   return (
     <div className="flex min-h-full flex-col">
@@ -163,9 +171,7 @@ function GoalEditor({ goal }: { goal: Goal }) {
           </dd>
           <dt className="text-muted-foreground">Kind</dt>
           <dd className="flex items-center gap-2">
-            {goal.kind === 'time' && goal.targetMinutes && goal.period
-              ? `Time goal · ${formatMinutes(goal.targetMinutes)} of focus a ${goal.period}`
-              : 'Outcome'}
+            {goalKindText(goal)}
             <Button
               size="icon"
               variant="ghost"
@@ -184,9 +190,23 @@ function GoalEditor({ goal }: { goal: Goal }) {
               </dd>
             </>
           )}
-          <dt className="text-muted-foreground">
-            {goal.kind === 'outcome' ? 'Deadline' : 'Until'}
-          </dt>
+          {goal.numbers && (
+            <>
+              <dt className="text-muted-foreground">Progress</dt>
+              <dd className="text-xs text-muted-foreground">
+                <NumberGoalProgress goal={goal} />
+              </dd>
+            </>
+          )}
+          {goal.commitmentId && (
+            <>
+              <dt className="text-muted-foreground">Counted from</dt>
+              <dd>
+                <FeedingCommitment id={goal.commitmentId} />
+              </dd>
+            </>
+          )}
+          <dt className="text-muted-foreground">{goal.kind === 'time' ? 'Until' : 'Deadline'}</dt>
           <dd className={cn(due?.late && 'text-destructive')}>
             {!goal.dueDate || !due
               ? '—'
@@ -283,5 +303,18 @@ function GoalEditor({ goal }: { goal: Goal }) {
         )}
       </Dialog>
     </div>
+  );
+}
+
+/** The commitment feeding a number goal, as a link to its sheet. */
+function FeedingCommitment({ id }: { id: string }) {
+  const open = useOpenSheet();
+  const { data: commitments = [] } = useQuery(commitmentsQuery());
+  const c = commitments.find((x) => x.id === id);
+  if (!c) return <span className="text-muted-foreground">An archived commitment</span>;
+  return (
+    <button className="text-left hover:underline" onClick={() => open('commitment', id)}>
+      {c.title}
+    </button>
   );
 }
