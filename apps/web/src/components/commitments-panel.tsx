@@ -27,7 +27,7 @@ export function CommitmentsPanel({ projectId }: { projectId: string }) {
           onClick={() => newCommitment(projectId)}
           className="w-full rounded-2xl border-2 border-dashed px-4 py-6 text-left text-sm text-muted-foreground hover:bg-muted/40"
         >
-          Something you do regularly for it? A lesson every day, 20 cards, 3 classes a week.
+          Add something you do regularly for this project.
         </button>
       ) : (
         <div

@@ -303,6 +303,17 @@ The canonical record of what was decided, why, and what was considered instead. 
 - **Day load (D32)** in the week view: open tasks planned that day (scheduled day, else due day) weigh by effort (S 1, M 2, L 3, unsized 1) plus an hour of timed events per point: Free / Light (≤3) / Busy (≤6) / Full.
 - **Elsewhere:** Today shows today's events under "On the calendar"; a project page shows its next one-off events and dated goals as small countdowns under the header (repeating events are a schedule, not a countdown) and an "Events" panel on "Goals & details". Palette: "New event", "Go to Calendar" (G then C). Calendar replaces Tasks in the phone bar; on phones Focus, Tasks and Stats moved into the account menu.
 
+### D40 · UI wording: no mottos, no examples from the user's data, short explanations (2026-11-05, the user; wording Claude's choice)
+- **Context (`observations.txt`):** small hints felt useless or bothering, and some used the user's own projects as examples. Claude studied every hint in the web app and sorted them into types; the user chose per type.
+- **Rules:**
+  - **No mottos** (the app preaching its principles: "Capture now, sort later.", "A short active list is the point…", "…so it stays a highlight", "…each one actually moves"). **Kept by the user:** the Today question ("What's the smallest meaningful thing you can do right now?"), the break's "Stand up, drink water." and the sign-in line.
+  - **No clever empty states** ("Inbox zero…" → "The inbox is empty.").
+  - **Short explanations of what a thing is stay**, worded neutrally and still specific to the app: page subtitles (Inbox, Commitments, All tasks, Stats) and dialog subtitles (area, project, goal kinds, commitment, event).
+  - **No examples from the user's data** (Duolingo, JLPT, "20 cards, 3 classes a week", "4 hours a week", University, Linear Algebra); **placeholders use neutral wording** ("What you do", "Project name", "unit").
+  - **Empty states that teach stay, one short line each.** Description editors share one placeholder, "Notes… Type @ to link." (no prompting questions); keyboard tips live in the shortcuts dialog.
+  - **Rule explainers stay** (they say what can't be guessed), trimmed where long (Settings cards).
+- **Why:** principle 10 (easy as it grows) and the product direction: mottos read as preaching after the first day, and examples from one person's setup look odd to anyone else.
+
 ---
 
 ## Rejected ideas (don't propose again)

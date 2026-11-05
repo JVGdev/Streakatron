@@ -84,6 +84,7 @@ The full decisions log, with rationale, alternatives and status, lives in **`.cl
 | D37 | Today & boards as built in 4b (Spotlight, waiting, required, create from pickers) |
 | D38 | Reminders as built in 4c: a minute job sends what's due once, with grace; snooze; push to every device; installable app |
 | D39 | Calendar & countdowns as built in 4d: events (day, month or TBD; structured repeats instead of RRULE), countdowns in Spotlight, month/week views with drag to schedule, day load |
+| D40 | UI wording: no mottos (a few kept by the user), no examples from the user's data, neutral placeholders, short explanations and one-line empty states |
 
 Rejected ideas are listed at the end of the decisions log so they aren't proposed again.
 
@@ -750,3 +751,21 @@ Quire (`~/Documentos/quire`) is the user's earlier project: a worldbuilding and 
 - **Q4 — Business model** (for the product): free, freemium (e.g. integrations, extra rooms), or subscription. Fixed constraint: loot is never sold.
 - **Q5 — Medals vs. prizes in the wardrobe.** Working definition: medals = achievements, prizes = milestone trophies (projects completed, streak milestones, events). Confirm when designing Phase 6–7.
 - Revisit gamification numbers (§5) and loot odds (§4.9) after ~2 weeks of dogfooding.
+
+**From `observations.txt` (2026-11-05), to discuss before building:**
+
+- **Q6 — Turn any entry into another** (task ↔ commitment ↔ goal ↔ event). Title, description, project, spotlight and reminders map across; ids are type-prefixed, so converting makes a new entry and removes the old one. Proposed placement: with 4e Recurring tasks (a recurring task and a commitment overlap; converting fixes the wrong pick later). To discuss:
+  - Which pairs matter: all four types, or task ↔ commitment first (the overlap that bites)?
+  - Open entries only, or also completed ones? XP stays either way (D15); does a done task's history carry over as "done before", or start fresh?
+  - Mentions in other descriptions point at the old id: rewrite them in the same transaction (proposed) or keep a redirect from old id to new?
+  - What happens to what doesn't map: subtasks/status/column of a task, entries and streak of a commitment, a goal's linked tasks, an event's repeat?
+  - The old entry: soft-deleted with undo (proposed), or gone?
+- **Q7 — Hide the focus time mid-focus**, shown with a click. Small. To discuss:
+  - Hidden by default for everyone, or a remembered toggle (proposed: a toggle, starting hidden)?
+  - Both the `/focus` ring and the mini timer, or only the focus page?
+  - Hidden means no numbers at all, or the ring/progress still moves?
+  - Chime and overtime unchanged while hidden (proposed: yes)?
+- **Q8 — Quick notes mid-focus**, so ideas are written down at once. Small. Today a session has one note, shown on the finish card after it ends. To discuss:
+  - Where a note goes: the Inbox as a task ("capture now, sort later"; proposed for ideas about something else), notes kept on the session and shown on the finish card (for the current work), or one field with an "Inbox" toggle?
+  - From the focus page only, or also the mini timer (and a shortcut)?
+  - Several notes per session, or one that grows?

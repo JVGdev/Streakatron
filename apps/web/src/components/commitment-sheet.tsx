@@ -244,7 +244,6 @@ function CommitmentEditor({ commitment: c }: { commitment: CommitmentDetail }) {
             value={c.description}
             onChange={setDescription}
             selfId={c.id}
-            placeholder="Why you keep it, how you do it… Type @ to link things."
           />
         </div>
 

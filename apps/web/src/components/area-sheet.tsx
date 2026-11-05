@@ -126,7 +126,6 @@ function AreaEditor({ area }: { area: Area }) {
             value={area.description}
             onChange={setDescription}
             selfId={area.id}
-            placeholder="What this part of your life is about… Type @ to link things."
           />
         </div>
 

@@ -101,7 +101,7 @@ function EventForm({
         <DialogHeader>
           <DialogTitle>New event</DialogTitle>
           <DialogDescription>
-            A date to keep: an exam, a trip, a class every week.
+            A date to keep, once or on repeat.
             {project && !more && <> In “{project.title}”.</>}
           </DialogDescription>
         </DialogHeader>
@@ -111,7 +111,7 @@ function EventForm({
             id="event-title"
             autoFocus
             maxLength={200}
-            placeholder="JLPT N5"
+            placeholder="What’s happening"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />

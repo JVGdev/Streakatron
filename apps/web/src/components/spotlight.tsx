@@ -283,8 +283,7 @@ export function SpotlightFullDialog() {
           <DialogHeader>
             <DialogTitle>The spotlight is full</DialogTitle>
             <DialogDescription>
-              It holds {SPOTLIGHT_MAX}, so it stays a highlight. Which one makes room for “
-              {full.add.title}”?
+              It holds {SPOTLIGHT_MAX}. Which one makes room for “{full.add.title}”?
             </DialogDescription>
           </DialogHeader>
           <ul className="grid gap-2">

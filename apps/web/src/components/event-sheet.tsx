@@ -184,7 +184,6 @@ function EventEditor({ event }: { event: CalendarEvent }) {
             value={event.description}
             onChange={setDescription}
             selfId={event.id}
-            placeholder="Where, what to bring, links… Type @ to link things."
           />
         </div>
 

@@ -250,7 +250,7 @@ function Lane({
           })}
           {column.category === 'waiting' && ids.length === 0 && (
             <p className="px-2 py-1 text-xs text-muted-foreground">
-              Blocked on someone else. Give a task a follow-up date and it comes back on Today then.
+              Tasks waiting on someone else. A follow-up date brings one back to Today.
             </p>
           )}
           {column.category !== 'done' && (

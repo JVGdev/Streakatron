@@ -26,8 +26,7 @@ export function NotificationsCard() {
       <CardHeader>
         <CardTitle>Notifications</CardTitle>
         <CardDescription>
-          Reminders come to every device you turn this on for, even with the app closed. Set them on
-          a commitment or a task.
+          Reminders come to every device you turn this on for, even with the app closed.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">

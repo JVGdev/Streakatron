@@ -202,7 +202,6 @@ function GoalEditor({ goal }: { goal: Goal }) {
             value={goal.description}
             onChange={setDescription}
             selfId={goal.id}
-            placeholder="Why it matters, what counts as done… Type @ to link things."
           />
         </div>
 

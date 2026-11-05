@@ -291,7 +291,6 @@ function TaskEditor({ task }: { task: TaskDetail }) {
             value={task.description}
             onChange={setDescription}
             selfId={task.id}
-            placeholder="Notes, what done looks like… Type @ to link a task, goal, project or area."
           />
         </div>
 
