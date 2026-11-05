@@ -189,7 +189,7 @@ export function convertPlan(s: ConvertSource, to: ConvertKind, today: DateString
         if (s.measure !== 'check') dropped.push('Target');
       } else if (s.kind === 'event') {
         if (s.repeat) note('Repeat', true);
-      } else if (s.kind === 'goal' && s.goalKind === 'time') dropped.push('Target');
+      } else if (s.kind === 'goal' && s.goalKind !== 'outcome') dropped.push('Target');
       if (day) kept.push(s.kind === 'goal' ? 'Deadline as due date' : 'Date');
       return {
         fields: { kind: 'task', dueDate: day, scheduledDate: null, repeat, spotlight },
@@ -211,6 +211,7 @@ export function convertPlan(s: ConvertSource, to: ConvertKind, today: DateString
           s.period === 'week' ? s.targetMinutes : Math.max(1, Math.round(s.targetMinutes / 4));
         kept.push(`${target} min a week`);
       } else if (s.kind === 'goal') {
+        if (s.goalKind !== 'outcome') dropped.push('Target');
         if (s.dueDate) dropped.push('Deadline');
       } else {
         const asDays = rule ? scheduleOfRepeat(rule) : null;
@@ -280,7 +281,7 @@ export function convertPlan(s: ConvertSource, to: ConvertKind, today: DateString
       if (s.kind === 'task' && s.repeat?.kind === 'after_done') dropped.push('Repeat');
       if (s.kind === 'commitment' && s.period === 'week') dropped.push('Target');
       else if (s.kind === 'commitment' && s.measure !== 'check') dropped.push('Target');
-      if (s.kind === 'goal' && s.goalKind === 'time') dropped.push('Target');
+      if (s.kind === 'goal' && s.goalKind !== 'outcome') dropped.push('Target');
       if (date && s.kind !== 'commitment') kept.push(precision === 'month' ? 'Month' : 'Date');
       return {
         fields: { kind: 'event', date, precision, repeat, spotlight },

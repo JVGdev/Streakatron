@@ -14,7 +14,10 @@ import {
   planMake,
   planQuick,
   planReroll,
+  planProject,
+  planReview,
   planWeekly,
+  goalTasksXp,
   questHint,
   questTitle,
   questWeight,
@@ -25,6 +28,7 @@ import {
   weeklyFocusXp,
   QUESTS,
   type BoardInput,
+  type GoalCandidate,
   type QuestSpec,
 } from '.';
 
@@ -73,6 +77,8 @@ const input = (over: Partial<BoardInput> = {}): BoardInput => ({
   noEffortTasks: [{ id: 'tsk_x', title: 'Email prof', daysWaiting: 0 }],
   lastFocusWithoutNote: null,
   commitmentsDue: 0,
+  parkedProjects: [],
+  goals: [],
   ...over,
 });
 
@@ -335,7 +341,10 @@ describe('quick quests', () => {
 
 describe('the weekly quests', () => {
   it('has the target, every project (2+) and a focus total', () => {
-    const week = planWeekly(input(), () => 0.5);
+    const week = ofType(
+      planWeekly(input(), () => 0.5),
+      'weekly',
+    );
     expect(week.map((q) => q.template)).toEqual(['week_target', 'week_projects', 'week_focus']);
     expect(week[0]).toMatchObject({ target: 4, xp: 100 });
     expect(week[1]).toMatchObject({ target: 2 });
@@ -343,16 +352,100 @@ describe('the weekly quests', () => {
   });
 
   it('skips "every project" with fewer than 2, and rests', () => {
-    const one = planWeekly(
-      input({ activeProjects: input().activeProjects.slice(0, 1) }),
-      seeded(11),
+    const one = ofType(
+      planWeekly(input({ activeProjects: input().activeProjects.slice(0, 1) }), seeded(11)),
+      'weekly',
     );
     expect(one.map((q) => q.template)).toEqual(['week_target', 'week_focus']);
-    expect(planWeekly(input({ resting: ['weekly'] }), seeded(11))).toEqual([]);
+    expect(ofType(planWeekly(input({ resting: ['weekly'] }), seeded(11)), 'weekly')).toEqual([]);
   });
 
   it('sizes the focus total from past weeks', () => {
     expect(planWeekly(input({ focusWeeks: [300, 300, 300] }), () => 0.5)[2]!.target).toBe(300);
+  });
+});
+
+describe('review and project quests (D45)', () => {
+  const goal = (over: Partial<GoalCandidate>): GoalCandidate => ({
+    id: 'gol_a',
+    title: 'Pass JLPT N5',
+    daysWaiting: 0,
+    kind: 'outcome',
+    daysLeft: null,
+    openTasks: 0,
+    weekMinutes: null,
+    current: null,
+    weekPace: null,
+    ...over,
+  });
+
+  it('asks for the weekly review every week, and a parked project when there is one', () => {
+    expect(planReview(input(), seeded(1)).map((q) => q.template)).toEqual(['weekly_review']);
+    const both = planReview(
+      input({ parkedProjects: [{ id: 'prj_p', title: 'Guitar', daysWaiting: 20 }] }),
+      seeded(1),
+    );
+    expect(both[1]).toMatchObject({ template: 'revisit_parked', projectId: 'prj_p', xp: 50 });
+    expect(both.every((q) => QUESTS.tier[q.type] === 'large')).toBe(true);
+    expect(planReview(input({ resting: ['review'] }), seeded(1))).toEqual([]);
+  });
+
+  it('makes one project quest from a goal, sized by its kind', () => {
+    expect(planProject(input(), seeded(2))).toEqual([]);
+    expect(planProject(input({ goals: [goal({ openTasks: 5 })] }), seeded(2))[0]).toMatchObject({
+      template: 'goal_tasks',
+      target: 3,
+      xp: goalTasksXp(3),
+      goalId: 'gol_a',
+    });
+    expect(
+      planProject(input({ goals: [goal({ kind: 'time', weekMinutes: 240 })] }), seeded(2))[0],
+    ).toMatchObject({ template: 'time_goal', target: 120 });
+    expect(
+      planProject(
+        input({ goals: [goal({ kind: 'number', current: 12, weekPace: 2, daysLeft: 200 })] }),
+        seeded(2),
+      )[0],
+    ).toMatchObject({ template: 'number_goal', target: 14 });
+    // Nothing to ask: an outcome with no open tasks, a met number goal.
+    expect(
+      planProject(input({ goals: [goal({}), goal({ kind: 'number', current: 40 })] })),
+    ).toEqual([]);
+  });
+
+  it('prefers a goal with a near deadline', () => {
+    const goals = [
+      goal({ id: 'gol_far', openTasks: 2, daysLeft: 300 }),
+      goal({ id: 'gol_near', openTasks: 2, daysLeft: 10 }),
+    ];
+    let near = 0;
+    const rand = seeded(3);
+    for (let i = 0; i < 300; i++) {
+      if (planProject(input({ goals }), rand)[0]?.goalId === 'gol_near') near++;
+    }
+    expect(near).toBeGreaterThan(170);
+  });
+
+  it('rerolls a project quest onto another goal', () => {
+    const goals = [goal({ id: 'gol_1', openTasks: 1 }), goal({ id: 'gol_2', openTasks: 1 })];
+    const [old] = planProject(input({ goals }), seeded(4));
+    const next = planReroll(old!, input({ goals }), [old!], seeded(4));
+    expect(next?.goalId).not.toBe(old!.goalId);
+    const only = goals.filter((g) => g.id === old!.goalId);
+    expect(planReroll(old!, input({ goals: only }), [old!], seeded(4))).toBeNull();
+  });
+
+  it('says what they ask', () => {
+    expect(questTitle({ template: 'weekly_review', target: 1 })).toBe('Do your weekly review');
+    expect(questTitle({ template: 'goal_tasks', target: 2, name: 'Hiragana' })).toBe(
+      'Finish 2 tasks of “Hiragana” this week',
+    );
+    expect(questTitle({ template: 'time_goal', target: 120, name: 'Japanese' })).toBe(
+      'Put 2 h into “Japanese” this week',
+    );
+    expect(questTitle({ template: 'number_goal', target: 14, name: 'Course' })).toBe(
+      'Bring “Course” to 14 this week',
+    );
   });
 });
 

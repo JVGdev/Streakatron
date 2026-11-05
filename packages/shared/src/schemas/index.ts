@@ -11,6 +11,7 @@ import {
   GOAL_PERIODS,
   GOAL_STATUSES,
   ICONS,
+  NUMBER_GOAL_LIMITS,
   PROJECT_STATUSES,
   type GoalKind,
   type GoalPeriod,
@@ -275,21 +276,33 @@ const goalFields = {
   /** Time goals: minutes of focus per period. */
   targetMinutes: z.int().min(5).max(10_000).nullable(),
   period: z.enum(GOAL_PERIODS).nullable(),
-  /** Outcome goals: an optional deadline. */
+  /** Number goals (D45): the target and its unit ("40 lessons"). */
+  targetCount: z
+    .int()
+    .min(NUMBER_GOAL_LIMITS.target.min)
+    .max(NUMBER_GOAL_LIMITS.target.max)
+    .nullable(),
+  unit: z.string().trim().max(NUMBER_GOAL_LIMITS.unitLength).nullable(),
+  /** Number goals: the commitment feeding it (its ticks or amounts add up from now on). */
+  commitmentId: idOf('commitment').nullable(),
+  /** An optional deadline (any kind). */
   dueDate: optionalDay,
   /** A deadline can be a month ("~July 2027", stored as its first day) until it's known (D32). */
   duePrecision: z.enum(['day', 'month']),
 };
 
-/** A time goal needs a target and a period; an outcome goal has neither. */
+/** A time goal needs a target and a period; a number goal needs a target; an outcome neither. */
 export const goalShapeProblem = (g: {
   kind: GoalKind;
   targetMinutes: number | null;
   period: GoalPeriod | null;
+  targetCount?: number | null;
 }) =>
   g.kind === 'time' && (g.targetMinutes == null || g.period == null)
     ? 'A time goal needs a target and a period'
-    : null;
+    : g.kind === 'number' && g.targetCount == null
+      ? 'A number goal needs a target'
+      : null;
 
 export const goalCreateSchema = z
   .object({
@@ -298,6 +311,9 @@ export const goalCreateSchema = z
     description: description.optional(),
     targetMinutes: goalFields.targetMinutes.optional().default(null),
     period: goalFields.period.optional().default(null),
+    targetCount: goalFields.targetCount.optional().default(null),
+    unit: goalFields.unit.optional(),
+    commitmentId: goalFields.commitmentId.optional(),
     dueDate: optionalDay.optional(),
     duePrecision: goalFields.duePrecision.optional(),
   })
@@ -307,8 +323,21 @@ export const goalCreateSchema = z
   });
 export type GoalCreate = z.input<typeof goalCreateSchema>;
 
-export const goalPatchSchema = z.object({ ...goalFields, status: z.enum(GOAL_STATUSES) }).partial();
+export const goalPatchSchema = z
+  .object({
+    ...goalFields,
+    status: z.enum(GOAL_STATUSES),
+    /** Number goals: the part typed in (+1, or "set to 12" minus what the commitment fed). */
+    count: z.int().min(0).max(NUMBER_GOAL_LIMITS.target.max),
+  })
+  .partial();
 export type GoalPatch = z.infer<typeof goalPatchSchema>;
+
+/** The weekly review's reflection, saved as it's typed (D45). */
+export const reviewSaveSchema = z.object({ reflection: description });
+export const reviewFinishSchema = z.object({ reflection: description.optional() });
+/** "Keep parked" in the weekly review. */
+export const keepParkedSchema = z.object({ projectId: idOf('project') });
 
 export const repeatSchema = z.object({
   every: z.enum(REPEAT_UNITS),

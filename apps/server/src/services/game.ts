@@ -211,7 +211,7 @@ async function gameBlock(
 }
 
 /** What a write touched, for the quests it can affect (D30); `all` re-reads every open quest. */
-export type Touch = 'task' | 'focus' | 'goal' | 'project' | 'commitment';
+export type Touch = 'task' | 'focus' | 'goal' | 'project' | 'commitment' | 'review';
 
 export interface WithGameOptions {
   touches?: readonly Touch[] | 'all';

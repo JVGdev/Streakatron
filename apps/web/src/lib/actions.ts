@@ -5,6 +5,7 @@
 //   const tasks = useTaskActions();
 //   await tasks.complete(task);
 
+import type { RichDoc } from '@streakatron/shared/rich';
 import type {
   AreaCreate,
   AreaPatch,
@@ -424,6 +425,8 @@ export function structureActions(qc: QueryClient) {
           old ? { ...old, goals: old.goals.map((g) => (g.id === goal.id ? updated : g)) } : old,
         );
         qc.setQueryData(['goal', goal.id], updated);
+        void qc.invalidateQueries({ queryKey: ['spotlight'] });
+        void qc.invalidateQueries({ queryKey: ['review'] });
         refreshEntities(qc);
         return updated;
       }),
@@ -508,6 +511,10 @@ function settleCommitment(qc: QueryClient, detail?: CommitmentDetail) {
     );
   }
   void qc.invalidateQueries({ queryKey: ['commitments'] });
+  // A commitment can feed a number goal (D45).
+  void qc.invalidateQueries({ queryKey: ['project'] });
+  void qc.invalidateQueries({ queryKey: ['goal'] });
+  void qc.invalidateQueries({ queryKey: ['spotlight'] });
   refreshEntities(qc);
 }
 
@@ -818,4 +825,42 @@ export function questActions(qc: QueryClient) {
 export function useQuestActions() {
   const qc = useQueryClient();
   return useMemo(() => questActions(qc), [qc]);
+}
+
+// --- Weekly review (D45) ---------------------------------------------------------------------
+
+export function reviewActions(qc: QueryClient) {
+  return {
+    /** The week's review row (made once; the reflection saves into it). */
+    start: () => call(api.review.start.$post()),
+
+    /** Autosave's sender for the reflection: throws. */
+    save: (id: string, reflection: RichDoc | null) =>
+      call(api.review[':id'].$patch({ param: { id }, json: { reflection } })),
+
+    finish: (id: string, reflection: RichDoc | null) =>
+      attempt(async () => {
+        const done = await call(
+          api.review[':id'].finish.$post({ param: { id }, json: { reflection } }),
+        );
+        void qc.invalidateQueries({ queryKey: ['review'] });
+        void qc.invalidateQueries({ queryKey: ['quests'] });
+        return done;
+      }),
+
+    /** "Keep parked": looked at, left as it is (counts as revisited). */
+    keepParked: (project: { id: string; title: string }) =>
+      attempt(async () => {
+        await call(api.review['keep-parked'].$post({ json: { projectId: project.id } }));
+        void qc.invalidateQueries({ queryKey: ['projects'] });
+        void qc.invalidateQueries({ queryKey: ['quests'] });
+        toast(`Kept “${project.title}” parked`);
+        return true;
+      }),
+  };
+}
+
+export function useReviewActions() {
+  const qc = useQueryClient();
+  return useMemo(() => reviewActions(qc), [qc]);
 }

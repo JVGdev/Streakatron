@@ -7,6 +7,9 @@ import {
   firstOpenColumn,
   focusList,
   goalPeriodRange,
+  numberGoalProgress,
+  reviewOffered,
+  reviewWeekOf,
   pickNextAction,
   placeAt,
   timeGoalProgress,
@@ -240,5 +243,88 @@ describe('today’s items', () => {
       ['stale', 'follow_up'],
       ['letter', 'follow_up'],
     ]);
+  });
+});
+
+describe('numberGoalProgress', () => {
+  const goal = { targetCount: 40, dueDate: '2027-06-30', duePrecision: 'day' as const };
+
+  it('adds what was typed and what the commitment fed', () => {
+    const p = numberGoalProgress({ ...goal, dueDate: null }, 7, 5, '2026-11-01', '2026-11-05');
+    expect(p).toMatchObject({ current: 12, fed: 5, met: false, daysLeft: null, pace: null });
+  });
+
+  it('gives a weekly pace far from the deadline and a daily one near it', () => {
+    const far = numberGoalProgress(goal, 12, 0, '2026-11-01', '2026-11-05');
+    expect(far.pace?.per).toBe('week');
+    // 28 left over 238 days (34 weeks): 1 a week.
+    expect(far.daysLeft).toBe(238);
+    expect(far.pace?.amount).toBe(1);
+    const near = numberGoalProgress(goal, 30, 0, '2026-11-01', '2027-06-26');
+    expect(near).toMatchObject({ daysLeft: 5, pace: { per: 'day', amount: 2 } });
+  });
+
+  it('counts a month deadline to the end of the month', () => {
+    const p = numberGoalProgress(
+      { ...goal, dueDate: '2027-06-01', duePrecision: 'month' },
+      0,
+      0,
+      '2027-06-01',
+      '2027-06-01',
+    );
+    expect(p.daysLeft).toBe(30);
+  });
+
+  it('says how far behind a straight line it is', () => {
+    // Halfway through, 20 expected.
+    const p = numberGoalProgress(
+      { targetCount: 40, dueDate: '2026-11-21', duePrecision: 'day' },
+      15,
+      0,
+      '2026-11-01',
+      '2026-11-11',
+    );
+    expect(p.behind).toBe(5);
+    expect(
+      numberGoalProgress(
+        { targetCount: 40, dueDate: '2026-11-21', duePrecision: 'day' },
+        25,
+        0,
+        '2026-11-01',
+        '2026-11-11',
+      ).behind,
+    ).toBe(0);
+  });
+
+  it('is met at the target and late past the deadline', () => {
+    expect(numberGoalProgress(goal, 40, 3, '2026-11-01', '2026-11-05')).toMatchObject({
+      met: true,
+      pace: null,
+      behind: 0,
+    });
+    expect(numberGoalProgress(goal, 10, 0, '2026-11-01', '2027-07-02')).toMatchObject({
+      late: true,
+      daysLeft: 0,
+      pace: null,
+    });
+  });
+});
+
+describe('weekly review timing', () => {
+  // Weeks start on Monday; 2026-11-08 is a Sunday.
+  it('reviews this week from its last day, and the past one in the first two days', () => {
+    expect(reviewWeekOf('2026-11-08', 1)).toBe('2026-11-02');
+    expect(reviewWeekOf('2026-11-09', 1)).toBe('2026-11-02');
+    expect(reviewWeekOf('2026-11-10', 1)).toBe('2026-11-02');
+    expect(reviewWeekOf('2026-11-11', 1)).toBe('2026-11-09');
+  });
+
+  it('is offered on the last day and the two after', () => {
+    const offered = ['2026-11-07', '2026-11-08', '2026-11-09', '2026-11-10', '2026-11-11'].map(
+      (d) => reviewOffered(d, 1),
+    );
+    expect(offered).toEqual([false, true, true, true, false]);
+    // Weeks starting on Sunday: Saturday is the last day.
+    expect(reviewOffered('2026-11-07', 0)).toBe(true);
   });
 });

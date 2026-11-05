@@ -14,6 +14,8 @@ export const QUEST_TYPES = [
   'make',
   'followup',
   'weekly',
+  'review',
+  'project',
   'comeback',
 ] as const;
 export type QuestType = (typeof QUEST_TYPES)[number];
@@ -25,6 +27,8 @@ export const RESTABLE_QUEST_TYPES = [
   'quick',
   'make',
   'weekly',
+  'review',
+  'project',
 ] as const satisfies readonly QuestType[];
 
 export const QUEST_STATUSES = ['offered', 'completed', 'expired', 'rerolled', 'cancelled'] as const;
@@ -49,6 +53,8 @@ export const QUEST_TEMPLATES = {
   make: ['add_task', 'add_goal', 'subtasks'],
   followup: ['task_details', 'goal_details'],
   weekly: ['week_target', 'week_projects', 'week_focus'],
+  review: ['weekly_review', 'revisit_parked'],
+  project: ['goal_tasks', 'time_goal', 'number_goal'],
   comeback: ['comeback'],
 } as const satisfies Record<QuestType, readonly string[]>;
 export type QuestTemplate = (typeof QUEST_TEMPLATES)[QuestType][number];
@@ -96,6 +102,16 @@ export const QUESTS = {
   },
   followup: { xp: 15, parts: 2 },
   comeback: { xp: 50, afterInactiveDays: 2, onlyAfterIdleDays: 7 },
+  /** Review quests (D45): the weekly review, and a parked project to decide on. */
+  review: { xp: { weekly_review: 60, revisit_parked: 50 } as Record<string, number> },
+  /** Project quests (D45): one a week, from an open goal in an active project. */
+  project: {
+    /** "Finish N tasks of goal X": at most this many. */
+    tasks: 3,
+    /** A time goal's quest asks this share of its week. */
+    timeShare: 0.5,
+    xp: { time_goal: 60, number_goal: 60 } as Record<string, number>,
+  },
   bonusXp: 25,
   /** Sizing from your own days: this many recent days, at least this many of them. */
   history: { days: 28, least: 3 },
@@ -106,12 +122,14 @@ export const QUESTS = {
     make: 'standard',
     followup: 'small',
     weekly: 'large',
+    review: 'large',
+    project: 'large',
     comeback: 'standard',
   } satisfies Record<QuestType, BoxTier>,
   /** Completions of these types take the screen (D30); the rest show in the toast. */
-  big: ['daily', 'time', 'weekly', 'comeback'] as readonly QuestType[],
+  big: ['daily', 'time', 'weekly', 'review', 'project', 'comeback'] as readonly QuestType[],
   /** Types that can be rerolled (once per quest per day). */
-  rerollable: ['daily', 'time', 'quick', 'make', 'weekly'] as readonly QuestType[],
+  rerollable: ['daily', 'time', 'quick', 'make', 'weekly', 'project'] as readonly QuestType[],
 } as const;
 
 // --- Picking and sizing (Quire's rules, plan.md §11) -----------------------------------------
@@ -183,6 +201,9 @@ export const timeQuestXp = (minutes: number) =>
 /** A weekly time quest's XP: 60 up to 100. */
 export const weeklyFocusXp = (minutes: number) =>
   Math.max(60, Math.min(100, Math.round(minutes / 12 / 5) * 5 + 40));
+
+/** "Finish N tasks of goal X this week": 50 for one, 10 more for each other. */
+export const goalTasksXp = (n: number) => 50 + 10 * Math.max(0, n - 1);
 
 /** "Complete N tasks today": XP grows with N. */
 export const tasksQuestXp = (n: number) => Math.min(40, 15 + 5 * n);
@@ -326,6 +347,16 @@ export function questTitle({ template, target, name }: QuestWords): string {
       return `Touch every active project this week (${target})`;
     case 'week_focus':
       return `Focus ${formatMinutes(target)} this week`;
+    case 'weekly_review':
+      return 'Do your weekly review';
+    case 'revisit_parked':
+      return `Revisit ${n}: keep it parked, start it or close it`;
+    case 'goal_tasks':
+      return `Finish ${plural(target, 'task')} of “${n}” this week`;
+    case 'time_goal':
+      return `Put ${formatMinutes(target)} into “${n}” this week`;
+    case 'number_goal':
+      return `Bring “${n}” to ${target} this week`;
     case 'comeback':
       return 'Welcome back: make today count';
   }
@@ -351,6 +382,14 @@ export function questHint(template: QuestTemplate, missing?: readonly DetailPart
       return 'Tick, add to or log minutes on each one on Today.';
     case 'log_commitment':
       return 'A tick, +1 or a few minutes on any commitment.';
+    case 'weekly_review':
+      return 'About 5 minutes: look back, tidy up, pick what’s next.';
+    case 'revisit_parked':
+      return 'In the weekly review, or from the project’s menu.';
+    case 'time_goal':
+      return 'Focus sessions on its project count.';
+    case 'number_goal':
+      return 'What it needs this week to make its deadline.';
     default:
       return null;
   }
@@ -419,6 +458,24 @@ export interface BoardInput {
   lastFocusWithoutNote: { id: string } | null;
   /** Commitments due today and not met yet (D31). */
   commitmentsDue: number;
+  /** Parked projects, waiting since they were parked or last revisited (D45). */
+  parkedProjects: readonly Candidate[];
+  /** Open goals in active projects, for project quests (D45). */
+  goals: readonly GoalCandidate[];
+}
+
+/** An open goal a project quest can be about. */
+export interface GoalCandidate extends Candidate {
+  kind: 'outcome' | 'time' | 'number';
+  /** Days until its deadline (null: none). */
+  daysLeft: number | null;
+  /** Outcome goals: open tasks under it. */
+  openTasks: number;
+  /** Time goals: their target as minutes a week. */
+  weekMinutes: number | null;
+  /** Number goals with a deadline, not met: where it stands and a week's pace. */
+  current: number | null;
+  weekPace: number | null;
 }
 
 const rests = (input: BoardInput, type: QuestType) =>
@@ -700,9 +757,17 @@ export function planDaily(input: BoardInput, rand = Math.random): QuestSpec[] {
   return board;
 }
 
-/** This week's quests: the weekly target, every active project (2 or more), and a focus total. */
+/**
+ * This week's quests: the weekly target, every active project (2 or more), a focus total; the
+ * review quests; a project quest. Each type rests on its own.
+ */
 export function planWeekly(input: BoardInput, rand = Math.random): QuestSpec[] {
-  if (rests(input, 'weekly') || idleOnlyComeback(input.idleDays)) return [];
+  if (idleOnlyComeback(input.idleDays)) return [];
+  return [...planWeeklyOwn(input, rand), ...planReview(input, rand), ...planProject(input, rand)];
+}
+
+function planWeeklyOwn(input: BoardInput, rand: () => number): QuestSpec[] {
+  if (rests(input, 'weekly')) return [];
   const xp = QUESTS.weekly.xp;
   const quests: QuestSpec[] = [
     { type: 'weekly', template: 'week_target', target: input.weeklyTarget, xp: xp.week_target! },
@@ -723,6 +788,97 @@ export function planWeekly(input: BoardInput, rand = Math.random): QuestSpec[] {
     xp: weeklyFocusXp(minutes),
   });
   return quests;
+}
+
+/** The review quests: the weekly review, and a parked project to decide on when there is one. */
+export function planReview(input: BoardInput, rand = Math.random): QuestSpec[] {
+  if (rests(input, 'review')) return [];
+  const xp = QUESTS.review.xp;
+  const quests: QuestSpec[] = [
+    { type: 'review', template: 'weekly_review', target: 1, xp: xp.weekly_review! },
+  ];
+  const parked = pickWeighted(
+    input.parkedProjects.map((p) => ({ item: p, weight: questWeight(1, p.daysWaiting) })),
+    rand,
+  );
+  if (parked) {
+    quests.push({
+      type: 'review',
+      template: 'revisit_parked',
+      target: 1,
+      xp: xp.revisit_parked!,
+      projectId: parked.id,
+    });
+  }
+  return quests;
+}
+
+/** How much a goal's deadline makes it likelier: near ones first, none at all still possible. */
+const urgency = (daysLeft: number | null) =>
+  daysLeft === null ? 1 : daysLeft <= 30 ? 2 : daysLeft <= 90 ? 1.5 : 1;
+
+/** Every project quest the goals allow, each with its weight. */
+function projectCandidates(input: BoardInput) {
+  const out: { item: QuestSpec; weight: number }[] = [];
+  const xp = QUESTS.project.xp;
+  for (const g of input.goals) {
+    const weight = questWeight(urgency(g.daysLeft), g.daysWaiting);
+    if (g.kind === 'outcome' && g.openTasks > 0) {
+      const n = Math.min(QUESTS.project.tasks, g.openTasks);
+      out.push({
+        item: {
+          type: 'project',
+          template: 'goal_tasks',
+          target: n,
+          xp: goalTasksXp(n),
+          goalId: g.id,
+        },
+        weight,
+      });
+    } else if (g.kind === 'time' && g.weekMinutes) {
+      const step = QUESTS.time.step;
+      const minutes = Math.max(
+        step * 3,
+        Math.round((g.weekMinutes * QUESTS.project.timeShare) / step) * step,
+      );
+      out.push({
+        item: {
+          type: 'project',
+          template: 'time_goal',
+          target: minutes,
+          xp: xp.time_goal!,
+          goalId: g.id,
+        },
+        weight,
+      });
+    } else if (g.kind === 'number' && g.current !== null && g.weekPace) {
+      out.push({
+        item: {
+          type: 'project',
+          template: 'number_goal',
+          target: g.current + g.weekPace,
+          xp: xp.number_goal!,
+          goalId: g.id,
+        },
+        weight,
+      });
+    }
+  }
+  return out;
+}
+
+/** This week's project quest: one, from an open goal, likelier the nearer its deadline. */
+export function planProject(
+  input: BoardInput,
+  rand = Math.random,
+  exclude: readonly QuestSpec[] = [],
+): QuestSpec[] {
+  if (rests(input, 'project')) return [];
+  const options = projectCandidates(input).filter(
+    (o) => !exclude.some((e) => e.goalId === o.item.goalId),
+  );
+  const picked = pickWeighted(options, rand);
+  return picked ? [picked] : [];
 }
 
 /**
@@ -758,6 +914,10 @@ export function planReroll(
       );
     case 'make':
       return planMake(input, rand, [old, ...board.filter((b) => b.type === 'make')]);
+    case 'project':
+      return (
+        planProject(input, rand, [old, ...board.filter((b) => b.type === 'project')])[0] ?? null
+      );
     case 'weekly': {
       if (old.template !== 'week_focus') return null;
       for (let i = 0; i < 6; i++) {

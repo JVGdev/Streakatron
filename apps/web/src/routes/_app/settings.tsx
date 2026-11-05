@@ -307,6 +307,8 @@ const QUEST_TYPE_INFO: Record<(typeof RESTABLE_QUEST_TYPES)[number], [string, st
   quick: ['Quick wins', 'Small chores like triaging the inbox; 3 a day at most.'],
   make: ['Make quests', 'Add a task or goal, then fill in its details the next day.'],
   weekly: ['Weekly quests', 'Your weekly target, every active project, and a focus total.'],
+  review: ['Review quests', 'The weekly review, and a parked project to decide on.'],
+  project: ['Project quests', 'One a week from a goal: its tasks, its time or its number.'],
 };
 
 function QuestSettings() {

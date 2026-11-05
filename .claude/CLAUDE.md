@@ -4,7 +4,7 @@ Streakatron is a web app that helps people stay consistent with studies and pers
 
 ## Current status
 
-- **Phase:** Phases 0–2 done 2026-11-03. **Phase 3 (MVP) done 2026-11-04 in three slices (D27): 3a activity log, XP, levels, streaks; 3b focus sessions (D29); 3c quests and heatmap (D30). Phase 4 (D34) in progress: **4a Commitments done 2026-11-04 (D36, merged, pushed and deployed); 4b Today & boards done 2026-11-04 (D37, merged, pushed and deployed); 4c Reminders done 2026-11-04 (D38, merged, pushed and deployed); 4d Calendar & countdowns done 2026-11-05 (D39, merged, pushed and deployed); 4e Recurring tasks + Turn into done 2026-11-05 (D43, D44, merged, pushed and deployed); next 4f Goals & weekly review.** Planned around the user's "Studying Japanese" use case (D31–D33), in seven slices (D34, D42): 4a Commitments (+ time-goal progress) · 4b Today & boards · 4c Reminders · 4d Calendar & countdowns · 4e Recurring tasks · 4f Goals & weekly review · 4g Notes board.**
+- **Phase:** Phases 0–2 done 2026-11-03. **Phase 3 (MVP) done 2026-11-04 in three slices (D27): 3a activity log, XP, levels, streaks; 3b focus sessions (D29); 3c quests and heatmap (D30). Phase 4 (D34) in progress: **4a Commitments done 2026-11-04 (D36, merged, pushed and deployed); 4b Today & boards done 2026-11-04 (D37, merged, pushed and deployed); 4c Reminders done 2026-11-04 (D38, merged, pushed and deployed); 4d Calendar & countdowns done 2026-11-05 (D39, merged, pushed and deployed); 4e Recurring tasks + Turn into done 2026-11-05 (D43, D44, merged, pushed and deployed); 4f Goals & weekly review built 2026-11-05 (D45, on branch `4f-goals-review`, not merged yet); next 4g Notes board.** Planned around the user's "Studying Japanese" use case (D31–D33), in seven slices (D34, D42): 4a Commitments (+ time-goal progress) · 4b Today & boards · 4c Reminders · 4d Calendar & countdowns · 4e Recurring tasks · 4f Goals & weekly review · 4g Notes board.**
 - **Run it:** `pnpm db:up && pnpm dev` (README has setup, scripts, Tailscale and backups).
 - **Repository:** https://github.com/JVGdev/Streakatron (private), branch `main`.
 - Detailed status and session history: `.claude/context/progress.md`.
@@ -36,7 +36,7 @@ Read the relevant context file before working on an area; read `plan.md` section
 - **Ask clarifying questions** when a decision is genuinely the user's; give a recommendation, not a survey.
 - **Record every new or changed decision** in `.claude/context/decisions.md` (new ID, date, rationale). Never silently diverge from it.
 - **Don't re-propose rejected ideas** (listed at the end of decisions.md).
-- **When `observations.txt` has new content**, fold it into `plan.md` (right phase/section) and decisions.md if it decides something, then tell the user.
+- **`observations.txt` is read only when the user says so** (2026-11-05): they organize their ideas there first. When asked, fold it into `plan.md` (right phase/section) and decisions.md if it decides something, then tell the user.
 - **Tick `plan.md` checkboxes** as tasks finish and **append a session entry to `progress.md`** at the end of meaningful work.
 - New ideas go to `plan.md` §12 (backlog), not into the current phase.
 - **Keep the UI easy as it grows (D32):** defaults first, options behind "More", grow existing screens before adding pages, reuse the same patterns; every slice ends with a screenshot UI review (desktop, phone, dark).

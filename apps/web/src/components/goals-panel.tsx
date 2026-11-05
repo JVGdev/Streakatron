@@ -1,7 +1,10 @@
-// A project's goals: outcomes (with an optional deadline) and time goals (focus minutes per week
-// or month, D31), with their progress from focus sessions on the project and the pace still needed.
+// A project's goals: outcomes (with an optional deadline), time goals (focus minutes per week or
+// month, D31) and number goals (a target with a unit, D45), with their progress and the pace
+// still needed.
 
 import type { GoalKind, GoalPeriod, GoalStatus } from '@streakatron/shared/structure';
+import { NUMBER_GOAL_LIMITS } from '@streakatron/shared/structure';
+import { useQuery } from '@tanstack/react-query';
 import {
   Check,
   CircleOff,
@@ -11,8 +14,6 @@ import {
   RotateCcw,
   Star,
   StarOff,
-  Target,
-  Timer,
   Trash2,
 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
@@ -36,10 +37,12 @@ import {
 import { TentativeDateField } from '@/components/event-fields';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useOpenSheet } from '@/hooks/use-open-task';
 import { useSpotlightActions, useStructureActions } from '@/lib/actions';
 import { formatMinutes, goalDue } from '@/lib/days';
-import type { Goal, Task } from '@/lib/queries';
+import { GOAL_ICON, withUnit } from '@/lib/goals';
+import { commitmentsQuery, type Goal, type Task } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
 export function GoalsPanel({
@@ -116,7 +119,7 @@ function GoalRow({
   const done = tasks.filter((t) => t.completedAt).length;
   const due = goalDue(goal, today);
   const setStatus = (status: GoalStatus) => void actions.updateGoal(goal, { status });
-  const Icon = goal.kind === 'time' ? Timer : Target;
+  const Icon = GOAL_ICON[goal.kind];
 
   return (
     <div
@@ -148,6 +151,7 @@ function GoalRow({
           {goal.progress && goal.status === 'open' && (
             <TimeGoalProgress progress={goal.progress} period={goal.period} />
           )}
+          {goal.numbers && goal.status === 'open' && <NumberGoalProgress goal={goal} />}
           {due && goal.status === 'open' && (
             <span className={cn(due.late && 'text-destructive')}>{due.text}</span>
           )}
@@ -201,6 +205,18 @@ function GoalRow({
   );
 }
 
+const KIND_LABEL: Record<GoalKind, string> = {
+  outcome: 'Outcome',
+  time: 'Time goal',
+  number: 'Number',
+};
+
+const KIND_HINT: Record<GoalKind, string> = {
+  outcome: 'A result you’re after, optionally by a date.',
+  time: 'A regular effort: focus time per week or month.',
+  number: 'A number to reach, like lessons or pages, optionally by a date.',
+};
+
 export function GoalForm({
   projectId,
   goal,
@@ -215,6 +231,12 @@ export function GoalForm({
   const [kind, setKind] = useState<GoalKind>(goal?.kind ?? 'outcome');
   const [hours, setHours] = useState(goal?.targetMinutes ? String(goal.targetMinutes / 60) : '4');
   const [period, setPeriod] = useState<GoalPeriod>(goal?.period ?? 'week');
+  const [count, setCount] = useState(goal?.targetCount ? String(goal.targetCount) : '');
+  const [unit, setUnit] = useState(goal?.unit ?? '');
+  const [feed, setFeed] = useState<string | null>(goal?.commitmentId ?? null);
+  const { data: commitments = [] } = useQuery(commitmentsQuery());
+  // Ticked or counted commitments of this project can feed it (minutes feed time goals).
+  const feeders = commitments.filter((c) => c.projectId === projectId && c.measure !== 'minutes');
   const [due, setDue] = useState<{ date: string | null; precision: 'day' | 'month' }>({
     date: goal?.dueDate ?? null,
     precision: goal?.duePrecision ?? 'day',
@@ -222,7 +244,14 @@ export function GoalForm({
   const [busy, setBusy] = useState(false);
 
   const minutes = Math.round(Number(hours) * 60);
-  const validTarget = kind === 'outcome' || (Number.isFinite(minutes) && minutes >= 5);
+  const target = Math.round(Number(count));
+  const validTarget =
+    kind === 'outcome' ||
+    (kind === 'time' && Number.isFinite(minutes) && minutes >= 5) ||
+    (kind === 'number' &&
+      Number.isInteger(target) &&
+      target >= NUMBER_GOAL_LIMITS.target.min &&
+      target <= NUMBER_GOAL_LIMITS.target.max);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -233,6 +262,9 @@ export function GoalForm({
       kind,
       targetMinutes: kind === 'time' ? minutes : null,
       period: kind === 'time' ? period : null,
+      targetCount: kind === 'number' ? target : null,
+      unit: kind === 'number' ? unit.trim() || null : null,
+      commitmentId: kind === 'number' ? feed : null,
       dueDate: due.date,
       duePrecision: due.date ? due.precision : ('day' as const),
     };
@@ -248,29 +280,28 @@ export function GoalForm({
       <form onSubmit={submit} className="grid gap-4">
         <DialogHeader>
           <DialogTitle>{goal ? 'Edit goal' : 'New goal'}</DialogTitle>
-          <DialogDescription>
-            {kind === 'outcome'
-              ? 'A result you’re after, optionally by a date.'
-              : 'A regular effort: focus time per week or month.'}
-          </DialogDescription>
+          <DialogDescription>{KIND_HINT[kind]}</DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1" role="radiogroup">
-          {(['outcome', 'time'] as const).map((k) => (
-            <button
-              key={k}
-              type="button"
-              role="radio"
-              aria-checked={kind === k}
-              onClick={() => setKind(k)}
-              className={cn(
-                'flex items-center justify-center gap-2 rounded-md py-1.5 text-sm font-medium text-muted-foreground',
-                kind === k && 'bg-background text-foreground shadow-xs',
-              )}
-            >
-              {k === 'outcome' ? <Target className="size-4" /> : <Timer className="size-4" />}
-              {k === 'outcome' ? 'Outcome' : 'Time goal'}
-            </button>
-          ))}
+        <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1" role="radiogroup">
+          {(['outcome', 'time', 'number'] as const).map((k) => {
+            const KindIcon = GOAL_ICON[k];
+            return (
+              <button
+                key={k}
+                type="button"
+                role="radio"
+                aria-checked={kind === k}
+                onClick={() => setKind(k)}
+                className={cn(
+                  'flex items-center justify-center gap-2 rounded-md py-1.5 text-sm font-medium text-muted-foreground',
+                  kind === k && 'bg-background text-foreground shadow-xs',
+                )}
+              >
+                <KindIcon className="size-4" />
+                {KIND_LABEL[k]}
+              </button>
+            );
+          })}
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="goal-title">Title</Label>
@@ -279,7 +310,7 @@ export function GoalForm({
             autoFocus
             maxLength={200}
             placeholder={
-              kind === 'outcome' ? 'What you want to reach' : 'What you want to put time into'
+              kind === 'time' ? 'What you want to put time into' : 'What you want to reach'
             }
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -311,8 +342,52 @@ export function GoalForm({
             </div>
           </div>
         )}
+        {kind === 'number' && (
+          <div className="grid gap-1.5">
+            <Label htmlFor="goal-count">Target</Label>
+            <div className="flex items-center gap-2 text-sm">
+              <Input
+                id="goal-count"
+                type="number"
+                min={NUMBER_GOAL_LIMITS.target.min}
+                max={NUMBER_GOAL_LIMITS.target.max}
+                className="w-24"
+                placeholder="40"
+                value={count}
+                onChange={(e) => setCount(e.target.value)}
+              />
+              <Input
+                aria-label="Unit"
+                maxLength={NUMBER_GOAL_LIMITS.unitLength}
+                className="flex-1"
+                placeholder="lessons"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+        {kind === 'number' && feeders.length > 0 && (
+          <div className="grid gap-1.5">
+            <Label htmlFor="goal-feed">Counted from (optional)</Label>
+            <select
+              id="goal-feed"
+              value={feed ?? ''}
+              onChange={(e) => setFeed(e.target.value || null)}
+              className="h-9 rounded-md border bg-transparent px-2 text-sm"
+            >
+              <option value="">Only what I type in</option>
+              {feeders.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title} ({c.measure === 'check' ? 'each tick' : (c.unit ?? 'each one')})
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">Its ticks or amounts add up from today.</p>
+          </div>
+        )}
         <div className="grid gap-1.5">
-          <Label>{kind === 'outcome' ? 'Deadline' : 'Until'} (optional)</Label>
+          <Label>{kind === 'time' ? 'Until' : 'Deadline'} (optional)</Label>
           <TentativeDateField
             withTbd={false}
             dayClearable
@@ -363,6 +438,119 @@ export function TimeGoalProgress({
           ? ' · made it'
           : ` · ${formatMinutes(p.perDay)} a day to make it (${p.daysLeft} ${p.daysLeft === 1 ? 'day' : 'days'} left)`}
       </span>
+    </span>
+  );
+}
+
+/**
+ * A number goal's bar: where it stands of its target, the pace still needed and how far behind it
+ * is; "+1" and "Set to…" change the part typed in.
+ */
+export function NumberGoalProgress({
+  goal,
+  className,
+  controls = true,
+}: {
+  goal: Goal;
+  className?: string;
+  controls?: boolean;
+}) {
+  const p = goal.numbers;
+  if (!p) return null;
+  const pace = p.pace
+    ? `${p.pace.amount} a ${p.pace.per} to make it`
+    : p.late && !p.met
+      ? 'past the deadline'
+      : null;
+  return (
+    <span className={cn('grid w-full max-w-sm gap-1', className)}>
+      <span className="flex items-center gap-2">
+        <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden>
+          <span
+            className="block h-full rounded-full bg-ember transition-[width]"
+            style={{ width: `${Math.min(100, (p.current / p.target) * 100)}%` }}
+          />
+        </span>
+        {controls && goal.status === 'open' && <CountControls goal={goal} />}
+      </span>
+      <span>
+        <span className={cn('font-semibold', p.met && 'text-ember')}>
+          {p.current} of {withUnit(p.target, goal.unit)}
+        </span>
+        {p.met ? ' · made it' : pace && ` · ${pace}`}
+        {p.behind > 0 && (
+          <span className="text-amber-700 dark:text-amber-400"> · {p.behind} behind</span>
+        )}
+      </span>
+    </span>
+  );
+}
+
+function CountControls({ goal }: { goal: Goal }) {
+  const actions = useStructureActions();
+  const p = goal.numbers!;
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState('');
+  // "Set to N" changes the typed-in part: N minus what the commitment fed.
+  const setTo = (n: number) => actions.updateGoal(goal, { count: Math.max(0, n - p.fed) });
+  const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
+  return (
+    <span className="flex items-center gap-0.5" onClick={stop} onKeyDown={stop}>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-6 px-1.5 text-xs"
+        aria-label={`Add one to ${goal.title}`}
+        onClick={() => void actions.updateGoal(goal, { count: goal.count + 1 })}
+      >
+        +1
+      </Button>
+      <Popover
+        open={open}
+        onOpenChange={(o) => {
+          if (o) setValue(String(p.current));
+          setOpen(o);
+        }}
+      >
+        <PopoverTrigger asChild>
+          <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs">
+            Set…
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-56">
+          <form
+            className="grid gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const n = Math.round(Number(value));
+              if (!Number.isFinite(n) || n < 0) return;
+              setOpen(false);
+              void setTo(n);
+            }}
+          >
+            <Label htmlFor={`set-${goal.id}`} className="text-xs text-muted-foreground">
+              Where it stands now
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id={`set-${goal.id}`}
+                type="number"
+                min={0}
+                autoFocus
+                className="h-8"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+              />
+              <Button type="submit" size="sm" className="h-8">
+                Set
+              </Button>
+            </div>
+            {p.fed > 0 && (
+              <p className="text-xs text-muted-foreground">{p.fed} came from its commitment.</p>
+            )}
+          </form>
+        </PopoverContent>
+      </Popover>
     </span>
   );
 }

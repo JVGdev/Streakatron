@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { ChevronDown, Play, Plus, Timer } from 'lucide-react';
+import { ChevronDown, ClipboardCheck, Play, Plus, Timer } from 'lucide-react';
 import { useState } from 'react';
 import { CommitmentRow } from '@/components/commitment-row';
 import { doneToday } from '@/lib/commitments';
@@ -24,6 +24,7 @@ import {
   meQuery,
   projectsQuery,
   questsQuery,
+  reviewStatusQuery,
   spotlightQuery,
   tasksQuery,
   type Commitment,
@@ -102,6 +103,8 @@ function TodayPage() {
       <NotifyBanner commitments={commitments} tasks={tasks} today={me.today} />
 
       <FocusLauncher top={top} minutes={me.settings.focusPresets[0]?.focusMinutes} />
+
+      <ReviewPrompt />
 
       <TodayEvents
         events={todayCal?.events ?? []}
@@ -191,6 +194,29 @@ function TodayPage() {
 
       <QuestBoard />
     </div>
+  );
+}
+
+/** The weekly review, offered from the week's last day until it's done (D45). */
+function ReviewPrompt() {
+  const { data } = useQuery(reviewStatusQuery);
+  if (!data?.offered) return null;
+  return (
+    <Link
+      to="/review"
+      className="flex items-center gap-3.5 rounded-2xl border-2 border-ember/40 bg-ember/10 p-3 transition-colors hover:border-ember/70"
+    >
+      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-ember/20 text-ember">
+        <ClipboardCheck className="size-5" aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-bold">Time for your weekly review</span>
+        <span className="block text-sm text-muted-foreground">
+          About 5 minutes: look back, tidy up, pick what’s next.
+        </span>
+      </span>
+      <span className="hidden shrink-0 text-sm font-bold text-ember sm:block">Start</span>
+    </Link>
   );
 }
 
