@@ -209,3 +209,8 @@
 - **Not done:** a reflection doesn't show in backlinks; Today's goals and other new `observations.txt` notes wait for the user.
 - **Committed and merged (same day, at the user's request):** branch `4f-goals-review` (`b6cef28`) merged into `main` (`29d7804`) and pushed; Docker app rebuilt after a manual `pg_dump` (`data/backups/pre-4f-20261105-1547.dump`); all 17 migrations applied (`weekly_reviews` and the number goal columns present), health OK locally and over Tailscale (:8443).
 - **Next:** 4g Notes board.
+
+### 2026-11-05 — Filler hints from 4f removed (D40)
+- **The user:** the small hints added on the review page broke D40 (cleaned once already); saved as a memory so new UI text is checked against D40 from now on.
+- **Removed:** the line under each review step's title, the reflection's prompting placeholder (back to the shared "Notes… Type @ to link."), "Saves as you type.", the review card's and the review quest's "About 5 minutes…" line, and the "Revisit" quest's hint (it pointed at a project-menu action that doesn't exist).
+- **Checked:** 441 tests, typecheck, lint, format.

@@ -211,9 +211,6 @@ function ReviewPrompt() {
       </span>
       <span className="min-w-0 flex-1">
         <span className="block font-bold">Time for your weekly review</span>
-        <span className="block text-sm text-muted-foreground">
-          About 5 minutes: look back, tidy up, pick what’s next.
-        </span>
       </span>
       <span className="hidden shrink-0 text-sm font-bold text-ember sm:block">Start</span>
     </Link>

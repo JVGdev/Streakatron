@@ -42,12 +42,12 @@ export const Route = createFileRoute('/_app/review')({
 });
 
 const STEPS = [
-  { key: 'summary', title: 'Your week', hint: 'What got done.' },
-  { key: 'stalled', title: 'Stalled projects', hint: 'Active, but nothing moved this week.' },
-  { key: 'inbox', title: 'Inbox', hint: 'Give each task a project, finish it or let it go.' },
-  { key: 'next', title: 'Next actions', hint: 'One clear next step for each active project.' },
-  { key: 'projects', title: 'Active and parked', hint: 'What you work on next week.' },
-  { key: 'reflection', title: 'Reflection', hint: 'A few lines for yourself.' },
+  { key: 'summary', title: 'Your week' },
+  { key: 'stalled', title: 'Stalled projects' },
+  { key: 'inbox', title: 'Inbox' },
+  { key: 'next', title: 'Next actions' },
+  { key: 'projects', title: 'Active and parked' },
+  { key: 'reflection', title: 'Reflection' },
 ] as const;
 
 function ReviewPage() {
@@ -117,7 +117,6 @@ function ReviewPage() {
         <h2 id="review-step" className="text-2xl">
           {current.title}
         </h2>
-        <p className="mt-1 text-sm text-muted-foreground">{current.hint}</p>
         <div className="mt-5">
           {current.key === 'summary' && <SummaryStep data={data} />}
           {current.key === 'stalled' && <StalledStep ids={data.stalled} />}
@@ -485,7 +484,6 @@ function ReflectionStep({ review }: { review: Review }) {
         aria-label="Reflection"
         value={review.reflection}
         onChange={setReflection}
-        placeholder="What went well? What got in the way? What matters next week? Type @ to link."
         className="min-h-32"
       />
       <div className="flex flex-wrap items-center gap-3">
@@ -501,15 +499,13 @@ function ReflectionStep({ review }: { review: Review }) {
           <CircleCheck />
           {done ? 'Save' : 'Finish review'}
         </Button>
-        {done ? (
+        {done && (
           <span className="text-sm text-muted-foreground">
             Done for this week.{' '}
             <Link to="/today" className="font-semibold underline-offset-2 hover:underline">
               Back to Today
             </Link>
           </span>
-        ) : (
-          <span className="text-xs text-muted-foreground">Saves as you type.</span>
         )}
       </div>
     </div>
