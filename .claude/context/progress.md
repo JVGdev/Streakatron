@@ -214,3 +214,4 @@
 - **The user:** the small hints added on the review page broke D40 (cleaned once already); saved as a memory so new UI text is checked against D40 from now on.
 - **Removed:** the line under each review step's title, the reflection's prompting placeholder (back to the shared "Notes… Type @ to link."), "Saves as you type.", the review card's and the review quest's "About 5 minutes…" line, and the "Revisit" quest's hint (it pointed at a project-menu action that doesn't exist).
 - **Checked:** 441 tests, typecheck, lint, format.
+- **Deployed (same day):** `17e975e` merged into `main` (`dc9fcd7`) and pushed; Docker app rebuilt after a manual `pg_dump` (`data/backups/pre-hints-20261105-1603.dump`); no new migration, health OK locally and over Tailscale.
