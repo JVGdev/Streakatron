@@ -3,7 +3,7 @@
 import { textFromDoc, type RichDoc } from '@streakatron/shared/rich';
 import { and, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
-import type { Db } from '../db/client';
+import { db, type Db } from '../db/client';
 import { HttpError } from '../http/errors';
 
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
@@ -73,4 +73,9 @@ export async function edgeOrder(
   const edge = rows[0]?.edge;
   if (edge == null) return 0;
   return position === 'top' ? edge - 1 : edge + 1;
+}
+
+/** Run `fn` inside the caller's transaction when there is one, else in a new one. */
+export function inTx<T>(tx: Tx | undefined, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  return tx ? fn(tx) : db.transaction(fn);
 }

@@ -212,7 +212,10 @@ export async function restoreSnapshot(userId: string, id: string) {
         (x, y) => Number(x.parentTaskId !== null) - Number(y.parentTaskId !== null),
       );
       if (ordered.length) {
-        await tx.insert(tasks).values(ordered.map((t) => ({ ...revive(t), userId })));
+        // The undo link of a repeat (D43) only matters right after a completion.
+        await tx
+          .insert(tasks)
+          .values(ordered.map((t) => ({ ...revive(t), userId, followsTaskId: null })));
       }
       if (b.commitments?.length) {
         await tx.insert(commitments).values(b.commitments.map((c) => ({ ...revive(c), userId })));

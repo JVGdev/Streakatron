@@ -26,6 +26,7 @@ import { EntityIcon } from './entity-icon';
 import { GoalForm, TimeGoalProgress } from './goals-panel';
 import { RichEditor } from './rich-editor';
 import { SheetBar, TitleField } from './sheet-parts';
+import { TurnInto } from './turn-into';
 import { TaskRow } from './task-row';
 
 export function GoalSheet({ goalId }: { goalId: string | undefined }) {
@@ -232,6 +233,23 @@ function GoalEditor({ goal }: { goal: Goal }) {
 
       <div className="mt-auto flex items-center gap-2 border-t px-4 py-3 sm:px-6">
         <span className="flex-1" />
+        {goal.status === 'open' && (
+          <TurnInto
+            id={goal.id}
+            beforeOpen={save.flush}
+            source={{
+              kind: 'goal',
+              title,
+              projectId: goal.projectId,
+              spotlighted: !!goal.spotlightedAt,
+              goalKind: goal.kind,
+              targetMinutes: goal.targetMinutes,
+              period: goal.period,
+              dueDate: goal.dueDate,
+              duePrecision: goal.duePrecision,
+            }}
+          />
+        )}
         <Button
           variant="ghost"
           size="sm"

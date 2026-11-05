@@ -218,6 +218,28 @@ export function taskActions(qc: QueryClient) {
         });
       }),
 
+    /** "Skip it" on a missed occurrence (D43): delete the earlier ones, with one Undo. */
+    skipEarlier: (ids: string[]) =>
+      attempt(async () => {
+        for (const id of ids) await call(api.tasks[':id'].$delete({ param: { id } }));
+        dropTasks(qc, ...ids);
+        refreshAfterTaskWrite(qc, []);
+        void qc.invalidateQueries({ queryKey: ['tasks', 'detail'] });
+        toast(ids.length === 1 ? 'Skipped the earlier one' : `Skipped ${ids.length} earlier ones`, {
+          action: {
+            label: 'Undo',
+            onClick: () =>
+              void attempt(async () => {
+                for (const id of ids) {
+                  mergeTasks(qc, await call(api.tasks[':id'].restore.$post({ param: { id } })));
+                }
+                refreshAfterTaskWrite(qc, []);
+                void qc.invalidateQueries({ queryKey: ['tasks', 'detail'] });
+              }),
+          },
+        });
+      }),
+
     byId: (id: string) => cachedTask(qc, id),
   };
 }

@@ -3,6 +3,7 @@
 // view shows each day's load. Months ("~March") sit above the grid, undecided dates below.
 // `?view=week&day=2026-11-05` picks what's shown.
 
+import { MONTH_GRID_MAX_PER_WEEK, timesPerWeek } from '@streakatron/shared/repeats';
 import { addDays, daysBetween } from '@streakatron/shared/time';
 import {
   DndContext,
@@ -21,7 +22,9 @@ import { useMemo, useState } from 'react';
 import { z } from 'zod';
 import {
   DayExtras,
+  AheadChip,
   DoneChip,
+  type AheadItem,
   DropDay,
   EventChip,
   LoadMeter,
@@ -93,6 +96,7 @@ interface Placed {
   events: Map<string, CalendarItem[]>;
   tasks: Map<string, PlacedTask<Task>[]>;
   done: Map<string, Task[]>;
+  ahead: Map<string, AheadItem[]>;
 }
 
 function CalendarPage() {
@@ -124,6 +128,7 @@ function CalendarPage() {
     events: placeEvents((data?.events ?? []).filter((e) => e.precision === 'day')),
     tasks: placeTasks(live, range.from, range.to),
     done: groupDone(data),
+    ahead: groupAhead(data),
   };
   const months = (data?.events ?? []).filter((e) => e.precision === 'month');
   const undecided = (data?.events ?? []).filter((e) => e.precision === 'tbd');
@@ -281,6 +286,14 @@ function groupDone(data: CalendarData | undefined) {
   return out;
 }
 
+function groupAhead(data: CalendarData | undefined) {
+  const out = new Map<string, AheadItem[]>();
+  for (const a of data?.ahead ?? []) {
+    for (const day of a.days) out.set(day, [...(out.get(day) ?? []), a]);
+  }
+  return out;
+}
+
 function TentativeStrip({
   label,
   events,
@@ -356,7 +369,11 @@ function MonthView({
               const events = placed.events.get(d) ?? [];
               const tasks = placed.tasks.get(d) ?? [];
               const done = placed.done.get(d) ?? [];
-              const items = events.length + tasks.length + done.length;
+              // Busy schedules (a daily task) would fill every cell: week view and lists only.
+              const ahead = (placed.ahead.get(d) ?? []).filter(
+                (a) => timesPerWeek(a.repeat) <= MONTH_GRID_MAX_PER_WEEK,
+              );
+              const items = events.length + tasks.length + ahead.length + done.length;
               const outside = d.slice(0, 7) !== month;
               return (
                 <DropDay
@@ -405,6 +422,12 @@ function MonthView({
                         )}
                       />
                     ))}
+                    {ahead.slice(0, 2).map((a) => (
+                      <span
+                        key={a.seriesId}
+                        className="size-1.5 rounded-full border border-muted-foreground/60"
+                      />
+                    ))}
                   </div>
                   <div className="hidden min-w-0 gap-0.5 md:grid">
                     {events.slice(0, MAX_IN_CELL).map((e) => (
@@ -418,8 +441,16 @@ function MonthView({
                         compact
                       />
                     ))}
-                    {done
+                    {ahead
                       .slice(0, Math.max(0, MAX_IN_CELL - events.length - tasks.length))
+                      .map((a) => (
+                        <AheadChip key={a.seriesId} item={a} projects={projects} compact />
+                      ))}
+                    {done
+                      .slice(
+                        0,
+                        Math.max(0, MAX_IN_CELL - events.length - tasks.length - ahead.length),
+                      )
                       .map((t) => (
                         <DoneChip key={t.id} task={t} compact />
                       ))}
@@ -473,7 +504,8 @@ function DayList({
   const events = placed.events.get(day) ?? [];
   const tasks = placed.tasks.get(day) ?? [];
   const done = placed.done.get(day) ?? [];
-  const empty = !events.length && !tasks.length && !done.length;
+  const ahead = placed.ahead.get(day) ?? [];
+  const empty = !events.length && !tasks.length && !done.length && !ahead.length;
   return (
     <section className="grid gap-1.5" aria-label={weekdayLong.format(noon(day))}>
       {heading && (
@@ -493,6 +525,9 @@ function DayList({
       ))}
       {tasks.map((t) => (
         <TaskChip key={`${t.task.id}${t.due}`} placed={t} projects={projects} />
+      ))}
+      {ahead.map((a) => (
+        <AheadChip key={a.seriesId} item={a} projects={projects} />
       ))}
       {done.map((t) => (
         <DoneChip key={t.id} task={t} />

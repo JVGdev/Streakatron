@@ -87,6 +87,8 @@ The full decisions log, with rationale, alternatives and status, lives in **`.cl
 | D40 | UI wording: no mottos (a few kept by the user), no examples from the user's data, neutral placeholders, short explanations and one-line empty states |
 | D41 | Focus time hidden by default mid-focus: every new session starts hidden, a click shows it; hidden everywhere the time shows |
 | D42 | Notes board as its own slice (4g): quick notes mid-focus become post-its on a Notes page, sorted by drag and drop, rich text with `@` |
+| D43 | Recurring tasks: on a schedule or after done; each occurrence its own task in a series; a missed one stays overdue while the next still shows on its day, with "Skip it" |
+| D44 | Turn any entry into another (task, commitment, goal, event): open ones only, old one soft-deleted with undo, mentions rewritten |
 
 Rejected ideas are listed at the end of the decisions log so they aren't proposed again.
 
@@ -590,11 +592,13 @@ Shaped by the use case below and the gaps from brainstormed use cases (D32). **E
 **Done when:** the JLPT and departure dates show on the calendar and as countdowns in Spotlight (the departure as "~March" until it's known); the course's classes show every week and remind 15 minutes before.
 
 #### 4e — Recurring tasks
-- [ ] **Recurring tasks** (D32): every weekday X, monthly on day N, N days after completion ("review again in 2 days"); completing one creates the next with the next date (earn once each, D15); shown on the calendar ahead
+- [x] **Recurring tasks** (D32, D43): every weekday X, monthly on day N, N days after completion ("review again in 2 days"); completing one creates the next with the next date (earn once each, D15); shown on the calendar ahead
+- [x] **Missed occurrences** (D43): the next one still appears on its day with a warning and "Skip it" for the old one
+- [x] **Turn into…** (D44, Q6): task ↔ commitment ↔ goal ↔ event, open entries only, undo, mentions rewritten
 - [x] **Focus time hidden mid-focus** (D41): every new session starts hidden, a click shows it; hidden on the ring, the mini timer, Today's card and the tab title *(small; can ship on its own before 4e)*
-- [ ] UI review (D32)
+- [x] UI review (D32)
 
-**Done when:** "Problem set every Friday" and "pay the installment on the 5th" come back after each completion; "review topic 3 in 2 days" reappears two days after it's done.
+**Done when:** "Problem set every Friday" and "pay the installment on the 5th" come back after each completion; "review topic 3 in 2 days" reappears two days after it's done; a Friday missed still shows the next Friday's with "Skip it"; a daily task turned into a commitment (and back) keeps its title, project and days.
 
 #### 4f — Goals & weekly review
 - [ ] **Number goals** (D32): target + unit ("40 lessons"), typed in or fed by a commitment with the same unit, pace to the deadline
@@ -769,7 +773,7 @@ Quire (`~/Documentos/quire`) is the user's earlier project: a worldbuilding and 
 
 **From `observations.txt` (2026-11-05), to discuss before building:**
 
-- **Q6 — Turn any entry into another** (task ↔ commitment ↔ goal ↔ event). Title, description, project, spotlight and reminders map across; ids are type-prefixed, so converting makes a new entry and removes the old one. Proposed placement: with 4e Recurring tasks (a recurring task and a commitment overlap; converting fixes the wrong pick later). To discuss:
+- **Q6 — Turn any entry into another: decided (D44), built in 4e.** (task ↔ commitment ↔ goal ↔ event). Title, description, project, spotlight and reminders map across; ids are type-prefixed, so converting makes a new entry and removes the old one. Proposed placement: with 4e Recurring tasks (a recurring task and a commitment overlap; converting fixes the wrong pick later). To discuss:
   - Which pairs matter: all four types, or task ↔ commitment first (the overlap that bites)?
   - Open entries only, or also completed ones? XP stays either way (D15); does a done task's history carry over as "done before", or start fresh?
   - Mentions in other descriptions point at the old id: rewrite them in the same transaction (proposed) or keep a redirect from old id to new?

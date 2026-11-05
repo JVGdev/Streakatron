@@ -6,8 +6,14 @@ import { env } from '../env';
 import { runBackup } from './backup';
 import { runPurge } from './purge';
 import { runReminders } from '../services/reminders';
+import { runRepeats } from '../services/repeats';
 
-export const QUEUES = { backup: 'backup', purge: 'purge', reminders: 'reminders' } as const;
+export const QUEUES = {
+  backup: 'backup',
+  purge: 'purge',
+  reminders: 'reminders',
+  repeats: 'repeats',
+} as const;
 
 export async function startJobs(): Promise<PgBoss> {
   const boss = new PgBoss({ connectionString: env.DATABASE_URL, schema: 'pgboss' });
@@ -51,6 +57,16 @@ export async function startJobs(): Promise<PgBoss> {
     if (sent) console.log(`[jobs] sent ${sent} reminder(s)`);
   });
   await boss.schedule(QUEUES.reminders, '* * * * *');
+
+  // Recurring tasks (D43): a schedule's occurrence on its day while the last one isn't done. Each
+  // run catches up whatever is owed, so no retries.
+  await boss.createQueue(QUEUES.repeats, { policy: 'exclusive', retryLimit: 0 });
+  await boss.work(QUEUES.repeats, async () => {
+    const made = await runRepeats();
+    if (made) console.log(`[jobs] made ${made} repeating task(s)`);
+  });
+  await boss.schedule(QUEUES.repeats, '*/5 * * * *');
+  await boss.send(QUEUES.repeats);
 
   return boss;
 }

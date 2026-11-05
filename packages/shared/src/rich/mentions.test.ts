@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { newId } from '../ids';
-import { linkableKind, mentionsOf, snippetAround, type RichDoc, type RichNode } from '.';
+import {
+  linkableKind,
+  mentionsOf,
+  replaceMentionId,
+  snippetAround,
+  type RichDoc,
+  type RichNode,
+} from '.';
 
 const mention = (id: string, label = 'X'): RichNode => ({ type: 'mention', attrs: { id, label } });
 const text = (t: string): RichNode => ({ type: 'text', text: t });
@@ -64,5 +71,16 @@ describe('mentions', () => {
     expect(s).toMatch(/after…$/);
     expect(s).toContain('@Goal');
     expect(snippetAround('  short\n text ', 0)).toBe('short text');
+  });
+});
+
+describe('replaceMentionId', () => {
+  it('points every mention of one id at another', () => {
+    const [a, b, c] = [newId('task'), newId('goal'), newId('commitment')];
+    const before = doc(p(mention(a), text(' and '), mention(b)), p(mention(a)));
+    const out = replaceMentionId(before, a, c);
+    expect(mentionsOf(out).map((m) => m.targetId)).toEqual([c, b]);
+    // The original is untouched.
+    expect(mentionsOf(before).map((m) => m.targetId)).toEqual([a, b]);
   });
 });

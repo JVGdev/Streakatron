@@ -24,6 +24,7 @@ import { EventProjectField, EventTimeField, RepeatField, TentativeDateField } fr
 import { EventReminderField } from './reminder-field';
 import { RichEditor } from './rich-editor';
 import { SheetBar, TitleField } from './sheet-parts';
+import { TurnInto } from './turn-into';
 import { SpotlightToggle } from './spotlight';
 
 export function EventSheet({ eventId }: { eventId: string | undefined }) {
@@ -192,6 +193,21 @@ function EventEditor({ event }: { event: CalendarEvent }) {
 
       <div className="mt-auto flex items-center gap-2 border-t px-4 py-3 sm:px-6">
         <span className="flex-1" />
+        <TurnInto
+          id={event.id}
+          beforeOpen={save.flush}
+          source={{
+            kind: 'event',
+            title,
+            projectId: event.projectId,
+            spotlighted: !!event.spotlightedAt,
+            date: event.date,
+            precision: event.precision,
+            startTime: event.startTime,
+            repeat: event.repeat,
+            reminder: event.reminderMinutes !== null,
+          }}
+        />
         <Button
           variant="ghost"
           size="sm"

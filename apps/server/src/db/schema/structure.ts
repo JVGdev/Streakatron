@@ -2,6 +2,7 @@
 // area is deleted. Every row has `user_id`; every query is scoped by it (D1).
 
 import type { RichDoc } from '@streakatron/shared/rich';
+import { SERIES_DATE_FIELDS, type TaskRepeat } from '@streakatron/shared/repeats';
 import {
   COLORS,
   COLUMN_CATEGORIES,
@@ -23,6 +24,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { users } from './auth';
@@ -148,6 +150,32 @@ export const goals = pgTable(
   ],
 );
 
+/**
+ * A repeating task (D43): the rule its occurrences follow. Each occurrence is its own task, on
+ * its series day (`tasks.series_date`).
+ */
+export const taskSeries = pgTable(
+  'task_series',
+  {
+    id: text().primaryKey(),
+    userId: userId(),
+    repeat: jsonb().$type<TaskRepeat>().notNull(),
+    /** The schedule's anchor: the day the rule counts from. */
+    startDate: day().notNull(),
+    /** The task date that holds an occurrence's day. */
+    dateField: text({ enum: SERIES_DATE_FIELDS }).notNull().default('due'),
+    /** "Doesn't repeat" since then: no more occurrences. */
+    stoppedAt: timestamp({ withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    index('task_series_running')
+      .on(t.userId)
+      .where(sql`${t.stoppedAt} is null`),
+    check('task_series_date_field', oneOf(t.dateField, SERIES_DATE_FIELDS)),
+  ],
+);
+
 export const tasks = pgTable(
   'tasks',
   {
@@ -171,12 +199,19 @@ export const tasks = pgTable(
     spotlightedAt: timestamp({ withTimezone: true }),
     /** A reminder at this instant (D32, D38); sent once while the task is open. */
     remindAt: timestamp({ withTimezone: true }),
+    /** An occurrence of a repeating task (D43), for its series day. */
+    seriesId: text().references(() => taskSeries.id, { onDelete: 'set null' }),
+    seriesDate: day(),
+    /** The occurrence whose completion made this one (reopening it takes this one back). */
+    followsTaskId: text().references((): AnyPgColumn => tasks.id, { onDelete: 'set null' }),
     /** Soft delete: undoable, purged after 30 days. */
     deletedAt: timestamp({ withTimezone: true }),
     ...timestamps,
   },
   (t) => [
     index().on(t.userId, t.projectId),
+    uniqueIndex('tasks_series_day').on(t.seriesId, t.seriesDate),
+    index().on(t.followsTaskId),
     index('tasks_remind_at')
       .on(t.remindAt)
       .where(sql`${t.remindAt} is not null`),

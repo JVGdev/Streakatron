@@ -15,7 +15,9 @@
     "./quests": "./src/quests/index.ts",
     "./commitments": "./src/commitments/index.ts",
     "./reminders": "./src/reminders/index.ts",
-    "./calendar": "./src/calendar/index.ts"
+    "./calendar": "./src/calendar/index.ts",
+    "./repeats": "./src/repeats/index.ts",
+    "./convert": "./src/convert/index.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"

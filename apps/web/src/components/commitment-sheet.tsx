@@ -36,6 +36,7 @@ import { EntityIcon } from './entity-icon';
 import { checkAfterReminder } from '@/lib/push';
 import { CommitmentReminderField } from './reminder-field';
 import { RichEditor } from './rich-editor';
+import { TurnInto } from './turn-into';
 import { SheetBar, TitleField } from './sheet-parts';
 
 export function CommitmentSheet({ commitmentId }: { commitmentId: string | undefined }) {
@@ -260,6 +261,23 @@ function CommitmentEditor({ commitment: c }: { commitment: CommitmentDetail }) {
           {archived ? 'Unarchive' : 'Archive'}
         </Button>
         <span className="flex-1" />
+        {!archived && (
+          <TurnInto
+            id={c.id}
+            beforeOpen={save.flush}
+            source={{
+              kind: 'commitment',
+              title,
+              projectId: c.projectId,
+              measure: c.measure,
+              target: c.target,
+              unit: c.unit,
+              period: c.period,
+              schedule: c.schedule,
+              reminder: !!c.reminder,
+            }}
+          />
+        )}
         <Button
           variant="ghost"
           size="sm"

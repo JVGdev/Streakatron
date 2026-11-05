@@ -11,6 +11,7 @@ import { ComboPicker } from './combo-picker';
 import { EntityIcon } from './entity-icon';
 import { TaskCheck } from './task-check';
 import { TaskMeta } from './task-meta';
+import { EarlierOpen } from './task-repeat';
 
 /**
  * One task in a list. Focusable: Enter opens it, X completes or reopens it, J/K or the arrows move
@@ -84,6 +85,7 @@ export function TaskRow({
         <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 empty:hidden">
           <TaskMeta task={task} today={today} project={project} goal={goal} />
         </div>
+        {!done && task.earlierOpen?.length > 0 && <EarlierOpen task={task} onOpen={open} compact />}
       </div>
       {triage && !done && <MoveToProject task={task} />}
       {actions && (

@@ -42,6 +42,8 @@ import {
   type DatePrecision,
   type Repeat,
 } from '../calendar';
+import { AFTER_DONE_LIMITS, AFTER_DONE_UNITS } from '../repeats';
+import { CONVERT_KINDS } from '../convert';
 
 export const dateString = z.string().refine(isDateString, 'Expected a YYYY-MM-DD day');
 
@@ -308,6 +310,23 @@ export type GoalCreate = z.input<typeof goalCreateSchema>;
 export const goalPatchSchema = z.object({ ...goalFields, status: z.enum(GOAL_STATUSES) }).partial();
 export type GoalPatch = z.infer<typeof goalPatchSchema>;
 
+export const repeatSchema = z.object({
+  every: z.enum(REPEAT_UNITS),
+  interval: z.int().min(REPEAT_LIMITS.interval.min).max(REPEAT_LIMITS.interval.max),
+  weekdays: z.array(z.int().min(0).max(6)).max(7).optional(),
+  until: optionalDay.optional(),
+});
+
+/** A task's repeat (D43): on a schedule (the calendar's rule) or some time after it's done. */
+export const taskRepeatSchema = z.discriminatedUnion('kind', [
+  repeatSchema.extend({ kind: z.literal('schedule') }),
+  z.object({
+    kind: z.literal('after_done'),
+    every: z.enum(AFTER_DONE_UNITS),
+    interval: z.int().min(AFTER_DONE_LIMITS.interval.min).max(AFTER_DONE_LIMITS.interval.max),
+  }),
+]);
+
 const taskFields = {
   title,
   description,
@@ -319,6 +338,8 @@ const taskFields = {
   goalId: idOf('goal').nullable(),
   /** A reminder at this instant (D32); null: none. */
   remindAt: z.iso.datetime({ offset: true }).nullable(),
+  /** Repeats (D43); null: doesn't (on an occurrence: stops the series). */
+  repeat: taskRepeatSchema.nullable(),
 };
 
 export const taskCreateSchema = z.object({
@@ -330,6 +351,7 @@ export const taskCreateSchema = z.object({
   projectId: taskFields.projectId.optional(),
   goalId: taskFields.goalId.optional(),
   remindAt: taskFields.remindAt.optional(),
+  repeat: taskFields.repeat.optional(),
   /** A subtask (one level): it joins its parent's project. */
   parentTaskId: idOf('task').optional(),
   /** Board column; by default the project's leftmost open column. */
@@ -507,13 +529,6 @@ export type HeatmapQuery = z.infer<typeof heatmapQuerySchema>;
 
 // --- Calendar events (D39) -------------------------------------------------------------------
 
-export const repeatSchema = z.object({
-  every: z.enum(REPEAT_UNITS),
-  interval: z.int().min(REPEAT_LIMITS.interval.min).max(REPEAT_LIMITS.interval.max),
-  weekdays: z.array(z.int().min(0).max(6)).max(7).optional(),
-  until: optionalDay.optional(),
-});
-
 /** What's wrong with an event's dates, time, repeat and reminder together, or null. */
 export function eventShapeProblem(e: {
   date: string | null;
@@ -586,3 +601,23 @@ export const calendarQuerySchema = z
     'At most 100 days at a time',
   );
 export type CalendarQuery = z.infer<typeof calendarQuerySchema>;
+
+// --- Turn into (D44) -------------------------------------------------------------------------
+
+const convertibleId = z
+  .string()
+  .refine(
+    (s) => isId(s, 'task') || isId(s, 'commitment') || isId(s, 'goal') || isId(s, 'event'),
+    'Expected a task, commitment, goal or event id',
+  );
+
+/** Turn an entry into another kind; a goal needs a project (`projectId`) when the entry has none. */
+export const convertSchema = z.object({
+  id: convertibleId,
+  to: z.enum(CONVERT_KINDS),
+  projectId: idOf('project').optional(),
+});
+export type ConvertInput = z.infer<typeof convertSchema>;
+
+/** Undo a conversion: the new entry goes, the old one comes back. */
+export const convertUndoSchema = z.object({ from: convertibleId, to: convertibleId });
