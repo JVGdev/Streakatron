@@ -8,6 +8,7 @@ import { NotifyBanner } from '@/components/notify-banner';
 import { ProgressStrip } from '@/components/progress-strip';
 import { QuestBoard } from '@/components/quest-board';
 import { SpotlightSection } from '@/components/spotlight';
+import { TodayEvents } from '@/components/calendar-parts';
 import { TaskRow } from '@/components/task-row';
 import { Button } from '@/components/ui/button';
 import { clockText, sessionLabel, useFocus, useQuickFocus } from '@/hooks/use-focus';
@@ -15,6 +16,7 @@ import { useOpenSheet } from '@/hooks/use-open-task';
 import { formatDayLong } from '@/lib/days';
 import { FOCUS_VISIBLE, todayItems, type FocusReason, type TodayItem } from '@/lib/focus';
 import {
+  calendarQuery,
   commitmentsQuery,
   focusQuery,
   gameQuery,
@@ -63,6 +65,10 @@ function TodayPage() {
   const { data: projects = [] } = useQuery(projectsQuery);
   const { data: tasks = [] } = useQuery(tasksQuery({ status: 'open' }));
   const { data: commitments = [] } = useQuery(commitmentsQuery());
+  const { data: todayCal } = useQuery({
+    ...calendarQuery(me?.today ?? '', me?.today ?? ''),
+    enabled: !!me,
+  });
   const [all, setAll] = useState(false);
   if (!me) return null;
 
@@ -95,6 +101,11 @@ function TodayPage() {
       <NotifyBanner commitments={commitments} tasks={tasks} today={me.today} />
 
       <FocusLauncher top={top} minutes={me.settings.focusPresets[0]?.focusMinutes} />
+
+      <TodayEvents
+        events={todayCal?.events ?? []}
+        projects={new Map(projects.map((p) => [p.id, p]))}
+      />
 
       <SpotlightSection tasks={tasks} projects={projects} today={me.today} />
 

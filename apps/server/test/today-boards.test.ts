@@ -130,7 +130,7 @@ describe('spotlight', () => {
     ]);
 
     const list = (await as.get('/api/spotlight')).body.items;
-    expect(list[0]).toEqual({ kind: 'task', id: katakana.id, goal: null });
+    expect(list[0]).toEqual({ kind: 'task', id: katakana.id, goal: null, event: null });
     expect(list[1]).toMatchObject({
       kind: 'goal',
       goal: { title: 'Read and write hiragana and katakana', tasks: { open: 1, done: 0 } },

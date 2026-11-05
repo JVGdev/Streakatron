@@ -1,7 +1,9 @@
 // The one reminder control (D32, D38): a button that says when it reminds ("10:00–22:00, every
-// 3 h", "Tomorrow at 15:30", "No reminder") and opens the choices. Commitments remind on their
-// days (off / once / repeat until done); tasks at a day and time. Events (4d) will use it too.
+// 3 h", "Tomorrow at 15:30", "15 min before") and opens the choices. Commitments remind on their
+// days (off / once / repeat until done); tasks at a day and time; events some time before they
+// start (D39).
 
+import { describeEventReminder, EVENT_REMINDER_CHOICES } from '@streakatron/shared/calendar';
 import {
   DEFAULT_REPEAT,
   describeReminder,
@@ -12,7 +14,7 @@ import {
 } from '@streakatron/shared/reminders';
 import { addDays, wallClock, zonedTime } from '@streakatron/shared/time';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, BellOff, TriangleAlert, X } from 'lucide-react';
+import { Bell, BellOff, Check, TriangleAlert, X } from 'lucide-react';
 import { useState, type ComponentProps } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -338,6 +340,71 @@ export function TaskReminderField({
       )}
       {value && <NotHere />}
     </div>
+  );
+}
+
+// --- Events ----------------------------------------------------------------------------------
+
+/**
+ * An event's reminder (D39): none, or a choice of how long before it starts (all-day events: on
+ * the day or days before, at 09:00). Each pick is reported at once; a new one turns notifications
+ * on for this device like the others.
+ */
+export function EventReminderField({
+  id,
+  value,
+  allDay,
+  onChange,
+}: {
+  id?: string;
+  value: number | null;
+  allDay: boolean;
+  onChange: (minutes: number | null) => void;
+}) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const base = EVENT_REMINDER_CHOICES[allDay ? 'allDay' : 'timed'];
+  const choices: (number | null)[] = [
+    null,
+    ...[...new Set([...base, ...(value !== null ? [value] : [])])].sort((a, b) => a - b),
+  ];
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Trigger
+          id={id}
+          outlined
+          on={value !== null}
+          text={describeEventReminder(value, allDay)}
+          aria-label="Reminder"
+        />
+      </PopoverTrigger>
+      <PopoverContent align="start" className="grid w-[min(18rem,calc(100vw-2rem))] gap-2 p-2">
+        <div className="px-1 pt-1">
+          <DeviceHint fresh={value === null} />
+        </div>
+        <div className="grid" role="listbox" aria-label="Reminder">
+          {choices.map((m) => (
+            <button
+              key={m ?? 'none'}
+              type="button"
+              role="option"
+              aria-selected={m === value}
+              onClick={() => {
+                setOpen(false);
+                if (m === value) return;
+                onChange(m);
+                if (m !== null && value === null) void checkAfterReminder(qc);
+              }}
+              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
+            >
+              <Check className={cn('size-4', m === value ? 'opacity-100' : 'opacity-0')} />
+              {describeEventReminder(m, allDay)}
+            </button>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

@@ -25,6 +25,7 @@ const SECTIONS: { title: string; keys: [string, string][] }[] = [
       ['G then I', 'Go to Inbox'],
       ['G then P', 'Go to Projects'],
       ['G then L', 'Go to all tasks (list)'],
+      ['G then C', 'Go to Calendar'],
       ['G then S', 'Go to Settings'],
       ['?', 'This list'],
     ],
@@ -53,6 +54,7 @@ export function GlobalShortcuts() {
     'g i': () => void navigate({ to: '/inbox' }),
     'g p': () => void navigate({ to: '/projects' }),
     'g l': () => void navigate({ to: '/tasks' }),
+    'g c': () => void navigate({ to: '/calendar' }),
     'g s': () => void navigate({ to: '/settings' }),
   });
 

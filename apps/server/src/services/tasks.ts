@@ -57,7 +57,7 @@ const viewColumns = {
   )`,
 };
 
-function selectViews(conn: Conn, where: SQL | undefined) {
+export function selectViews(conn: Conn, where: SQL | undefined) {
   return conn
     .select(viewColumns)
     .from(tasks)

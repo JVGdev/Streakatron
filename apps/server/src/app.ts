@@ -12,6 +12,7 @@ import { adminRoutes } from './routes/admin';
 import { areaRoutes } from './routes/areas';
 import { columnRoutes } from './routes/columns';
 import { commitmentRoutes } from './routes/commitments';
+import { calendarRoutes, eventRoutes } from './routes/events';
 import { focusRoutes } from './routes/focus';
 import { goalRoutes } from './routes/goals';
 import { healthRoutes } from './routes/health';
@@ -45,6 +46,8 @@ const api = new Hono()
   .route('/goals', goalRoutes)
   .route('/tasks', taskRoutes)
   .route('/commitments', commitmentRoutes)
+  .route('/events', eventRoutes)
+  .route('/calendar', calendarRoutes)
   .route('/spotlight', spotlightRoutes)
   .route('/push', pushRoutes)
   .route('/reminders', reminderRoutes)

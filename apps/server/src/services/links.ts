@@ -47,6 +47,7 @@ export async function purgeOrphanLinks(conn: Conn = db) {
      where not exists (select 1 from tasks where id = l.source_id)
        and not exists (select 1 from goals where id = l.source_id)
        and not exists (select 1 from commitments where id = l.source_id)
+       and not exists (select 1 from events where id = l.source_id)
        and not exists (select 1 from projects where id = l.source_id)
        and not exists (select 1 from areas where id = l.source_id)
   `);

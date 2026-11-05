@@ -1,7 +1,7 @@
 // Every query the app reads, with its key. Task lists share one key prefix (`['tasks', 'list', …]`)
 // so the merge rule in tasks.ts can update all of them after a write.
 
-import { queryOptions } from '@tanstack/react-query';
+import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import { api, call } from './api';
 import { syncServerClock } from './focus-timer';
 
@@ -117,12 +117,44 @@ export const goalQuery = (id: string) =>
 const fetchSpotlight = () => call(api.spotlight.$get());
 export type SpotlightItem = Awaited<ReturnType<typeof fetchSpotlight>>['items'][number];
 export type SpotlightGoal = NonNullable<SpotlightItem['goal']>;
+export type SpotlightEvent = NonNullable<SpotlightItem['event']>;
 
 /** What's featured on Today, oldest first: task ids (tasks come from the task lists) and goals. */
 export const spotlightQuery = queryOptions({
   queryKey: ['spotlight'],
   queryFn: async () => (await fetchSpotlight()).items,
 });
+
+// --- Calendar (D39) --------------------------------------------------------------------------
+
+const fetchEvent = (id: string) => call(api.events[':id'].$get({ param: { id } }));
+export type CalendarEvent = Awaited<ReturnType<typeof fetchEvent>>;
+
+/** One event (the event sheet). */
+export const eventQuery = (id: string) =>
+  queryOptions({ queryKey: ['event', id], queryFn: () => fetchEvent(id) });
+
+const fetchProjectEvents = (project: string) => call(api.events.$get({ query: { project } }));
+
+/** A project's events, dated first (its page's "Dates"). */
+export const projectEventsQuery = (projectId: string) =>
+  queryOptions({
+    queryKey: ['events', 'project', projectId],
+    queryFn: async () => (await fetchProjectEvents(projectId)).events,
+  });
+
+const fetchCalendar = (from: string, to: string) =>
+  call(api.calendar.$get({ query: { from, to } }));
+export type CalendarData = Awaited<ReturnType<typeof fetchCalendar>>;
+export type CalendarItem = CalendarData['events'][number];
+
+/** Events with their days in range, done tasks, focus and commitments met per day. */
+export const calendarQuery = (from: string, to: string) =>
+  queryOptions({
+    queryKey: ['calendar', from, to],
+    queryFn: () => fetchCalendar(from, to),
+    placeholderData: keepPreviousData,
+  });
 
 // --- Commitments (D31) -----------------------------------------------------------------------
 

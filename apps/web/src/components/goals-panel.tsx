@@ -33,12 +33,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { DayField } from '@/components/day-field';
+import { TentativeDateField } from '@/components/event-fields';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useOpenSheet } from '@/hooks/use-open-task';
 import { useSpotlightActions, useStructureActions } from '@/lib/actions';
-import { countdown, formatMinutes } from '@/lib/days';
+import { formatMinutes, goalDue } from '@/lib/days';
 import type { Goal, Task } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
@@ -115,6 +115,7 @@ function GoalRow({
   const spotlight = useSpotlightActions();
   const openSheet = useOpenSheet();
   const done = tasks.filter((t) => t.completedAt).length;
+  const due = goalDue(goal, today);
   const setStatus = (status: GoalStatus) => void actions.updateGoal(goal, { status });
   const Icon = goal.kind === 'time' ? Timer : Target;
 
@@ -148,10 +149,8 @@ function GoalRow({
           {goal.progress && goal.status === 'open' && (
             <TimeGoalProgress progress={goal.progress} period={goal.period} />
           )}
-          {goal.dueDate && goal.status === 'open' && (
-            <span className={cn(goal.dueDate < today && 'text-destructive')}>
-              {countdown(goal.dueDate, today)}
-            </span>
+          {due && goal.status === 'open' && (
+            <span className={cn(due.late && 'text-destructive')}>{due.text}</span>
           )}
           {tasks.length > 0 && (
             <span>
@@ -217,7 +216,10 @@ export function GoalForm({
   const [kind, setKind] = useState<GoalKind>(goal?.kind ?? 'outcome');
   const [hours, setHours] = useState(goal?.targetMinutes ? String(goal.targetMinutes / 60) : '4');
   const [period, setPeriod] = useState<GoalPeriod>(goal?.period ?? 'week');
-  const [dueDate, setDueDate] = useState(goal?.dueDate ?? '');
+  const [due, setDue] = useState<{ date: string | null; precision: 'day' | 'month' }>({
+    date: goal?.dueDate ?? null,
+    precision: goal?.duePrecision ?? 'day',
+  });
   const [busy, setBusy] = useState(false);
 
   const minutes = Math.round(Number(hours) * 60);
@@ -232,7 +234,8 @@ export function GoalForm({
       kind,
       targetMinutes: kind === 'time' ? minutes : null,
       period: kind === 'time' ? period : null,
-      dueDate: dueDate || null,
+      dueDate: due.date,
+      duePrecision: due.date ? due.precision : ('day' as const),
     };
     const ok = goal
       ? await actions.updateGoal(goal, fields)
@@ -308,13 +311,15 @@ export function GoalForm({
           </div>
         )}
         <div className="grid gap-1.5">
-          <Label htmlFor="goal-due">{kind === 'outcome' ? 'Deadline' : 'Until'} (optional)</Label>
-          <DayField
-            id="goal-due"
-            outlined
-            className="w-56"
-            value={dueDate || null}
-            onChange={(d) => setDueDate(d ?? '')}
+          <Label>{kind === 'outcome' ? 'Deadline' : 'Until'} (optional)</Label>
+          <TentativeDateField
+            withTbd={false}
+            dayClearable
+            date={due.date}
+            precision={due.precision}
+            onChange={(v) =>
+              setDue({ date: v.date, precision: v.precision === 'month' ? 'month' : 'day' })
+            }
           />
         </div>
         <DialogFooter>

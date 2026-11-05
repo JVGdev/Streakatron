@@ -1,4 +1,4 @@
-// Every linkable thing (areas, projects, goals, tasks, commitments) as one list, for search, mention chips
+// Every linkable thing (areas, projects, goals, tasks, commitments, events) as one list, for search, mention chips
 // (`resolve`) and backlinks. One function per question (plan.md §11): "what is this id", "what
 // mentions it".
 
@@ -48,6 +48,12 @@ export function entitiesSql(userId: string, { withDeleted = false } = {}): SQL {
            c.description_text, c.description, c.search_vector, c.updated_at
       from commitments c left join projects p on p.id = c.project_id
      where c.user_id = ${userId} and ${live(sql`c.deleted_at`)}
+    union all
+    select 'event', v.id, v.title, coalesce(p.title, 'Calendar'), v.project_id, 'active',
+           false, v.deleted_at is not null, null, null,
+           v.description_text, v.description, v.search_vector, v.updated_at
+      from events v left join projects p on p.id = v.project_id
+     where v.user_id = ${userId} and ${live(sql`v.deleted_at`)}
   `;
 }
 
@@ -75,7 +81,7 @@ export interface EntityRef {
   projectId: string | null;
   /**
    * task: open/done · goal: open/achieved/dropped · project: its status · area and commitment:
-   * active/archived
+   * active/archived · event: active
    */
   status: string;
   closed: boolean;
@@ -124,7 +130,7 @@ export async function resolveEntities(userId: string, ids: string[]) {
   }));
 }
 
-const KIND_ORDER = sql`case e.kind when 'task' then 0 when 'goal' then 1 when 'commitment' then 2 when 'project' then 3 else 4 end`;
+const KIND_ORDER = sql`case e.kind when 'task' then 0 when 'goal' then 1 when 'commitment' then 2 when 'event' then 3 when 'project' then 4 else 5 end`;
 
 /**
  * What mentions `targetId` (live sources only), with the line each mention is in. The target must

@@ -1,22 +1,55 @@
-// Spotlight (D33): up to SPOTLIGHT_MAX tasks and goals the user features at the top of Today. A
-// row is spotlighted while `spotlighted_at` is set; it shows while the task is open (or the goal
-// open) and its project active, so completing, achieving, dropping, deleting or parking takes it
-// off without touching the flag (an undo brings it back).
+// Spotlight (D33): up to SPOTLIGHT_MAX tasks, goals and events the user features at the top of
+// Today (events and dated goals count down there, D39). A row is spotlighted while `spotlighted_at`
+// is set; it shows while the task is open (the goal open, the event not over) and its project
+// active, so completing, achieving, dropping, deleting, parking or the day passing takes it off
+// without touching the flag (an undo brings it back).
 
 import type { SpotlightInput } from '@streakatron/shared/schemas';
+import { monthEnd, nextOccurrence } from '@streakatron/shared/calendar';
 import { SPOTLIGHT_MAX } from '@streakatron/shared/structure';
 import { isId } from '@streakatron/shared/ids';
+import { userDay, type DateString } from '@streakatron/shared/time';
 import { and, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import { db } from '../db/client';
-import { goals, projects, tasks, userSettings } from '../db/schema';
+import { events, goals, projects, tasks, userSettings } from '../db/schema';
 import { conflict, invalid, notFound, type Conn } from './common';
+import { eventView } from './events';
+import { daySettings } from './game';
 import { goalViews } from './goals';
 
 export interface SpotlightRef {
-  kind: 'task' | 'goal';
+  kind: 'task' | 'goal' | 'event';
   id: string;
   title: string;
   spotlightedAt: Date;
+}
+
+/** Whether an event still has something to count down to on `today`. */
+export function eventAhead(
+  e: Pick<typeof events.$inferSelect, 'date' | 'precision' | 'repeat'>,
+  today: DateString,
+) {
+  if (e.precision === 'tbd' || !e.date) return true;
+  if (e.precision === 'month') return monthEnd(e.date) >= today;
+  return nextOccurrence(e.date, e.repeat, today) !== null;
+}
+
+const today = async (conn: Conn, userId: string) =>
+  userDay(new Date(), await daySettings(conn, userId));
+
+async function spotlightedEvents(conn: Conn, userId: string) {
+  return conn
+    .select({ event: events })
+    .from(events)
+    .leftJoin(projects, eq(projects.id, events.projectId))
+    .where(
+      and(
+        eq(events.userId, userId),
+        isNotNull(events.spotlightedAt),
+        isNull(events.deletedAt),
+        or(isNull(events.projectId), eq(projects.status, 'active')),
+      ),
+    );
 }
 
 /** What shows in the spotlight now, oldest first. */
@@ -47,53 +80,88 @@ async function visible(conn: Conn, userId: string): Promise<SpotlightRef[]> {
         eq(projects.status, 'active'),
       ),
     );
+  const day = await today(conn, userId);
+  const es = (await spotlightedEvents(conn, userId))
+    .map((r) => r.event)
+    .filter((e) => eventAhead(e, day));
   return [
     ...ts.map((t) => ({ kind: 'task' as const, ...t, spotlightedAt: t.spotlightedAt! })),
     ...gs.map((g) => ({ kind: 'goal' as const, ...g, spotlightedAt: g.spotlightedAt! })),
+    ...es.map((e) => ({
+      kind: 'event' as const,
+      id: e.id,
+      title: e.title,
+      spotlightedAt: e.spotlightedAt!,
+    })),
   ].sort((a, b) => a.spotlightedAt.getTime() - b.spotlightedAt.getTime());
 }
 
 /**
- * Today's spotlight, oldest first: tasks by id (the web app has them in its task lists) and goals
- * in full, with their progress and task counts, since Today doesn't load goals otherwise.
+ * Today's spotlight, oldest first: tasks by id (the web app has them in its task lists), goals in
+ * full, with their progress and task counts, and events in full, since Today doesn't load those.
  */
 export async function getSpotlight(userId: string) {
   const refs = await visible(db, userId);
   const goalIds = refs.filter((r) => r.kind === 'goal').map((r) => r.id);
-  if (!goalIds.length) {
-    return { items: refs.map((r) => ({ kind: 'task' as const, id: r.id, goal: null })) };
-  }
-  const views = await goalViews(
-    db,
-    userId,
-    await db.select().from(goals).where(inArray(goals.id, goalIds)),
-  );
-  const counts = await db
-    .select({
-      goalId: tasks.goalId,
-      open: sql<number>`count(*) filter (where ${tasks.completedAt} is null)::int`,
-      done: sql<number>`count(*) filter (where ${tasks.completedAt} is not null)::int`,
-    })
-    .from(tasks)
-    .where(and(inArray(tasks.goalId, goalIds), isNull(tasks.deletedAt), isNull(tasks.parentTaskId)))
-    .groupBy(tasks.goalId);
+  const eventIds = new Set(refs.filter((r) => r.kind === 'event').map((r) => r.id));
+  const views = goalIds.length
+    ? await goalViews(db, userId, await db.select().from(goals).where(inArray(goals.id, goalIds)))
+    : [];
+  const counts = goalIds.length
+    ? await db
+        .select({
+          goalId: tasks.goalId,
+          open: sql<number>`count(*) filter (where ${tasks.completedAt} is null)::int`,
+          done: sql<number>`count(*) filter (where ${tasks.completedAt} is not null)::int`,
+        })
+        .from(tasks)
+        .where(
+          and(inArray(tasks.goalId, goalIds), isNull(tasks.deletedAt), isNull(tasks.parentTaskId)),
+        )
+        .groupBy(tasks.goalId)
+    : [];
+  const evs = eventIds.size
+    ? (await spotlightedEvents(db, userId)).map((r) => r.event).filter((e) => eventIds.has(e.id))
+    : [];
   return {
     items: refs.map((r) => {
+      if (r.kind === 'event') {
+        const e = evs.find((x) => x.id === r.id)!;
+        return { kind: 'event' as const, id: r.id, goal: null, event: eventView(e) };
+      }
       const goal = views.find((g) => g.id === r.id);
-      if (r.kind === 'task' || !goal) return { kind: 'task' as const, id: r.id, goal: null };
+      if (r.kind === 'task' || !goal) {
+        return { kind: 'task' as const, id: r.id, goal: null, event: null };
+      }
       const c = counts.find((x) => x.goalId === r.id);
       return {
         kind: 'goal' as const,
         id: r.id,
         goal: { ...goal, tasks: { open: c?.open ?? 0, done: c?.done ?? 0 } },
+        event: null,
       };
     }),
   };
 }
 export type Spotlight = Awaited<ReturnType<typeof getSpotlight>>;
 
-/** The task or goal, checked: this user's and not deleted. */
+/** The task, goal or event, checked: this user's and not deleted. */
 async function target(conn: Conn, userId: string, id: string) {
+  if (isId(id, 'event')) {
+    const [e] = await conn
+      .select({ event: events, projectStatus: projects.status, projectTitle: projects.title })
+      .from(events)
+      .leftJoin(projects, eq(projects.id, events.projectId))
+      .where(and(eq(events.id, id), eq(events.userId, userId)));
+    if (!e || e.event.deletedAt) throw notFound('event');
+    return {
+      kind: 'event' as const,
+      title: e.event.title,
+      closed: !eventAhead(e.event, await today(conn, userId)),
+      projectStatus: e.projectStatus,
+      projectTitle: e.projectTitle,
+    };
+  }
   if (isId(id, 'task')) {
     const [t] = await conn
       .select({
@@ -126,7 +194,9 @@ async function target(conn: Conn, userId: string, id: string) {
 
 async function setFlag(conn: Conn, id: string, at: Date | null) {
   if (isId(id, 'task')) await conn.update(tasks).set({ spotlightedAt: at }).where(eq(tasks.id, id));
-  else await conn.update(goals).set({ spotlightedAt: at }).where(eq(goals.id, id));
+  else if (isId(id, 'event')) {
+    await conn.update(events).set({ spotlightedAt: at }).where(eq(events.id, id));
+  } else await conn.update(goals).set({ spotlightedAt: at }).where(eq(goals.id, id));
 }
 
 /**
@@ -150,7 +220,11 @@ export async function setSpotlight(userId: string, input: SpotlightInput) {
     if (t.closed) {
       throw invalid(
         'spotlight_closed',
-        t.kind === 'task' ? 'That task is already done.' : 'That goal isn’t open anymore.',
+        t.kind === 'task'
+          ? 'That task is already done.'
+          : t.kind === 'event'
+            ? 'That event is over.'
+            : 'That goal isn’t open anymore.',
       );
     }
     if (t.projectStatus && t.projectStatus !== 'active') {

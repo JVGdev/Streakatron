@@ -1,5 +1,5 @@
 // App-wide UI state that any component (palette, shortcuts, sidebar) can open: the command
-// palette, the area, project and commitment dialogs, and the "spotlight is full" dialog.
+// palette, the area, project, commitment and event dialogs, and the "spotlight is full" dialog.
 
 import { useSyncExternalStore } from 'react';
 
@@ -10,17 +10,19 @@ export interface UiState {
   areaDialog: null | { areaId?: string };
   /** The commitment dialog: new (optionally in a project) or editing one. */
   commitmentDialog: null | { commitmentId?: string; projectId?: string | null };
+  /** The new-event dialog (D39), optionally on a day or in a project. */
+  eventDialog: null | { date?: string; projectId?: string | null };
   shortcuts: boolean;
-  /** The spotlight is full (D33): which one to drop for `add`. */
   /** A reminder was set but this device won't show it (D38): why, and who still gets it. */
   pushPrompt: null | {
     problem: import('./push').PushProblem;
     others: string[];
     message?: string;
   };
+  /** The spotlight is full (D33): which one to drop for `add`. */
   spotlightFull: null | {
     add: { id: string; title: string };
-    items: { id: string; kind: 'task' | 'goal'; title: string }[];
+    items: { id: string; kind: 'task' | 'goal' | 'event'; title: string }[];
   };
 }
 
@@ -29,6 +31,7 @@ let state: UiState = {
   projectDialog: null,
   areaDialog: null,
   commitmentDialog: null,
+  eventDialog: null,
   shortcuts: false,
   spotlightFull: null,
   pushPrompt: null,
@@ -59,3 +62,5 @@ export const newCommitment = (projectId?: string | null) =>
   setUi({ commitmentDialog: { projectId } });
 export const editCommitment = (commitmentId: string) =>
   setUi({ commitmentDialog: { commitmentId } });
+export const newEvent = (opts: { date?: string; projectId?: string | null } = {}) =>
+  setUi({ eventDialog: opts });

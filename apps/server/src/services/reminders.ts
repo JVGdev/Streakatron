@@ -1,9 +1,11 @@
 // The reminder job (D38): every minute, for each user with a device to notify, send what is due —
 // commitment reminders (while the commitment is due today), task reminders (while the task is
-// open), the end of a running focus session, and the opt-in "streak at risk" nudge. Each goes out
+// open), event reminders (D39), the end of a running focus session, and the opt-in "streak at
+// risk" nudge. Each goes out
 // once: `reminder_log` keeps a key per target and due instant, written before sending. Also
 // "Snooze 1 h" from a notification.
 
+import { eventReminderDue, timeRange } from '@streakatron/shared/calendar';
 import { isId } from '@streakatron/shared/ids';
 import { plannedEndAt } from '@streakatron/shared/focus';
 import {
@@ -12,11 +14,18 @@ import {
   REMINDER_GRACE_MS,
   SNOOZE_MINUTES,
 } from '@streakatron/shared/reminders';
-import { userDay, userDayRange, type DateString } from '@streakatron/shared/time';
+import {
+  addDays,
+  userDay,
+  userDayRange,
+  wallClock,
+  type DateString,
+} from '@streakatron/shared/time';
 import { and, eq, gt, isNotNull, isNull, lt, lte } from 'drizzle-orm';
 import { db } from '../db/client';
 import {
   commitments,
+  events,
   focusSessions,
   projects,
   pushSubscriptions,
@@ -141,6 +150,65 @@ async function taskReminders(userId: string, now: Date) {
   }));
 }
 
+const dayLabel = new Intl.DateTimeFormat('en-US', {
+  weekday: 'short',
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC',
+});
+
+/** "Today at 19:00–20:30", "Tomorrow, all day", "Sun, Jul 4, all day". */
+function eventLine(
+  day: DateString,
+  today: DateString,
+  startTime: string | null,
+  duration: number | null,
+) {
+  const label =
+    day === today
+      ? 'Today'
+      : day === addDays(today, 1)
+        ? 'Tomorrow'
+        : dayLabel.format(new Date(`${day}T12:00:00Z`));
+  return startTime ? `${label} at ${timeRange(startTime, duration)}` : `${label}, all day`;
+}
+
+async function eventReminders(userId: string, now: Date, timeZone: string, today: DateString) {
+  const rows = await db
+    .select({
+      id: events.id,
+      title: events.title,
+      date: events.date,
+      precision: events.precision,
+      startTime: events.startTime,
+      durationMinutes: events.durationMinutes,
+      repeat: events.repeat,
+      reminderMinutes: events.reminderMinutes,
+      project: projects.title,
+    })
+    .from(events)
+    .leftJoin(projects, eq(projects.id, events.projectId))
+    .where(
+      and(eq(events.userId, userId), isNotNull(events.reminderMinutes), isNull(events.deletedAt)),
+    );
+  const out: Due[] = [];
+  for (const e of rows) {
+    const due = eventReminderDue(e, now, timeZone);
+    if (!due) continue;
+    const line = eventLine(due.day, today, e.startTime, e.durationMinutes);
+    out.push({
+      key: keyOf(e.id, due.at),
+      message: {
+        title: e.title,
+        body: e.project ? `${line} · ${e.project}` : line,
+        tag: `${e.id}@${due.day}`,
+        url: `/calendar?event=${e.id}`,
+      },
+    });
+  }
+  return out;
+}
+
 async function focusEnded(userId: string, now: Date) {
   const rows = await db
     .select({
@@ -214,6 +282,12 @@ export async function dueFor(userId: string, now: Date): Promise<Due[]> {
   return [
     ...(await commitmentReminders(userId, now, today)),
     ...(await taskReminders(userId, now)),
+    ...(await eventReminders(
+      userId,
+      now,
+      settings.timeZone,
+      wallClock(now, settings.timeZone).date,
+    )),
     ...(settings.notifications.focusEnded ? await focusEnded(userId, now) : []),
     ...(await streakNudge(userId, now, today, settings.notifications.streakNudgeAt)),
   ];

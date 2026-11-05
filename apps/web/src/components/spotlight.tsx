@@ -1,10 +1,12 @@
-// Spotlight (D33): up to 4 tasks and goals the user features at the top of Today, for ongoing work
-// that has no date and isn't always the next action ("Learn katakana"). Tasks get a one-click
-// focus start; goals show their progress and days left. Also the "spotlight is full" dialog and
-// the toggle the task and goal sheets use.
+// Spotlight (D33): up to 4 tasks, goals and events the user features at the top of Today, for
+// ongoing work that has no date and isn't always the next action ("Learn katakana"), and for
+// countdowns (D39). Tasks get a one-click focus start; goals show their progress and days left;
+// events count down ("240 days", "~4 months", "TBD"). Also the "spotlight is full" dialog and the
+// toggle the sheets use.
 
 import { SPOTLIGHT_MAX } from '@streakatron/shared/structure';
 import { useQuery } from '@tanstack/react-query';
+import { nextOccurrence, timeRange } from '@streakatron/shared/calendar';
 import { Goal as GoalIcon, Play, Star, StarOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,8 +20,14 @@ import {
 import { useQuickFocus } from '@/hooks/use-focus';
 import { useOpenSheet } from '@/hooks/use-open-task';
 import { useSpotlightActions } from '@/lib/actions';
-import { countdown } from '@/lib/days';
-import { spotlightQuery, type Project, type SpotlightGoal, type Task } from '@/lib/queries';
+import { countdownTile, formatDayShort, formatTentative, goalDue } from '@/lib/days';
+import {
+  spotlightQuery,
+  type Project,
+  type SpotlightEvent,
+  type SpotlightGoal,
+  type Task,
+} from '@/lib/queries';
 import { setUi, useUi } from '@/lib/ui-store';
 import { cn } from '@/lib/utils';
 import { EntityIcon } from './entity-icon';
@@ -40,7 +48,7 @@ export function SpotlightSection({
   const { data: items = [] } = useQuery(spotlightQuery);
   const byId = new Map(tasks.map((t) => [t.id, t]));
   const byProject = new Map(projects.map((p) => [p.id, p]));
-  const shown = items.filter((i) => i.goal || byId.has(i.id));
+  const shown = items.filter((i) => i.goal || i.event || byId.has(i.id));
   if (!shown.length) return null;
 
   return (
@@ -51,7 +59,14 @@ export function SpotlightSection({
       </h2>
       <div className="grid gap-2 sm:grid-cols-2">
         {shown.map((i) =>
-          i.goal ? (
+          i.event ? (
+            <EventCard
+              key={i.id}
+              event={i.event}
+              project={i.event.projectId ? byProject.get(i.event.projectId) : undefined}
+              today={today}
+            />
+          ) : i.goal ? (
             <GoalCard
               key={i.id}
               goal={i.goal}
@@ -119,6 +134,7 @@ function GoalCard({
 }) {
   const open = useOpenSheet();
   const total = goal.tasks.open + goal.tasks.done;
+  const due = goalDue(goal, today);
   return (
     <div
       role="button"
@@ -141,11 +157,7 @@ function GoalCard({
               {project.title}
             </span>
           )}
-          {goal.dueDate && (
-            <span className={cn(goal.dueDate < today && 'text-destructive')}>
-              {countdown(goal.dueDate, today)}
-            </span>
-          )}
+          {due && <span className={cn(due.late && 'text-destructive')}>{due.text}</span>}
           {goal.progress ? (
             <TimeGoalProgress progress={goal.progress} period={goal.period} />
           ) : (
@@ -172,16 +184,78 @@ function GoalCard({
   );
 }
 
-/** The star next to a task's or goal's title in its sheet: "Spotlight on Today" or take it off. */
+/** A countdown (D39): how far off the event is, big, then its title and when it is. */
+function EventCard({
+  event,
+  project,
+  today,
+}: {
+  event: SpotlightEvent;
+  project?: Project;
+  today: string;
+}) {
+  const open = useOpenSheet();
+  const next =
+    event.precision === 'day' && event.date
+      ? nextOccurrence(event.date, event.repeat, today)
+      : event.date;
+  const tile = countdownTile(next, event.precision, today);
+  const when =
+    event.precision === 'day' && next
+      ? `${formatDayShort(next, today)}${event.startTime ? ` · ${timeRange(event.startTime, event.durationMinutes)}` : ''}`
+      : formatTentative(event.date, event.precision, today);
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => open('event', event.id)}
+      onKeyDown={(e) => {
+        if (e.target === e.currentTarget && e.key === 'Enter') open('event', event.id);
+      }}
+      className="group flex cursor-pointer items-center gap-3.5 rounded-2xl border-2 border-muted bg-background p-3 transition-colors outline-none hover:border-input focus-visible:ring-2 focus-visible:ring-ring/50"
+    >
+      <span
+        className="grid h-12 min-w-12 shrink-0 place-content-center rounded-xl bg-glow/25 px-1.5 text-center text-glow-foreground"
+        aria-hidden
+      >
+        <span className="font-display text-lg leading-5 font-bold tabular-nums">{tile.value}</span>
+        {tile.unit && (
+          <span className="text-[10px] leading-3 font-bold tracking-wide uppercase opacity-80">
+            {tile.unit}
+          </span>
+        )}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="text-base leading-6 font-bold break-words">{event.title}</div>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <span>{when}</span>
+          {project && (
+            <span className="inline-flex items-center gap-1">
+              <EntityIcon icon={project.icon} color={project.color} size="sm" />
+              {project.title}
+            </span>
+          )}
+        </div>
+      </div>
+      <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+        <RemoveButton item={event} />
+      </div>
+    </div>
+  );
+}
+
+/** The star next to a title in its sheet: "Spotlight on Today" (events: "Count down…") or off. */
 export function SpotlightToggle({
   item,
   on,
+  label: offLabel = 'Spotlight on Today',
 }: {
   item: { id: string; title: string };
   on: boolean;
+  label?: string;
 }) {
   const spotlight = useSpotlightActions();
-  const label = on ? 'Remove from the spotlight' : 'Spotlight on Today';
+  const label = on ? 'Remove from the spotlight' : offLabel;
   return (
     <Button
       variant="ghost"
