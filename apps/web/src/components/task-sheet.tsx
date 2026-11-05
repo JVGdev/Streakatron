@@ -48,6 +48,8 @@ import { TaskCheck } from './task-check';
 import { EffortBars } from './task-meta';
 import { onRowsKeyDown } from '@/lib/rows';
 import { TaskRow } from './task-row';
+import { EarlierOpen, TaskRepeatField } from './task-repeat';
+import { TurnInto } from './turn-into';
 
 export function TaskSheet({ taskId }: { taskId: string | undefined }) {
   const open = useOpenTask();
@@ -153,6 +155,8 @@ function TaskEditor({ task }: { task: TaskDetail }) {
           <TitleField value={title} onChange={setTitle} what="task" struck={!!task.completedAt} />
           {!task.completedAt && <SpotlightToggle item={task} on={!!task.spotlightedAt} />}
         </div>
+
+        {!task.completedAt && <EarlierOpen task={task} onOpen={openTask} />}
 
         <div className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-x-2 gap-y-1 text-sm">
           <Label className="text-muted-foreground">Project</Label>
@@ -265,6 +269,20 @@ function TaskEditor({ task }: { task: TaskDetail }) {
             onChange={(scheduledDate) => void tasks.update(task, { scheduledDate })}
           />
 
+          {!isSubtask && (task.series || !task.completedAt) && (
+            <>
+              <Label htmlFor="task-repeat" className="text-muted-foreground">
+                Repeat
+              </Label>
+              <TaskRepeatField
+                id="task-repeat"
+                value={task.series?.repeat ?? null}
+                date={task.dueDate ?? task.scheduledDate ?? task.series?.start ?? today}
+                onChange={(repeat) => void tasks.update(task, { repeat })}
+              />
+            </>
+          )}
+
           {(task.remindAt || !task.completedAt) && (
             <>
               <Label htmlFor="task-remind" className="text-muted-foreground">
@@ -339,6 +357,25 @@ function TaskEditor({ task }: { task: TaskDetail }) {
           </Button>
         )}
         <span className="flex-1" />
+        {!isSubtask && !task.completedAt && (
+          <TurnInto
+            id={task.id}
+            beforeOpen={save.flush}
+            source={{
+              kind: 'task',
+              title,
+              projectId: task.projectId,
+              spotlighted: !!task.spotlightedAt,
+              dueDate: task.dueDate,
+              scheduledDate: task.scheduledDate,
+              repeat: task.series?.repeat ?? null,
+              reminder: !!task.remindAt,
+              subtasks: task.subtasks.total,
+              goal: !!task.goalId,
+              effort: !!task.effort,
+            }}
+          />
+        )}
         <Button
           variant="ghost"
           size="sm"

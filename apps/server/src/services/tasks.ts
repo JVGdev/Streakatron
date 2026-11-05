@@ -2,6 +2,7 @@
 // set. On a board it agrees with the column's category: moving into a done column completes a task,
 // completing one moves it there, and the other way round.
 
+import type { TaskRepeat } from '@streakatron/shared/repeats';
 import type { TaskCreate, TaskListQuery, TaskMove, TaskPatch } from '@streakatron/shared/schemas';
 import { newId } from '@streakatron/shared/ids';
 import {
@@ -23,10 +24,12 @@ import {
   writeOrder,
   type Conn,
   type Tx,
+  inTx,
 } from './common';
 import { logActivity } from './game';
 import { writeLinks } from './links';
 import { ownedProject, unpinClosed } from './projects';
+import { advanceSeries, applyRepeat, retractNext } from './repeats';
 
 type TaskRow = typeof tasks.$inferSelect;
 type ColumnRow = typeof boardColumns.$inferSelect;
@@ -48,6 +51,19 @@ const viewColumns = {
   completedAt: tasks.completedAt,
   spotlightedAt: tasks.spotlightedAt,
   remindAt: tasks.remindAt,
+  seriesId: tasks.seriesId,
+  seriesDate: tasks.seriesDate,
+  /** The running series' rule and anchor (D43); null when it doesn't repeat (or stopped). */
+  series: sql<{ repeat: TaskRepeat; start: string } | null>`(
+    select json_build_object('repeat', r.repeat, 'start', r.start_date)
+    from task_series r where r.id = ${tasks.seriesId} and r.stopped_at is null
+  )`,
+  /** Earlier occurrences still open: the one(s) this occurrence came while they were missed. */
+  earlierOpen: sql<{ id: string; day: string }[]>`(
+    select coalesce(json_agg(json_build_object('id', o.id, 'day', o.series_date) order by o.series_date), '[]'::json)
+    from tasks o where o.series_id = ${tasks.seriesId} and o.series_date < ${tasks.seriesDate}
+      and o.completed_at is null and o.deleted_at is null
+  )`,
   createdAt: tasks.createdAt,
   updatedAt: tasks.updatedAt,
   status: sql<TaskStatus>`case when ${tasks.completedAt} is not null then 'done' when ${boardColumns.category} in ('in_progress', 'waiting') then ${boardColumns.category} else 'todo' end`,
@@ -116,7 +132,7 @@ async function ownedTask(conn: Conn, userId: string, id: string, { deleted = fal
   return row;
 }
 
-async function projectColumns(conn: Conn, projectId: string) {
+export async function projectColumns(conn: Conn, projectId: string) {
   return conn
     .select()
     .from(boardColumns)
@@ -138,19 +154,19 @@ async function assertGoal(conn: Conn, userId: string, goalId: string, projectId:
 }
 
 /** Where a task of this project lands: the done column when it's done, else the first open one. */
-function landingColumn(columns: ColumnRow[], done: boolean) {
+export function landingColumn(columns: ColumnRow[], done: boolean) {
   const column = done ? firstColumnOf(columns, 'done') : firstOpenColumn(columns);
   if (!column) throw conflict('board_broken', 'This project’s board has no column for that.');
   return column;
 }
 
-const inColumn = (columnId: string) =>
+export const inColumn = (columnId: string) =>
   and(eq(tasks.columnId, columnId), isNull(tasks.deletedAt), isNull(tasks.parentTaskId));
 
 // --- Writing ---------------------------------------------------------------------------------
 
-export async function createTask(userId: string, input: TaskCreate) {
-  return db.transaction(async (tx) => {
+export async function createTask(userId: string, input: TaskCreate, inside?: Tx) {
+  return inTx(inside, async (tx) => {
     const position = input.position ?? 'bottom';
     let projectId = input.projectId ?? null;
     let columnId: string | null = null;
@@ -202,6 +218,10 @@ export async function createTask(userId: string, input: TaskCreate) {
       ...richColumns(input.description),
     });
     await writeLinks(tx, userId, id, input.description);
+    if (input.repeat) {
+      const values = await applyRepeat(tx, userId, await ownedTask(tx, userId, id), input.repeat);
+      if (Object.keys(values).length) await tx.update(tasks).set(values).where(eq(tasks.id, id));
+    }
     if (completedAt) {
       await logDoneness(
         tx,
@@ -217,7 +237,7 @@ export async function createTask(userId: string, input: TaskCreate) {
 export async function updateTask(userId: string, id: string, patch: TaskPatch) {
   return db.transaction(async (tx) => {
     const task = await ownedTask(tx, userId, id);
-    const { description, projectId, goalId, remindAt, ...rest } = patch;
+    const { description, projectId, goalId, remindAt, repeat, ...rest } = patch;
     const values: Partial<TaskRow> = defined({ ...rest, ...richColumns(description) });
     if (remindAt !== undefined) values.remindAt = remindAt ? new Date(remindAt) : null;
 
@@ -249,6 +269,10 @@ export async function updateTask(userId: string, id: string, patch: TaskPatch) {
 
     if (Object.keys(values).length) await tx.update(tasks).set(values).where(eq(tasks.id, id));
     await writeLinks(tx, userId, id, description);
+    if (repeat !== undefined) {
+      const after = await applyRepeat(tx, userId, await ownedTask(tx, userId, id), repeat);
+      if (Object.keys(after).length) await tx.update(tasks).set(after).where(eq(tasks.id, id));
+    }
     return taskView(tx, userId, id);
   });
 }
@@ -454,13 +478,19 @@ export async function setDoneness(tx: Tx, userId: string, ids: string[], done: b
   await logDoneness(tx, userId, changing, done);
 }
 
-/** Log tasks becoming done or open again (the game reads completions, D8). */
-function logDoneness(
+/**
+ * Log tasks becoming done or open again (the game reads completions, D8); a repeating one makes its
+ * next occurrence, or takes it back (D43).
+ */
+async function logDoneness(
   tx: Tx,
   userId: string,
   changed: Pick<TaskRow, 'id' | 'effort' | 'parentTaskId' | 'projectId'>[],
   done: boolean,
 ) {
+  const ids = changed.map((t) => t.id);
+  if (done) await advanceSeries(tx, userId, ids);
+  else await retractNext(tx, userId, ids);
   return logActivity(
     tx,
     userId,

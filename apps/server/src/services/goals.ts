@@ -11,7 +11,16 @@ import { userDay } from '@streakatron/shared/time';
 import { and, asc, between, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { activity, goals } from '../db/schema';
-import { defined, edgeOrder, invalid, notFound, richColumns, type Conn } from './common';
+import {
+  defined,
+  edgeOrder,
+  invalid,
+  notFound,
+  richColumns,
+  type Conn,
+  inTx,
+  type Tx,
+} from './common';
 import { daySettings } from './game';
 import { writeLinks } from './links';
 import { ownedProject } from './projects';
@@ -76,8 +85,8 @@ async function ownedGoal(conn: Conn, userId: string, id: string, { deleted = fal
   return row;
 }
 
-export async function createGoal(userId: string, input: GoalCreate) {
-  return db.transaction(async (tx) => {
+export async function createGoal(userId: string, input: GoalCreate, inside?: Tx) {
+  return inTx(inside, async (tx) => {
     await ownedProject(tx, userId, input.projectId);
     const outcome = input.kind === 'outcome';
     const id = newId('goal');

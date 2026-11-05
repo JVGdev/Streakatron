@@ -30,6 +30,7 @@ import {
   richColumns,
   type Conn,
   type Tx,
+  inTx,
 } from './common';
 import { daySettings, logActivity } from './game';
 import { writeLinks } from './links';
@@ -215,8 +216,8 @@ async function assertProject(conn: Conn, userId: string, projectId: string | nul
   if (projectId) await ownedProject(conn, userId, projectId);
 }
 
-export async function createCommitment(userId: string, input: CommitmentCreate) {
-  return db.transaction(async (tx) => {
+export async function createCommitment(userId: string, input: CommitmentCreate, inside?: Tx) {
+  return inTx(inside, async (tx) => {
     await assertProject(tx, userId, input.projectId);
     const shape = checkedShape({
       measure: input.measure ?? 'check',

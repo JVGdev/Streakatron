@@ -1,6 +1,7 @@
 import { wallClock } from '@streakatron/shared/time';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, CalendarClock, CalendarDays, ListChecks, Target } from 'lucide-react';
+import { describeTaskRepeat } from '@streakatron/shared/repeats';
+import { Bell, CalendarClock, CalendarDays, ListChecks, Repeat2, Target } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { formatDayShort, formatRemindAt } from '@/lib/days';
 import { EFFORT_LABEL } from '@/lib/look';
@@ -108,6 +109,14 @@ export function TaskMeta({
         <Chip title={`Scheduled for ${task.scheduledDate}`}>
           <CalendarClock />
           {formatDayShort(task.scheduledDate, today)}
+        </Chip>
+      )}
+      {task.series && !done && (
+        <Chip title={describeTaskRepeat(task.series.repeat, task.series.start)}>
+          <Repeat2 />
+          <span className="sr-only">
+            Repeats: {describeTaskRepeat(task.series.repeat, task.series.start)}
+          </span>
         </Chip>
       )}
       {remind && (

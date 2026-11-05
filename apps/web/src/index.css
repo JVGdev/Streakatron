@@ -258,3 +258,8 @@
     @apply rounded bg-accent/60;
   }
 }
+
+/* Toasts stay clickable while a sheet or dialog is open (their Undo is the point). */
+[data-sonner-toaster] {
+  pointer-events: auto;
+}

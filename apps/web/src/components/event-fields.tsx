@@ -313,8 +313,6 @@ export function RepeatField({
   weekStart?: number;
 }) {
   const unit = value?.every ?? 'none';
-  const order = Array.from({ length: 7 }, (_, i) => (weekStart + i) % 7);
-  const set = (patch: Partial<Repeat>) => value && onChange({ ...value, ...patch });
 
   return (
     <div className="grid gap-2">
@@ -347,69 +345,88 @@ export function RepeatField({
         </SelectContent>
       </Select>
       {value && (
-        <>
-          {value.every === 'week' && (
-            <div className="flex gap-1" role="group" aria-label="On">
-              {order.map((d) => {
-                const on = value.weekdays?.includes(d) ?? false;
-                return (
-                  <button
-                    key={d}
-                    type="button"
-                    aria-pressed={on}
-                    aria-label={WEEKDAY_NAMES[d]}
-                    title={WEEKDAY_NAMES[d]}
-                    onClick={() => {
-                      const next = on
-                        ? (value.weekdays ?? []).filter((w) => w !== d)
-                        : [...(value.weekdays ?? []), d];
-                      if (next.length) set({ weekdays: next.sort((a, b) => a - b) });
-                    }}
-                    className={cn(
-                      'grid size-8 place-items-center rounded-full text-xs font-bold transition-colors',
-                      on ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
-                    )}
-                  >
-                    {WEEKDAY_LETTERS[d]}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm">
-            <Label htmlFor="repeat-every" className="font-normal text-muted-foreground">
-              Every
-            </Label>
-            <Input
-              id="repeat-every"
-              type="number"
-              min={1}
-              max={30}
-              className="h-8 w-16"
-              value={value.interval}
-              onChange={(e) => {
-                const n = Math.round(Number(e.target.value));
-                if (n >= 1 && n <= 30) set({ interval: n });
-              }}
-            />
-            <span className="text-muted-foreground">
-              {value.every}
-              {value.interval === 1 ? '' : 's'}
-            </span>
-            <span className="ml-auto flex items-center gap-1">
-              <span className="text-muted-foreground">until</span>
-              <DayField
-                aria-label="Until"
-                placeholder="Forever"
-                value={value.until ?? null}
-                onChange={(until) => set({ until })}
-              />
-            </span>
-          </div>
-          <p className="px-1 text-xs text-muted-foreground">{describeRepeat(value, date)}</p>
-        </>
+        <RepeatDetails date={date} value={value} onChange={onChange} weekStart={weekStart} />
       )}
     </div>
+  );
+}
+
+/** A repeat's weekdays, interval and end, with what it reads as (the event's and a task's). */
+export function RepeatDetails({
+  date,
+  value,
+  onChange,
+  weekStart = 1,
+}: {
+  date: string;
+  value: Repeat;
+  onChange: (r: Repeat) => void;
+  weekStart?: number;
+}) {
+  const order = Array.from({ length: 7 }, (_, i) => (weekStart + i) % 7);
+  const set = (patch: Partial<Repeat>) => onChange({ ...value, ...patch });
+  return (
+    <>
+      {value.every === 'week' && (
+        <div className="flex gap-1" role="group" aria-label="On">
+          {order.map((d) => {
+            const on = value.weekdays?.includes(d) ?? false;
+            return (
+              <button
+                key={d}
+                type="button"
+                aria-pressed={on}
+                aria-label={WEEKDAY_NAMES[d]}
+                title={WEEKDAY_NAMES[d]}
+                onClick={() => {
+                  const next = on
+                    ? (value.weekdays ?? []).filter((w) => w !== d)
+                    : [...(value.weekdays ?? []), d];
+                  if (next.length) set({ weekdays: next.sort((a, b) => a - b) });
+                }}
+                className={cn(
+                  'grid size-8 place-items-center rounded-full text-xs font-bold transition-colors',
+                  on ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground',
+                )}
+              >
+                {WEEKDAY_LETTERS[d]}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm">
+        <Label htmlFor="repeat-every" className="font-normal text-muted-foreground">
+          Every
+        </Label>
+        <Input
+          id="repeat-every"
+          type="number"
+          min={1}
+          max={30}
+          className="h-8 w-16"
+          value={value.interval}
+          onChange={(e) => {
+            const n = Math.round(Number(e.target.value));
+            if (n >= 1 && n <= 30) set({ interval: n });
+          }}
+        />
+        <span className="text-muted-foreground">
+          {value.every}
+          {value.interval === 1 ? '' : 's'}
+        </span>
+        <span className="ml-auto flex items-center gap-1">
+          <span className="text-muted-foreground">until</span>
+          <DayField
+            aria-label="Until"
+            placeholder="Forever"
+            value={value.until ?? null}
+            onChange={(until) => set({ until })}
+          />
+        </span>
+      </div>
+      <p className="px-1 text-xs text-muted-foreground">{describeRepeat(value, date)}</p>
+    </>
   );
 }
 

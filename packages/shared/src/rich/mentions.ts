@@ -101,3 +101,14 @@ export function mentionsOf(doc: RichNode | null | undefined, titleOf?: TitleOf):
   if (doc) walk(doc);
   return [...found].map(([targetId, snippet]) => ({ targetId, snippet }));
 }
+
+/** `doc` with every mention of `from` pointing at `to` instead (an entry turned into another). */
+export function replaceMentionId<T extends RichNode>(doc: T, from: string, to: string): T {
+  const walk = (node: RichNode): RichNode => {
+    const out: RichNode = { ...node };
+    if (node.type === 'mention' && node.attrs?.id === from) out.attrs = { ...node.attrs, id: to };
+    if (node.content) out.content = node.content.map(walk);
+    return out;
+  };
+  return walk(doc) as T;
+}

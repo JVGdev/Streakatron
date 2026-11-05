@@ -11,6 +11,7 @@ import { errorBody, onError } from './http/errors';
 import { adminRoutes } from './routes/admin';
 import { areaRoutes } from './routes/areas';
 import { columnRoutes } from './routes/columns';
+import { convertRoutes } from './routes/convert';
 import { commitmentRoutes } from './routes/commitments';
 import { calendarRoutes, eventRoutes } from './routes/events';
 import { focusRoutes } from './routes/focus';
@@ -45,6 +46,7 @@ const api = new Hono()
   .route('/columns', columnRoutes)
   .route('/goals', goalRoutes)
   .route('/tasks', taskRoutes)
+  .route('/convert', convertRoutes)
   .route('/commitments', commitmentRoutes)
   .route('/events', eventRoutes)
   .route('/calendar', calendarRoutes)

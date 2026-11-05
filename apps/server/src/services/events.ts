@@ -16,9 +16,10 @@ import {
   type EventPatch,
 } from '@streakatron/shared/schemas';
 import { and, asc, between, eq, inArray, isNotNull, isNull, lte, or, sql } from 'drizzle-orm';
+import { daysAhead, type TaskRepeat } from '@streakatron/shared/repeats';
 import { db } from '../db/client';
 import { activity, events, tasks } from '../db/schema';
-import { defined, invalid, notFound, richColumns, type Conn } from './common';
+import { defined, invalid, notFound, richColumns, type Conn, inTx, type Tx } from './common';
 import { writeLinks } from './links';
 import { ownedProject } from './projects';
 import { selectViews } from './tasks';
@@ -68,8 +69,8 @@ async function ownedEvent(conn: Conn, userId: string, id: string, { deleted = fa
   return row;
 }
 
-export async function createEvent(userId: string, input: EventCreate) {
-  return db.transaction(async (tx) => {
+export async function createEvent(userId: string, input: EventCreate, inside?: Tx) {
+  return inTx(inside, async (tx) => {
     if (input.projectId) await ownedProject(tx, userId, input.projectId);
     const shape = normalize({
       date: input.date ?? null,
@@ -235,7 +236,48 @@ export async function getCalendar(userId: string, { from, to }: CalendarQuery) {
   return {
     events: out,
     doneTasks: done,
+    ahead: await repeatsAhead(userId, from, to),
     days: Object.fromEntries(days),
   };
+}
+
+/**
+ * The coming days of running schedules (D43), after each one's newest occurrence: faint chips on
+ * the calendar. Projects at rest are left out, like their tasks.
+ */
+async function repeatsAhead(userId: string, from: string, to: string) {
+  const rows = await db.execute<{
+    series_id: string;
+    repeat: TaskRepeat;
+    start_date: string;
+    newest: string;
+    task_id: string;
+    title: string;
+    project_id: string | null;
+  }>(sql`
+    select distinct on (r.id) r.id as series_id, r.repeat, r.start_date::text as start_date,
+           t.series_date::text as newest, t.id as task_id, t.title, t.project_id
+      from task_series r
+      join tasks t on t.series_id = r.id
+      left join projects p on p.id = t.project_id
+     where r.user_id = ${userId} and r.stopped_at is null and r.repeat->>'kind' = 'schedule'
+       and (t.project_id is null or p.status = 'active')
+     order by r.id, t.series_date desc
+  `);
+  return rows.rows.flatMap((r) => {
+    const days = daysAhead(r.repeat, r.start_date, r.newest, from, to);
+    return days.length
+      ? [
+          {
+            seriesId: r.series_id,
+            taskId: r.task_id,
+            title: r.title,
+            projectId: r.project_id,
+            repeat: r.repeat,
+            days,
+          },
+        ]
+      : [];
+  });
 }
 export type Calendar = Awaited<ReturnType<typeof getCalendar>>;

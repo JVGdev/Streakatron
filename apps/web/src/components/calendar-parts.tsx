@@ -3,14 +3,23 @@
 
 import { timeRange, type DayLoad } from '@streakatron/shared/calendar';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { CalendarDays, Check, ChevronDown, Flag, Repeat, Search, Timer } from 'lucide-react';
+import {
+  CalendarDays,
+  Check,
+  ChevronDown,
+  Flag,
+  Repeat,
+  Repeat2,
+  Search,
+  Timer,
+} from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Input } from '@/components/ui/input';
 import { useOpenSheet } from '@/hooks/use-open-task';
 import type { PlacedTask } from '@/lib/calendar';
 import { formatMinutes } from '@/lib/days';
 import { COLOR } from '@/lib/look';
-import type { CalendarItem, Project, Task } from '@/lib/queries';
+import type { CalendarData, CalendarItem, Project, Task } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 
 export type ProjectsById = Map<string, Project>;
@@ -121,6 +130,42 @@ export function TaskChip({
       {label === 'Due' && compact && (
         <Flag className="ml-auto size-2.5 shrink-0 text-destructive" aria-label="Due" />
       )}
+    </button>
+  );
+}
+
+export type AheadItem = CalendarData['ahead'][number];
+
+/** A repeating task's coming day (D43): faint, not draggable; opens its newest occurrence. */
+export function AheadChip({
+  item,
+  projects,
+  compact,
+}: {
+  item: AheadItem;
+  projects: ProjectsById;
+  compact?: boolean;
+}) {
+  const open = useOpenSheet();
+  const project = item.projectId ? projects.get(item.projectId) : undefined;
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        open('task', item.taskId);
+      }}
+      title={`${item.title} (repeats; comes on this day)`}
+      className={cn(
+        'flex w-full min-w-0 items-center gap-1.5 rounded-md border border-dashed px-1.5 text-left text-xs text-muted-foreground hover:bg-muted',
+        compact ? 'h-5' : 'min-h-6 py-0.5',
+      )}
+    >
+      <Repeat2
+        className={cn('size-3 shrink-0', project && COLOR[project.color].text)}
+        aria-label="Repeats"
+      />
+      <span className="truncate">{item.title}</span>
     </button>
   );
 }
