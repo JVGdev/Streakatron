@@ -429,7 +429,6 @@ function ProjectDescription({ project }: { project: Project }) {
         value={project.description}
         onChange={setDescription}
         selfId={project.id}
-        placeholder="What is this project for? What does done look like? Type @ to link things."
       />
     </div>
   );

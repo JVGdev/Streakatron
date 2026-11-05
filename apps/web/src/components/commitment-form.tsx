@@ -157,7 +157,7 @@ function CommitmentForm({
         <DialogHeader>
           <DialogTitle>{commitment ? 'Edit commitment' : 'New commitment'}</DialogTitle>
           <DialogDescription>
-            A routine you keep, like a lesson every day or 3 classes a week.
+            Something you do regularly: ticked, counted or timed.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-1.5">
@@ -166,7 +166,7 @@ function CommitmentForm({
             id="commitment-title"
             autoFocus
             maxLength={200}
-            placeholder="Duolingo lesson"
+            placeholder="What you do"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
@@ -223,7 +223,7 @@ function CommitmentForm({
                   aria-label="Unit"
                   className="w-32"
                   maxLength={COMMITMENT_LIMITS.unitLength}
-                  placeholder="cards"
+                  placeholder="unit"
                   value={unit}
                   onChange={(e) => setUnit(e.target.value)}
                 />

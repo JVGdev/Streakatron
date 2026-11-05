@@ -30,7 +30,7 @@ function StatsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Stats" description="The last year, as the server counts it." />
+      <PageHeader title="Stats" description="Your activity over the last year." />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Tile label="Active days" value={String(active.length)} />

@@ -115,15 +115,13 @@ function AreaForm({ area, onDone }: { area?: Area; onDone: () => void }) {
       <form onSubmit={submit} className="grid gap-5">
         <DialogHeader>
           <DialogTitle>{area ? 'Edit area' : 'New area'}</DialogTitle>
-          <DialogDescription>
-            A long-lived part of your life, like University or Side projects.
-          </DialogDescription>
+          <DialogDescription>A long-lived part of your life that holds projects.</DialogDescription>
         </DialogHeader>
         <div className="flex items-center gap-3">
           <EntityIcon icon={icon} color={color} size="lg" />
           <Input
             aria-label="Title"
-            placeholder="University"
+            placeholder="Area name"
             autoFocus
             value={title}
             maxLength={200}
@@ -238,7 +236,7 @@ function ProjectForm({
           <EntityIcon icon={icon} color={color} size="lg" />
           <Input
             aria-label="Title"
-            placeholder="Linear Algebra"
+            placeholder="Project name"
             autoFocus
             value={title}
             maxLength={200}
@@ -296,7 +294,7 @@ function ProjectForm({
           <span>
             <span className="font-medium">Required</span>
             <span className="block text-xs text-muted-foreground">
-              A course or obligation you can’t park. It doesn’t count toward your active limit.
+              Can’t be parked and doesn’t count toward your active limit.
             </span>
           </span>
         </label>
@@ -331,7 +329,6 @@ function ProjectForm({
               value={null}
               onChange={setDescription}
               className="min-h-20"
-              placeholder="What is this project for? What does done look like?"
             />
           </Field>
         )}

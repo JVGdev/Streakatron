@@ -104,7 +104,6 @@ function ProjectsPage() {
               {active} of {limit} active
             </span>
             {required > 0 && ` (+${required} required)`}
-            {' · '}A short active list is the point: park what can wait.
           </>
         }
         actions={
@@ -124,8 +123,7 @@ function ProjectsPage() {
         <div className="rounded-3xl border-2 border-dashed px-6 py-12 text-center">
           <p className="font-medium">Start with what you’re working on.</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            Areas are long-lived parts of your life (University, Side projects). Projects live in
-            them, each with goals, tasks and a board.
+            Areas group your projects; each project has goals, tasks and a board.
           </p>
           <div className="mt-4 flex justify-center gap-2">
             <Button variant="outline" onClick={newArea}>

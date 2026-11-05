@@ -80,8 +80,7 @@ function YourDay() {
       <CardHeader>
         <CardTitle>Your day and week</CardTitle>
         <CardDescription>
-          Streaks count your days as you live them. Work done before the day starts counts for the
-          day before, so a late night still counts.
+          Work done before your day starts counts for the day before, so a late night still counts.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-5 sm:grid-cols-2">
@@ -178,8 +177,7 @@ function YourDay() {
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            Weeks that meet it in a row make your weekly streak, the forgiving one: a missed day
-            doesn’t break it.
+            Weeks that meet it in a row make your weekly streak; a missed day doesn’t break it.
           </p>
         </div>
       </CardContent>
@@ -214,8 +212,7 @@ function FocusPresets() {
       <CardHeader>
         <CardTitle>Focus presets</CardTitle>
         <CardDescription>
-          The session lengths the timer offers, with the break after each. The first one is Today’s
-          one-click Start focus.
+          Session and break lengths. The first one is Today’s Start focus.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -331,8 +328,7 @@ function QuestSettings() {
       <CardHeader>
         <CardTitle>Quests</CardTitle>
         <CardDescription>
-          Turn off the kinds you don’t want; they rest from the next day’s board. Comeback quests
-          always stay on.
+          Kinds you turn off leave from the next day. Comeback quests always stay on.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -424,8 +420,7 @@ function ProjectLimit() {
       <CardHeader>
         <CardTitle>Active projects</CardTitle>
         <CardDescription>
-          How many projects can be active at once. Activating one more asks you to park another;
-          fewer active projects means each one actually moves.
+          How many projects can be active at once. Activating one more asks you to park another.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -476,8 +471,7 @@ function DeletedItems() {
       <CardHeader>
         <CardTitle>Deleted projects and areas</CardTitle>
         <CardDescription>
-          Each delete keeps a copy for 30 days. Restoring brings everything back as it was (an
-          active project comes back parked if your limit is full).
+          Kept for 30 days. Restoring brings everything back (parked, if your active limit is full).
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -24,7 +24,7 @@ export function Backlinks({ id, className }: { id: string; className?: string })
         <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
       ) : !links?.length ? (
         <p className="text-xs text-muted-foreground">
-          Nothing links here yet. Type @ in any description to mention this.
+          Nothing links here yet. Type @ in a description to link it.
         </p>
       ) : (
         ORDER.map((kind) => {

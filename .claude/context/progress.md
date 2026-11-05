@@ -170,3 +170,10 @@
 - **Not done:** skipping one occurrence of a repeat; the Today "Turn on notifications" banner doesn't count event reminders yet (setting one still turns notifications on).
 - **Committed and merged (same day, at the user's request):** branch `4d-calendar` (`2a121fc`) merged into `main` (`d3ea8d6`) and pushed; Docker app rebuilt after a manual `pg_dump` (`data/backups/pre-4d-20261105-0039.dump`); all 15 migrations applied, health OK locally and over Tailscale.
 - **Next:** 4e Recurring tasks.
+
+### 2026-11-05 — observations.txt merged; small hints reworded (D40)
+- **`observations.txt`:** turning any entry into another (task ↔ commitment ↔ goal ↔ event), hiding the focus time mid-focus, and quick notes mid-focus → plan.md §13 as **Q6–Q8**, each with its open questions (Q6 proposed alongside 4e). The hints item was done this session.
+- **Hint study:** every prose hint in the web app sorted into types (mottos, clever empty states, page/dialog explanations, examples from the user's data, teaching empty states, editor prompts and tips, rule explainers, plain "No … yet"). The user chose: mottos out except the Today question, the break line and the sign-in line; explanations kept but reworded neutrally; neutral placeholders. Recorded as **D40**.
+- **Web (text only, ~25 files):** mottos removed; Inbox/Commitments/Tasks/Stats subtitles and area/commitment/event dialog subtitles reworded; Japanese-setup examples and named placeholders replaced; teaching empty states cut to one line; one description placeholder for every editor (the `RichEditor` default); Settings descriptions trimmed (and the notifications one no longer lists only commitments and tasks).
+- **Checked:** typecheck, lint, format. Screenshots (Vite on :5173 against the running app, read only): Today, Inbox, Projects, Commitments, Tasks, Stats, Settings, a project, and the area/project/commitment dialogs on desktop and phone dark; no wrapping problems. Not committed.
+- **Next:** answer Q6–Q8, then 4e Recurring tasks.

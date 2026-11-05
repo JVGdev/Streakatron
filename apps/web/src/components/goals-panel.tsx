@@ -71,8 +71,7 @@ export function GoalsPanel({
           onClick={() => setEditing('new')}
           className="w-full rounded-2xl border-2 border-dashed px-4 py-6 text-left text-sm text-muted-foreground hover:bg-muted/40"
         >
-          What is this project aiming for? An outcome (“Pass the exam”) or a time goal (“4 hours a
-          week”).
+          Add a goal: an outcome to reach, or focus time to put in.
         </button>
       )}
       <div className="grid gap-2">
@@ -279,7 +278,9 @@ export function GoalForm({
             id="goal-title"
             autoFocus
             maxLength={200}
-            placeholder={kind === 'outcome' ? 'Pass the final exam' : 'Study every week'}
+            placeholder={
+              kind === 'outcome' ? 'What you want to reach' : 'What you want to put time into'
+            }
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />

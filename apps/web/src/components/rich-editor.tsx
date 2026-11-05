@@ -35,7 +35,7 @@ export function RichEditor({
   value,
   onChange,
   selfId,
-  placeholder = 'Write something… Type @ to link a task, goal, project or area.',
+  placeholder = 'Notes… Type @ to link.',
   className,
   autoFocus,
   'aria-label': ariaLabel,

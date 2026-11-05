@@ -36,7 +36,7 @@ function TasksPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="All tasks" description="Every task, filtered and grouped your way." />
+      <PageHeader title="All tasks" description="Every task across your projects and the inbox." />
       <TaskListControls
         options={options}
         showProject

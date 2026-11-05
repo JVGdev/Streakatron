@@ -39,7 +39,7 @@ function CommitmentsPage() {
     <div className="max-w-3xl space-y-6">
       <PageHeader
         title="Commitments"
-        description="Routines you keep: a lesson every day, 20 cards, 3 classes a week."
+        description="Things you do regularly, each with its own streak."
         actions={
           <Button onClick={() => newCommitment()}>
             <Plus />
@@ -55,8 +55,7 @@ function CommitmentsPage() {
         >
           <span className="block font-display text-lg font-semibold">No commitments yet.</span>
           <span className="mt-1 block text-sm text-muted-foreground">
-            Add something you do regularly. Tick it, add to it or log minutes, and it shows on Today
-            until it’s done. Each one keeps its own streak.
+            Each one shows on Today until it’s done.
           </span>
         </button>
       ) : (

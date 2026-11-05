@@ -135,7 +135,7 @@ function TodayPage() {
             <p className="font-display text-lg font-semibold">Nothing urgent today.</p>
             <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
               {hasActive
-                ? 'Your projects have no next action yet. Add a task to one of their boards.'
+                ? 'No project has a next action. Add a task to a board.'
                 : 'Start a project, and its next action shows up here.'}
             </p>
             <Button asChild variant="outline" size="sm" className="mt-4">

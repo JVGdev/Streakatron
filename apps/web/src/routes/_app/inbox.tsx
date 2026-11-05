@@ -21,10 +21,7 @@ function InboxPage() {
 
   return (
     <div className="max-w-3xl space-y-5">
-      <PageHeader
-        title="Inbox"
-        description="Capture now, sort later. Press C anywhere to add one."
-      />
+      <PageHeader title="Inbox" description="Tasks that don’t belong to a project yet." />
       <QuickAdd
         input={{ projectId: null, position: 'top' }}
         placeholder="Add to the inbox"
@@ -35,7 +32,7 @@ function InboxPage() {
         showProject={false}
         triage
         options={{ ...DEFAULT_LIST, project: 'inbox', sort: 'board', group: 'none' }}
-        empty="Inbox zero. Everything has a home."
+        empty="The inbox is empty."
       />
       {done.length > 0 && (
         <div>

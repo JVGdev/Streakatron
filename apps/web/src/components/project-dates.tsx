@@ -118,7 +118,7 @@ export function EventsPanel({ projectId, today }: { projectId: string; today: st
           onClick={() => newEvent({ projectId })}
           className="w-full rounded-2xl border-2 border-dashed px-4 py-6 text-left text-sm text-muted-foreground hover:bg-muted/40"
         >
-          Dates that matter for it? An exam, a trip, a class every week. They count down on Today.
+          Add dates that matter for this project. They count down on Today.
         </button>
       ) : (
         <div className="grid gap-1 rounded-2xl border-2 bg-card p-2 shadow-ledge">
