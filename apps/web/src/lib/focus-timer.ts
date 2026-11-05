@@ -36,10 +36,10 @@ export function useServerNow(active: boolean): number {
 
 // --- Browser notifications -------------------------------------------------------------------
 
-/** Ask once, from a click (browsers require it). */
-export function askNotifications() {
+/** Ask once, from a click (browsers require it). Resolves when answered (or not asked). */
+export async function askNotifications() {
   if (typeof Notification === 'undefined' || Notification.permission !== 'default') return;
-  void Notification.requestPermission().catch(() => undefined);
+  await Notification.requestPermission().catch(() => undefined);
 }
 
 /**

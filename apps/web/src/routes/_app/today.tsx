@@ -4,6 +4,7 @@ import { ChevronDown, Play, Plus, Timer } from 'lucide-react';
 import { useState } from 'react';
 import { CommitmentRow } from '@/components/commitment-row';
 import { doneToday } from '@/lib/commitments';
+import { NotifyBanner } from '@/components/notify-banner';
 import { ProgressStrip } from '@/components/progress-strip';
 import { QuestBoard } from '@/components/quest-board';
 import { SpotlightSection } from '@/components/spotlight';
@@ -90,6 +91,8 @@ function TodayPage() {
           What’s the smallest meaningful thing you can do right now?
         </p>
       </header>
+
+      <NotifyBanner commitments={commitments} tasks={tasks} today={me.today} />
 
       <FocusLauncher top={top} minutes={me.settings.focusPresets[0]?.focusMinutes} />
 

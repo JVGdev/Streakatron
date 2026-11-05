@@ -3,9 +3,10 @@
 // (a push while the app is in front, a notification button that changed something, "go there").
 
 import type { QueryClient } from '@tanstack/react-query';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api, call } from './api';
+import { report } from './report';
 
 /** Register the worker (installability, push). Nothing breaks without it. */
 export function registerServiceWorker() {
@@ -57,13 +58,36 @@ function keyBytes(base64url: string): Uint8Array<ArrayBuffer> {
   return out;
 }
 
+// "Turned off on this device" in Settings: kept so turning things on by itself respects it.
+const OFF_KEY = 'streakatron:push-off';
+const turnedOff = () => {
+  try {
+    return localStorage.getItem(OFF_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+const setTurnedOff = (off: boolean) => {
+  try {
+    if (off) localStorage.setItem(OFF_KEY, '1');
+    else localStorage.removeItem(OFF_KEY);
+  } catch {
+    // Private mode: nothing to remember.
+  }
+};
+
 /**
- * Turn notifications on for this device: ask the browser (from a click), subscribe with the
- * server's key and send the subscription. Resolves to why not, or null when it worked.
+ * Turn notifications on for this device: ask the browser when it hasn't been asked (`ask`, from a
+ * click), subscribe with the server's key and send the subscription. Resolves to why not, or null
+ * when it worked. Without `ask`, a browser that wasn't asked yet is left alone ('not asked').
  */
-export async function enablePush(): Promise<string | null> {
+export async function enablePush({ ask = true } = {}): Promise<string | null> {
   if (pushSupport() !== 'ok') return 'This browser can’t get notifications from here.';
-  const permission = await Notification.requestPermission();
+  const permission =
+    Notification.permission === 'default' && ask
+      ? await Notification.requestPermission()
+      : Notification.permission;
+  if (permission === 'default') return 'not asked';
   if (permission !== 'granted') {
     return 'Notifications are blocked for this site. Allow them in the browser’s site settings.';
   }
@@ -91,14 +115,90 @@ export async function enablePush(): Promise<string | null> {
   }
   const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
   await call(api.push.devices.$post({ json: { endpoint: json.endpoint, keys: json.keys } }));
+  setTurnedOff(false);
   return null;
 }
 
 /** Stop notifications on this device (the browser's subscription and the server's row). */
 export async function disablePush(deviceId: string | undefined) {
+  setTurnedOff(true);
   const sub = await (await registration()).pushManager.getSubscription();
   await sub?.unsubscribe();
   if (deviceId) await call(api.push.devices[':id'].$delete({ param: { id: deviceId } }));
+}
+
+/**
+ * On opening the app: a browser that already allows notifications (asked by the focus timer, or
+ * a device turned on before) is subscribed without asking, unless it was turned off here. Also
+ * re-sends the subscription, in case the server dropped it.
+ */
+export async function syncPush(qc: QueryClient) {
+  if (pushSupport() !== 'ok' || Notification.permission !== 'granted' || turnedOff()) return;
+  try {
+    if (!(await enablePush({ ask: false }))) void qc.invalidateQueries({ queryKey: ['push'] });
+  } catch (err) {
+    console.warn('push: sync failed', err);
+  }
+}
+
+export type PushState =
+  /** This device gets them. */
+  | 'on'
+  /** Can be turned on with one click. */
+  | 'off'
+  /** Turned off here in Settings (left alone until turned on again). */
+  | 'turned-off'
+  /** The browser blocks them for this site. */
+  | 'blocked'
+  /** iPhone / iPad outside the Home Screen app. */
+  | 'install'
+  | 'unsupported'
+  | 'loading';
+
+/** Where this device stands, and a one-click "turn on" that says how it went. */
+export function usePush() {
+  const qc = useQueryClient();
+  const { data, isPending } = usePushDevices();
+  const support = pushSupport();
+  const on = !!data?.endpoint && data.devices.some((d) => d.endpoint === data.endpoint);
+  const state: PushState =
+    support !== 'ok'
+      ? support
+      : on
+        ? 'on'
+        : isPending
+          ? 'loading'
+          : Notification.permission === 'denied'
+            ? 'blocked'
+            : turnedOff()
+              ? 'turned-off'
+              : 'off';
+  const turnOn = async () => {
+    try {
+      const problem = await enablePush();
+      if (problem) toast.error(problem);
+      else toast.success('Notifications are on for this device');
+      return !problem;
+    } catch (err) {
+      report(err);
+      return false;
+    } finally {
+      void qc.invalidateQueries({ queryKey: ['push'] });
+    }
+  };
+  return { state, turnOn, devices: data?.devices ?? [], endpoint: data?.endpoint ?? null };
+}
+
+/**
+ * Setting a reminder turns notifications on for this device (D38: one step, not a trip to
+ * Settings). From the click that set it, so the browser may ask; quiet when already on, or when
+ * the device was turned off in Settings.
+ */
+export function useNotifyOnReminder() {
+  const { state, turnOn } = usePush();
+  return () => {
+    if (state === 'off') void turnOn();
+  };
 }
 
 const fetchDevices = () => call(api.push.devices.$get());

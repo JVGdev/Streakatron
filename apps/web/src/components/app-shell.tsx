@@ -9,7 +9,7 @@ import {
   Search,
   Settings,
 } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { CommandPalette } from '@/components/command-palette';
 import { EntityIcon } from '@/components/entity-icon';
@@ -18,6 +18,7 @@ import { GameMoments } from '@/components/game-moments';
 import { Logo } from '@/components/logo';
 import { NAV } from '@/components/nav';
 import { ProjectStatusProvider } from '@/components/project-status';
+import { syncPush } from '@/lib/push';
 import { GlobalShortcuts } from '@/components/shortcuts';
 import { StructureDialogs } from '@/components/structure-dialogs';
 import { AreaSheet } from '@/components/area-sheet';
@@ -61,6 +62,9 @@ export function AppShell({
 }) {
   const { data: inbox } = useQuery(tasksQuery({ project: 'inbox', status: 'open' }));
   const inboxCount = inbox?.length ?? 0;
+  const qc = useQueryClient();
+  // A browser that already allows notifications gets reminders without a visit to Settings.
+  useEffect(() => void syncPush(qc), [qc]);
 
   return (
     <ProjectStatusProvider>

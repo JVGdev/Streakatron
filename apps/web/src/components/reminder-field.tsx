@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { formatRemindAt } from '@/lib/days';
+import { useNotifyOnReminder, usePush } from '@/lib/push';
 import { meQuery } from '@/lib/queries';
 import { cn } from '@/lib/utils';
 import { Choice } from './commitment-form';
@@ -118,7 +119,9 @@ export function CommitmentReminderField({
   const mode: Mode = value?.kind ?? 'off';
   const problem = mode === 'repeat' ? reminderProblem(repeat) : null;
 
+  const notifyHere = useNotifyOnReminder();
   const pick = (m: Mode) => {
+    if (m !== 'off' && mode === 'off') notifyHere();
     if (m === 'off') onChange(null);
     if (m === 'once') onChange({ kind: 'once', at: once });
     if (m === 'repeat') onChange(reminderProblem(repeat) ? DEFAULT_REPEAT : repeat);
@@ -194,12 +197,13 @@ export function CommitmentReminderField({
         {problem ? (
           <p className="text-xs text-destructive">{problem}</p>
         ) : (
-          <p className="text-xs text-muted-foreground">
-            {mode === 'off'
-              ? 'Notifications come to the devices turned on in Settings.'
-              : 'Only on its days, and none once it’s met.'}
-          </p>
+          mode !== 'off' && (
+            <p className="text-xs text-muted-foreground">
+              Only on its days, and none once it’s met.
+            </p>
+          )
         )}
+        <DeviceHint fresh={mode === 'off'} />
       </PopoverContent>
     </Popover>
   );
@@ -222,6 +226,7 @@ export function TaskReminderField({
   onChange: (remindAt: string | null) => void;
 }) {
   const { data: me } = useQuery(meQuery);
+  const notifyHere = useNotifyOnReminder();
   const [open, setOpen] = useState(false);
   const tz = me?.settings.timezone ?? 'UTC';
   const today = me?.today ?? new Date().toISOString().slice(0, 10);
@@ -287,6 +292,7 @@ export function TaskReminderField({
             <TimeInput id="task-remind-time" label="Time" value={time} onChange={setTime} />
           </div>
           {past && <p className="text-xs text-destructive">That time has passed.</p>}
+          <DeviceHint fresh={!value} />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
               Cancel
@@ -297,6 +303,7 @@ export function TaskReminderField({
               disabled={past}
               onClick={() => {
                 setOpen(false);
+                if (!value) notifyHere();
                 onChange(at.toISOString());
               }}
             >
@@ -318,5 +325,47 @@ export function TaskReminderField({
         </Button>
       )}
     </div>
+  );
+}
+
+/**
+ * Whether this device will show it, with a one-click fix when it won't. Setting a reminder turns
+ * notifications on by itself; this covers a device turned off, blocked, or an iPhone in Safari.
+ */
+function DeviceHint({ fresh }: { fresh: boolean }) {
+  const { state, turnOn } = usePush();
+  // Setting a new one turns them on by itself: just say so.
+  if (state === 'off' && fresh) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Setting it also turns on notifications for this device.
+      </p>
+    );
+  }
+  if (state === 'on' || state === 'loading') return null;
+  if (state === 'off' || state === 'turned-off') {
+    return (
+      <p className="flex items-center justify-between gap-2 rounded-md bg-muted px-2.5 py-1.5 text-xs text-muted-foreground">
+        Notifications are off on this device.
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7"
+          onClick={() => void turnOn()}
+        >
+          Turn on
+        </Button>
+      </p>
+    );
+  }
+  return (
+    <p className="rounded-md bg-muted px-2.5 py-1.5 text-xs text-muted-foreground">
+      {state === 'blocked'
+        ? 'This browser blocks notifications for Streakatron. Allow them in its site settings.'
+        : state === 'install'
+          ? 'To get them on this iPhone, add Streakatron to the Home Screen (Share → Add to Home Screen) and open it from there.'
+          : 'This browser can’t show them here. Your other devices still get them.'}
+    </p>
   );
 }

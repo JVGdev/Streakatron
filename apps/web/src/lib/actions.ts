@@ -31,6 +31,7 @@ import { useMemo } from 'react';
 import { toast } from 'sonner';
 import { api, call, ApiError } from './api';
 import { askNotifications, endBreak, markSeen, syncServerClock } from './focus-timer';
+import { syncPush } from './push';
 import type {
   Area,
   BoardColumn,
@@ -663,7 +664,8 @@ export function focusActions(qc: QueryClient) {
     /** From a click: also unlocks the chime and asks for notifications. Resolves to whether it started. */
     start: async (input: FocusStart) => {
       primeAudio();
-      askNotifications();
+      // Allowed here, it also brings Web Push to this device (reminders, focus ended) (D38).
+      void askNotifications().then(() => syncPush(qc));
       try {
         const state = settle(await call(api.focus.start.$post({ json: input })));
         endBreak();
