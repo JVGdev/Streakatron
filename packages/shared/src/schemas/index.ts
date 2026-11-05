@@ -18,6 +18,7 @@ import {
 } from '../structure';
 import { isDateString, isValidTimeZone } from '../time';
 import { FOCUS_LIMITS } from '../focus';
+import { NOTE_COLORS, NOTE_LIMITS } from '../notes';
 import { RESTABLE_QUEST_TYPES } from '../quests';
 import {
   COMMITMENT_LIMITS,
@@ -636,8 +637,13 @@ export type CalendarQuery = z.infer<typeof calendarQuerySchema>;
 const convertibleId = z
   .string()
   .refine(
-    (s) => isId(s, 'task') || isId(s, 'commitment') || isId(s, 'goal') || isId(s, 'event'),
-    'Expected a task, commitment, goal or event id',
+    (s) =>
+      isId(s, 'task') ||
+      isId(s, 'commitment') ||
+      isId(s, 'goal') ||
+      isId(s, 'event') ||
+      isId(s, 'note'),
+    'Expected a task, commitment, goal, event or note id',
   );
 
 /** Turn an entry into another kind; a goal needs a project (`projectId`) when the entry has none. */
@@ -650,3 +656,33 @@ export type ConvertInput = z.infer<typeof convertSchema>;
 
 /** Undo a conversion: the new entry goes, the old one comes back. */
 export const convertUndoSchema = z.object({ from: convertibleId, to: convertibleId });
+
+// --- Notes (D42, D46) ------------------------------------------------------------------------
+
+const coordinate = z.number().finite().min(-NOTE_LIMITS.coordinate).max(NOTE_LIMITS.coordinate);
+
+/** A new note: its text (it can start empty), and where it goes (a free spot when left out). */
+export const noteCreateSchema = z.object({
+  description: description.optional().default(null),
+  color: z.enum(NOTE_COLORS).optional(),
+  projectId: idOf('project').nullable().optional(),
+  x: coordinate.optional(),
+  y: coordinate.optional(),
+});
+export type NoteCreate = z.input<typeof noteCreateSchema>;
+
+/** A change: the text, colour or project, or its place (moving it brings it to the top). */
+export const notePatchSchema = z
+  .object({
+    description,
+    color: z.enum(NOTE_COLORS),
+    projectId: idOf('project').nullable(),
+    x: coordinate,
+    y: coordinate,
+  })
+  .partial()
+  .refine((p) => (p.x === undefined) === (p.y === undefined), 'Move it with both x and y');
+export type NotePatch = z.infer<typeof notePatchSchema>;
+
+/** Add a note to a task's description (and undo that). */
+export const noteAppendSchema = z.object({ taskId: idOf('task') });

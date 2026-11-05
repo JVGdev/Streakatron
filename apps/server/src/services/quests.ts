@@ -54,6 +54,7 @@ import { todayCommitments } from './commitments';
 import { conflict, notFound, type Tx } from './common';
 import { activeDaySql, activeDayWhere, logActivity, noteGameEvent, type Touch } from './game';
 import { goalViews } from './goals';
+import { notesOnBoard } from './notes';
 import { projectViews } from './projects';
 
 type QuestRow = typeof questInstances.$inferSelect;
@@ -72,6 +73,7 @@ const TRIGGERS: Record<QuestTemplate, readonly Touch[]> = {
   effort: ['task'],
   focus_note: ['focus'],
   log_commitment: ['commitment', 'focus'],
+  sort_notes: ['note'],
   commitments_due: ['commitment', 'focus', 'project'],
   add_task: ['task', 'project'],
   add_goal: ['goal', 'project'],
@@ -243,6 +245,7 @@ async function gatherInput(
     .where(and(eq(focusSessions.userId, userId), eq(focusSessions.status, 'completed')))
     .orderBy(sql`${focusSessions.startedAt} desc`)
     .limit(1);
+  const onBoard = await notesOnBoard(tx, userId);
   const [yesterdayRows, inbox] = [
     await tx
       .select({ template: questInstances.template })
@@ -376,6 +379,7 @@ async function gatherInput(
       lastFocus && !lastFocus.note && (lastFocus.minutes ?? 0) > 0 ? { id: lastFocus.id } : null,
     // All of today's, sized as one ask, while any is still to do.
     commitmentsDue: commitments.some((c) => c.due) ? commitments.length : 0,
+    notesOnBoard: onBoard,
     parkedProjects: views
       .filter((p) => p.status === 'parked')
       .map((p) => {
@@ -614,6 +618,11 @@ async function progressOf(tx: Tx, userId: string, q: QuestRow): Promise<Progress
       return Math.min(
         1,
         await count(tx, and(mine, eq(activity.type, 'commitment_logged'), since(q))),
+      );
+    case 'sort_notes':
+      return Math.min(
+        q.target,
+        await count(tx, and(mine, eq(activity.type, 'note_sorted'), since(q))),
       );
     case 'commitments_due': {
       // Today's scheduled ones, each met (or a weekly check ticked today). All of them completes

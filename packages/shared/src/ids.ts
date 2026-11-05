@@ -27,6 +27,7 @@ export const ID_PREFIXES = {
   snapshot: 'snp',
   pushSubscription: 'psh',
   taskSeries: 'trs',
+  note: 'not',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

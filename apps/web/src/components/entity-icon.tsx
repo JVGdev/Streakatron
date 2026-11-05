@@ -7,6 +7,7 @@ import {
   Folder,
   Repeat,
   Shapes,
+  StickyNote,
   Target,
 } from 'lucide-react';
 import { COLOR, ICON } from '@/lib/look';
@@ -65,12 +66,14 @@ export function RefIcon({
         ? Repeat
         : entity.kind === 'event'
           ? CalendarDays
-          : entity.kind === 'area'
-            ? Shapes
-            : entity.kind === 'project'
-              ? Folder
-              : entity.closed
-                ? CheckCircle2
-                : CircleDashed;
+          : entity.kind === 'note'
+            ? StickyNote
+            : entity.kind === 'area'
+              ? Shapes
+              : entity.kind === 'project'
+                ? Folder
+                : entity.closed
+                  ? CheckCircle2
+                  : CircleDashed;
   return <Icon className={cn('size-4 shrink-0 text-muted-foreground', className)} aria-hidden />;
 }

@@ -9,3 +9,4 @@ export * from './quests';
 export * from './push';
 export * from './calendar';
 export * from './review';
+export * from './notes';

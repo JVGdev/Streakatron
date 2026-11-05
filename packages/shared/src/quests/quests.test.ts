@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { NOTES_CROWDED } from '../notes';
 import {
   comebackDue,
   followupTarget,
@@ -77,6 +78,7 @@ const input = (over: Partial<BoardInput> = {}): BoardInput => ({
   noEffortTasks: [{ id: 'tsk_x', title: 'Email prof', daysWaiting: 0 }],
   lastFocusWithoutNote: null,
   commitmentsDue: 0,
+  notesOnBoard: 0,
   parkedProjects: [],
   goals: [],
   ...over,
@@ -532,5 +534,19 @@ describe('commitment quests (D31)', () => {
       'Meet your commitment due today',
     );
     expect(questTitle({ template: 'log_commitment', target: 1 })).toBe('Log one commitment');
+  });
+});
+
+describe('the notes quest (D46)', () => {
+  it('shows only while the board is crowded', () => {
+    const few = planQuick(input({ notesOnBoard: NOTES_CROWDED - 1 }), 6, seeded(4));
+    expect(few.map((q) => q.template)).not.toContain('sort_notes');
+    const many = planQuick(input({ notesOnBoard: NOTES_CROWDED }), 6, seeded(4));
+    const sort = many.find((q) => q.template === 'sort_notes');
+    expect(sort).toMatchObject({ type: 'quick', target: QUESTS.quick.sortNotes });
+  });
+
+  it('words it', () => {
+    expect(questTitle({ template: 'sort_notes', target: 3 })).toBe('Sort 3 post-its');
   });
 });

@@ -85,6 +85,7 @@ export const KIND_LABEL = {
   area: 'Area',
   commitment: 'Commitment',
   event: 'Event',
+  note: 'Note',
 } as const;
 
 export const KIND_PLURAL = {
@@ -94,4 +95,5 @@ export const KIND_PLURAL = {
   area: 'Areas',
   commitment: 'Commitments',
   event: 'Events',
+  note: 'Notes',
 } as const;

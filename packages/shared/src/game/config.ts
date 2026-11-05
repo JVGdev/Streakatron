@@ -49,6 +49,8 @@ export const ACTIVITY_TYPES = [
   'commitment_met',
   /** A weekly review was finished: its XP, once per week (D45). Not an active day by itself. */
   'review_completed',
+  /** A post-it was sorted (D46): into an entry, onto a task, or dismissed. No XP, for quests. */
+  'note_sorted',
 ] as const;
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 

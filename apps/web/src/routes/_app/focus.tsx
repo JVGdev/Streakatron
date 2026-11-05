@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { AttachPicker, FocusRing, MinutesField, type Attachment } from '@/components/focus-timer';
 import { clockText, sessionLabel, useBreak, useFocus } from '@/hooks/use-focus';
 import { SaveState } from '@/components/sheet-parts';
+import { SessionNotes } from '@/components/session-notes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useOpenSheet, useOpenTask } from '@/hooks/use-open-task';
@@ -64,7 +65,7 @@ function FocusPage() {
       ) : showCard ? (
         <FinishCard session={last} />
       ) : brk && !brk.over ? (
-        <BreakView remainingMs={brk.remainingMs} minutes={brk.minutes} />
+        <BreakView remainingMs={brk.remainingMs} minutes={brk.minutes} sessionId={last?.id} />
       ) : (
         <StartPanel key={on ?? ''} last={last ?? null} />
       )}
@@ -232,6 +233,8 @@ function Running({ session }: { session: FocusSession }) {
         </Button>
       </div>
 
+      <SessionNotes sessionId={session.id} />
+
       <p className="max-w-sm text-center text-sm text-muted-foreground">
         {!shown && clock.phase !== 'overtime'
           ? 'A chime tells you when the time’s up.'
@@ -326,6 +329,8 @@ function FinishCard({ session }: { session: FocusSession }) {
         />
       </label>
 
+      <SessionNotes sessionId={session.id} board />
+
       {session.task && (
         <Button
           variant="outline"
@@ -389,7 +394,15 @@ function FinishCard({ session }: { session: FocusSession }) {
 
 // --- Break -----------------------------------------------------------------------------------
 
-function BreakView({ remainingMs, minutes }: { remainingMs: number; minutes: number }) {
+function BreakView({
+  remainingMs,
+  minutes,
+  sessionId,
+}: {
+  remainingMs: number;
+  minutes: number;
+  sessionId?: string;
+}) {
   return (
     <Panel>
       <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-extrabold tracking-[0.08em] text-sky-900 uppercase dark:bg-sky-950 dark:text-sky-200">
@@ -407,6 +420,7 @@ function BreakView({ remainingMs, minutes }: { remainingMs: number; minutes: num
         <SkipForward />
         End the break
       </Button>
+      {sessionId && <SessionNotes sessionId={sessionId} board />}
     </Panel>
   );
 }

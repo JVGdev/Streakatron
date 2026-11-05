@@ -1,6 +1,6 @@
-// Every linkable thing (areas, projects, goals, tasks, commitments, events) as one list, for search, mention chips
-// (`resolve`) and backlinks. One function per question (plan.md §11): "what is this id", "what
-// mentions it".
+// Every linkable thing (areas, projects, goals, tasks, commitments, events, notes) as one list,
+// for search, mention chips (`resolve`) and backlinks. One function per question (plan.md §11):
+// "what is this id", "what mentions it".
 
 import { mentionsOf, type LinkableKind, type RichDoc } from '@streakatron/shared/rich';
 import type { ColorKey, IconKey } from '@streakatron/shared/structure';
@@ -54,6 +54,13 @@ export function entitiesSql(userId: string, { withDeleted = false } = {}): SQL {
            v.description_text, v.description, v.search_vector, v.updated_at
       from events v left join projects p on p.id = v.project_id
      where v.user_id = ${userId} and ${live(sql`v.deleted_at`)}
+    union all
+    select 'note', n.id, case when n.title = '' then 'Empty note' else n.title end,
+           coalesce(p.title, 'Notes'), n.project_id, 'active',
+           false, n.deleted_at is not null, null, null,
+           n.description_text, n.description, n.search_vector, n.updated_at
+      from notes n left join projects p on p.id = n.project_id
+     where n.user_id = ${userId} and ${live(sql`n.deleted_at`)}
   `;
 }
 
@@ -130,7 +137,7 @@ export async function resolveEntities(userId: string, ids: string[]) {
   }));
 }
 
-const KIND_ORDER = sql`case e.kind when 'task' then 0 when 'goal' then 1 when 'commitment' then 2 when 'event' then 3 when 'project' then 4 else 5 end`;
+const KIND_ORDER = sql`case e.kind when 'task' then 0 when 'goal' then 1 when 'commitment' then 2 when 'event' then 3 when 'project' then 4 when 'note' then 5 else 6 end`;
 
 /**
  * What mentions `targetId` (live sources only), with the line each mention is in. The target must

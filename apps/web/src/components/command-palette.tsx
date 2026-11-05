@@ -18,6 +18,7 @@ import {
   Shapes,
   Star,
   StarOff,
+  StickyNote,
   Sun,
   Timer,
   type LucideIcon,
@@ -40,7 +41,15 @@ import {
   type Project,
   type SearchHit,
 } from '@/lib/queries';
-import { newArea, newCommitment, newEvent, newProject, setUi, useUi } from '@/lib/ui-store';
+import {
+  newArea,
+  newCommitment,
+  newEvent,
+  newNote,
+  newProject,
+  setUi,
+  useUi,
+} from '@/lib/ui-store';
 import { doneToday } from '@/lib/commitments';
 import { EntityIcon, RefIcon } from './entity-icon';
 
@@ -178,6 +187,7 @@ function Palette({ mode, close }: { mode: 'search' | 'capture'; close: () => voi
       icon: FolderPlus,
       run: run(() => newProject(currentId ? current?.areaId : undefined)),
     },
+    { id: 'new-note', label: 'New note', icon: StickyNote, hint: 'N', run: run(() => newNote()) },
     { id: 'new-area', label: 'New area', icon: Shapes, run: run(newArea) },
     {
       id: 'new-commitment',
@@ -223,6 +233,13 @@ function Palette({ mode, close }: { mode: 'search' | 'capture'; close: () => voi
       icon: Inbox,
       hint: 'G I',
       run: run(() => void navigate({ to: '/inbox' })),
+    },
+    {
+      id: 'go-notes',
+      label: 'Go to Notes',
+      icon: StickyNote,
+      hint: 'G N',
+      run: run(() => void navigate({ to: '/notes' })),
     },
     {
       id: 'go-projects',

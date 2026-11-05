@@ -237,3 +237,21 @@ export const reviewStatusQuery = queryOptions({
   queryFn: () => call(api.review.status.$get()),
   staleTime: 5 * 60_000,
 });
+
+// --- Notes (D46) -----------------------------------------------------------------------------
+
+const fetchNotes = () => call(api.notes.$get());
+export type Note = Awaited<ReturnType<typeof fetchNotes>>['notes'][number];
+
+/** Every post-it on the board, bottom of the stack first. */
+export const notesQuery = queryOptions({
+  queryKey: ['notes'],
+  queryFn: async () => (await fetchNotes()).notes,
+});
+
+/** One note (the note sheet). */
+export const noteQuery = (id: string) =>
+  queryOptions({
+    queryKey: ['note', id],
+    queryFn: () => call(api.notes[':id'].$get({ param: { id } })),
+  });

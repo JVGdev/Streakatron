@@ -11,3 +11,4 @@ export * from './reminders';
 export * from './calendar';
 export * from './repeats';
 export * from './convert';
+export * from './notes';

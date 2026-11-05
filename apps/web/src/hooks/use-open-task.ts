@@ -10,9 +10,10 @@ const SHEETS = {
   area: undefined,
   commitment: undefined,
   event: undefined,
+  note: undefined,
 };
 
-/** Open a task, goal, area, commitment or event in its sheet, closing any other; `undefined` closes it. */
+/** Open a task, goal, area, commitment, event or note in its sheet, closing any other; `undefined` closes it. */
 export function useOpenSheet() {
   const navigate = useNavigate();
   return useCallback(

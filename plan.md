@@ -90,6 +90,7 @@ The full decisions log, with rationale, alternatives and status, lives in **`.cl
 | D43 | Recurring tasks: on a schedule or after done; each occurrence its own task in a series; a missed one stays overdue while the next still shows on its day, with "Skip it" |
 | D44 | Turn any entry into another (task, commitment, goal, event): open ones only, old one soft-deleted with undo, mentions rewritten |
 | D45 | Goals & weekly review: number goals (typed in or fed by a commitment, pace to the deadline); a stepped review offered from the week's last day; review and project quests |
+| D46 | Notes board: a freeform canvas of real-looking post-its, notes written from any page with `n`, sorted by dropping on Task · Add to task · Dismiss; a "Sort 3 post-its" quest only when 12+ pile up |
 
 Rejected ideas are listed at the end of the decisions log so they aren't proposed again.
 
@@ -611,15 +612,14 @@ Shaped by the use case below and the gaps from brainstormed use cases (D32). **E
 
 **Done when:** "Finish the course: lesson 12 of 40 by June" shows the pace needed; the weekly review is guided and takes ~5 minutes.
 
-#### 4g — Notes board (D42)
+#### 4g — Notes board (D42, D46)
 From `observations.txt` (plan.md §13 Q8): ideas that come up mid-focus are written down at once, kept, and sorted later on a board of small post-its.
-- [ ] **Notes** as a first-class entity (`not_`, replaces the backlog's "Notes as a first-class entity"): rich text with `@` mentions and backlinks (`RichEditor`, `writeLinks`), a colour, an optional project, the focus session it came from and the minute it was written
-- [ ] **Quick notes mid-focus**: a note field on the focus page and the `n` shortcut from any page while a session or break runs; each note is saved at once (a reload or another device loses nothing)
-- [ ] **Notes page** (sidebar): small post-its on a board, drag and drop to sort and reorder (dnd-kit, like the project board); a post-it opens to edit; links in and out through `@`
-- [ ] **Sorting**: a post-it becomes a task (Inbox or a project), another entry (goal, commitment, event, prefilled), is added to a task's description, or is dismissed (undo); the finish card shows the session's post-its with a way to the board
-- [ ] UI review (D32)
-
-To settle when the slice starts: fixed sorting columns (To sort → Tasks · Add to task · Dismiss, where dropping does it) or the user's own columns with sorting on each post-it; notes captured only mid-focus or anywhere (a "note" mode in the palette); the post-it look (colours, size, a slight tilt); whether sorting a note counts for the "Clear one inbox item" quest (no XP of its own, D15).
+- [x] **Notes** as a first-class entity (`not_`): rich text with `@` mentions and backlinks (`RichEditor`, `writeLinks`), searchable and mentionable, a colour, an optional project, the focus session it came from and the minute it was written, a place on the board
+- [x] **Quick notes from any page** (D46): `n` and a "Note" button (Notes page, focus page); saved as you type from the first character; mid-session notes keep the session and minute, break notes the session
+- [x] **Notes page** (sidebar): a freeform infinite canvas (D46: no columns) of post-its that look like real ones; pan, zoom, Fit; drag anywhere; double-click to write one there; a post-it opens to edit
+- [x] **Sorting**: dropping a dragged post-it on Task · Add to task · Dismiss (Undo); an opened one also has "Turn into…" (goal, commitment, event); the finish card shows the session's post-its with a way to the board
+- [x] **Quest** (D46): quick "Sort 3 post-its", only while the board holds 12+
+- [x] UI review (D32)
 
 **Done when:** an idea written at minute 12 of a session is a post-it on the Notes board after it, with a link to what it mentions; dragging it to Tasks makes a task; nothing written mid-focus is lost.
 
