@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { clockText, sessionLabel, useFocus, useQuickFocus } from '@/hooks/use-focus';
 import { useOpenSheet } from '@/hooks/use-open-task';
 import { formatDayLong } from '@/lib/days';
+import { useTimeShown } from '@/lib/focus-timer';
 import { FOCUS_VISIBLE, todayItems, type FocusReason, type TodayItem } from '@/lib/focus';
 import {
   calendarQuery,
@@ -221,6 +222,7 @@ function DoneToday({ commitments }: { commitments: Commitment[] }) {
 function FocusLauncher({ top, minutes = 25 }: { top?: TodayItem; minutes?: number }) {
   const { session, clock, state } = useFocus();
   const quick = useQuickFocus();
+  const shown = useTimeShown(session?.id);
 
   if (session && clock) {
     return (
@@ -239,7 +241,11 @@ function FocusLauncher({ top, minutes = 25 }: { top?: TodayItem; minutes?: numbe
             {sessionLabel(session)}
           </span>
         </span>
-        <span className="font-display text-3xl font-semibold tabular-nums">{clockText(clock)}</span>
+        {shown && (
+          <span className="font-display text-3xl font-semibold tabular-nums">
+            {clockText(clock)}
+          </span>
+        )}
       </Link>
     );
   }

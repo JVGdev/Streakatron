@@ -591,7 +591,7 @@ Shaped by the use case below and the gaps from brainstormed use cases (D32). **E
 
 #### 4e — Recurring tasks
 - [ ] **Recurring tasks** (D32): every weekday X, monthly on day N, N days after completion ("review again in 2 days"); completing one creates the next with the next date (earn once each, D15); shown on the calendar ahead
-- [ ] **Focus time hidden mid-focus** (D41): every new session starts hidden, a click shows it; hidden on the ring, the mini timer, Today's card and the tab title *(small; can ship on its own before 4e)*
+- [x] **Focus time hidden mid-focus** (D41): every new session starts hidden, a click shows it; hidden on the ring, the mini timer, Today's card and the tab title *(small; can ship on its own before 4e)*
 - [ ] UI review (D32)
 
 **Done when:** "Problem set every Friday" and "pay the installment on the 5th" come back after each completion; "review topic 3 in 2 days" reappears two days after it's done.

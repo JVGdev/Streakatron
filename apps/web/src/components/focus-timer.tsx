@@ -29,6 +29,7 @@ import {
   notify,
   serverNow,
   useFocusMemory,
+  useTimeShown,
 } from '@/lib/focus-timer';
 import { clockText, sessionLabel, useBreak, useFocus } from '@/hooks/use-focus';
 import { useQuickCreate } from '@/hooks/use-quick-create';
@@ -48,7 +49,8 @@ export function FocusRing({
   progress: number;
   size?: number;
   stroke?: number;
-  tone?: 'focus' | 'overtime' | 'paused' | 'break';
+  /** `calm`: a still, soft ring for a session whose time is hidden (D41). */
+  tone?: 'focus' | 'overtime' | 'paused' | 'break' | 'calm';
   children?: ReactNode;
   className?: string;
 }) {
@@ -59,6 +61,7 @@ export function FocusRing({
     overtime: 'stroke-primary',
     paused: 'stroke-muted-foreground/50',
     break: 'stroke-sky-500',
+    calm: 'stroke-ember/35',
   }[tone];
   return (
     <div
@@ -103,12 +106,14 @@ const BASE_TITLE = document.title;
 
 /**
  * Headless, in the shell: chimes and notifies at the planned time and when a break ends, asks the
- * server again when a session reaches its cap (it finishes it), and shows the clock in the tab.
+ * server again when a session reaches its cap (it finishes it), and shows the clock in the tab
+ * (unless the session's time is hidden, D41).
  */
 export function FocusWatcher() {
   const qc = useQueryClient();
   const { session, clock } = useFocus();
   const brk = useFocusMemory(currentBreak);
+  const shown = useTimeShown(session?.id);
 
   // The planned time: chime once per session (not again after a reload or in another tab).
   const plannedAt = session ? plannedEndAt(session)?.getTime() : undefined;
@@ -153,10 +158,10 @@ export function FocusWatcher() {
     return () => clearTimeout(timer);
   }, [brk]);
 
-  // The tab's title.
+  // The tab's title: the clock, or "Focusing" while the time is hidden (D41).
   const title =
     session && clock
-      ? `${session.status === 'paused' ? '⏸ ' : ''}${clockText(clock)} · ${sessionLabel(session)}`
+      ? `${session.status === 'paused' ? '⏸ ' : ''}${shown ? clockText(clock) : session.status === 'paused' ? 'Paused' : 'Focusing'} · ${sessionLabel(session)}`
       : null;
   useEffect(() => {
     document.title = title ?? BASE_TITLE;
@@ -173,6 +178,7 @@ export function MiniTimer({ variant }: { variant: 'sidebar' | 'bar' }) {
   const { session, clock } = useFocus();
   const brk = useBreak();
   const focus = useFocusActions();
+  const shown = useTimeShown(session?.id);
   // The focus page shows the timer itself.
   const onFocusPage = useRouterState({ select: (s) => s.location.pathname === '/focus' });
   if (onFocusPage) return null;
@@ -192,10 +198,10 @@ export function MiniTimer({ variant }: { variant: 'sidebar' | 'bar' }) {
           aria-label="Open the focus timer"
         >
           <FocusRing
-            progress={clock.progress}
+            progress={shown ? clock.progress : 1}
             size={38}
             stroke={5}
-            tone={paused ? 'paused' : clock.phase}
+            tone={paused ? 'paused' : shown ? clock.phase : 'calm'}
           >
             <Timer className="size-4 text-muted-foreground" strokeWidth={2.6} />
           </FocusRing>
@@ -203,14 +209,14 @@ export function MiniTimer({ variant }: { variant: 'sidebar' | 'bar' }) {
             <span
               className={cn(
                 'block font-display text-lg leading-tight font-semibold tabular-nums',
-                clock.phase === 'overtime' && 'text-primary',
+                shown && clock.phase === 'overtime' && 'text-primary',
                 paused && 'text-muted-foreground',
               )}
             >
-              {clockText(clock)}
+              {shown ? clockText(clock) : paused ? 'Paused' : 'Focusing'}
             </span>
             <span className="block truncate text-xs font-bold text-muted-foreground">
-              {paused ? 'Paused · ' : ''}
+              {shown && paused ? 'Paused · ' : ''}
               {sessionLabel(session)}
             </span>
           </span>

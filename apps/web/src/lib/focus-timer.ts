@@ -1,6 +1,6 @@
 // The focus timer's client side (D29). The server owns the session; this keeps the clock in step
 // with it and remembers small per-browser things: which finished session you've already seen, the
-// break you're on (breaks aren't stored), and which session already chimed.
+// break you're on (breaks aren't stored), which session already chimed, and whose time shows (D41).
 
 import { useEffect, useState } from 'react';
 
@@ -130,3 +130,16 @@ export const endBreak = () => write(BREAK, null);
 /** Whether the planned-time chime already played for this session (in any tab, or before a reload). */
 export const hasChimed = (id: string) => read<string>(CHIMED) === id;
 export const markChimed = (id: string) => write(CHIMED, id);
+
+// --- Hidden time (D41) -------------------------------------------------------------------------
+
+const SHOWN = 'streakatron.focus.shown';
+
+/** The session whose time was shown with a click; every other session's time is hidden. */
+export const shownSession = () => read<string>(SHOWN);
+export const setTimeShown = (id: string, shown: boolean) => write(SHOWN, shown ? id : null);
+
+/** Whether this session's time shows (D41): hidden until clicked, for each new session. */
+export function useTimeShown(id: string | undefined): boolean {
+  return useFocusMemory(shownSession) === id && !!id;
+}
